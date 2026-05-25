@@ -1,0 +1,11 @@
+{
+  "name": "floor",
+  "mesh": "./assets/bodies/field.glb",
+  "mass": "inf",
+  "spawn_position": [0.0, 0.0, 0.0],
+  "surface": {
+    "cof_static":  2.8,
+    "cof_dynamic": 1.7,
+    "restitution": 0.1
+  }
+}

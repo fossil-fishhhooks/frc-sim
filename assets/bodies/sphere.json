@@ -1,0 +1,13 @@
+{
+  "name": "sphere",
+  "mesh": "./assets/bodies/sphere.glb",
+  "mass": 0.5,
+  "com_offset": [0.0, 0.0, 0.0],
+  "surface": {
+    "cof_static":  0.9,
+    "cof_dynamic": 0.8,
+    "restitution": 0.4
+  },
+  "motors": []
+
+}

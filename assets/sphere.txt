@@ -1,0 +1,43 @@
+ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('Sphere radius 2.953 inches'),'2;1');
+FILE_NAME('sphere.step','2026-04-16T00:00:00',('chatgpt'),(''), '','ChatGPT','');
+FILE_SCHEMA(('AUTOMOTIVE_DESIGN'));
+ENDSEC;
+
+DATA;
+
+/* Units */
+#1 = (LENGTH_UNIT() NAMED_UNIT(*) SI_UNIT(.MILLI.,.METRE.));
+#2 = LENGTH_UNIT() NAMED_UNIT(*) SI_UNIT($,.METRE.);
+
+/* Geometry placement */
+#10 = CARTESIAN_POINT('',(0.,0.,0.));
+#11 = DIRECTION('',(0.,0.,1.));
+#12 = DIRECTION('',(1.,0.,0.));
+#13 = AXIS2_PLACEMENT_3D('',#10,#11,#12);
+
+/* Sphere surface */
+#20 = SPHERICAL_SURFACE('',#13,0.0749552);
+
+/* Face */
+#21 = FACE_SURFACE('',(#20),.T.);
+
+/* Shell */
+#22 = CLOSED_SHELL('',(#21));
+
+/* Solid */
+#23 = MANIFOLD_SOLID_BREP('',#22);
+
+/* Product structure */
+#30 = PRODUCT('SPHERE','SPHERE','',(#));
+#31 = PRODUCT_DEFINITION_FORMATION_WITH_SPECIFIED_SOURCE('','',#30,.NOT_KNOWN.);
+#32 = PRODUCT_DEFINITION('design','',#31,#);
+#33 = PRODUCT_DEFINITION_SHAPE('','',#32);
+
+/* Shape representation */
+#40 = SHAPE_REPRESENTATION('sphere',(#23),#13);
+#41 = SHAPE_DEFINITION_REPRESENTATION(#33,#40);
+
+ENDSEC;
+END-ISO-10303-21;

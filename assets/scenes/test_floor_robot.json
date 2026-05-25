@@ -1,0 +1,52 @@
+{
+  "name": "test_floor_robot",
+  "bodies": [
+    {
+      "def": "../bodies/floor.json",
+      "position": [0.0, 0.0, 0.0],
+      "orientation": [0.0, 0.0, 0.0, 1.0],
+      "role": "field"
+    },
+    {
+      "def": "../bodies/robot.json",
+      "position": [5.0, 0.1, 0.0],
+      "orientation": [0.0, 0.0, 0.0, 1.0],
+      "role": "robot"
+    },
+
+    { "def": "../bodies/sphere.json", "position": [-0.75, 2.0, -0.6], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [-0.45, 2.0, -0.6], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [-0.15, 2.0, -0.6], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [0.15, 2.0, -0.6], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [0.45, 2.0, -0.6], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [0.75, 2.0, -0.6], "orientation": [0,0,0,1], "role": "gamepiece" },
+
+    { "def": "../bodies/sphere.json", "position": [-0.75, 2.0, -0.3], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [-0.45, 2.0, -0.3], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [-0.15, 2.0, -0.3], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [0.15, 2.0, -0.3], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [0.45, 2.0, -0.3], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [0.75, 2.0, -0.3], "orientation": [0,0,0,1], "role": "gamepiece" },
+
+    { "def": "../bodies/sphere.json", "position": [-0.75, 2.0, 0.0], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [-0.45, 2.0, 0.0], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [-0.15, 2.0, 0.0], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [0.15, 2.0, 0.0], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [0.45, 2.0, 0.0], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [0.75, 2.0, 0.0], "orientation": [0,0,0,1], "role": "gamepiece" },
+
+    { "def": "../bodies/sphere.json", "position": [-0.75, 2.0, 0.3], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [-0.45, 2.0, 0.3], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [-0.15, 2.0, 0.3], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [0.15, 2.0, 0.3], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [0.45, 2.0, 0.3], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [0.75, 2.0, 0.3], "orientation": [0,0,0,1], "role": "gamepiece" },
+
+    { "def": "../bodies/sphere.json", "position": [-0.75, 2.0, 0.6], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [-0.45, 2.0, 0.6], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [-0.15, 2.0, 0.6], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [0.15, 2.0, 0.6], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [0.45, 2.0, 0.6], "orientation": [0,0,0,1], "role": "gamepiece" },
+    { "def": "../bodies/sphere.json", "position": [0.75, 2.0, 0.6], "orientation": [0,0,0,1], "role": "gamepiece" }
+  ]
+}
