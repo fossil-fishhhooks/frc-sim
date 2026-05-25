@@ -15,7 +15,7 @@ static void DrawBar(int x, int y, int w, int h,
 
 void DrawDebugOverlay(const WorldSnapshot &snapshot,
                       bool nt_connected,
-                      float sim_hz, float target_hz, float nt_staleness_ms)
+                      float sim_hz, float target_hz, float nt_staleness_ms, float wall_time_offset_ms)
 {
     constexpr int PAD = 10;
     constexpr int LINE = 18;
@@ -39,15 +39,14 @@ void DrawDebugOverlay(const WorldSnapshot &snapshot,
     DrawText(buf, PAD, y, SMALL, LIGHTGRAY);
     y += LINE;
 
-    snprintf(buf, sizeof(buf), "Wall Time: %.2f s", logger::elapsed() / 1000.0f);
+    snprintf(buf, sizeof(buf), "Wall Time: %.2f s",
+             (logger::elapsed() - wall_time_offset_ms) / 1000.0f);
     DrawText(buf, PAD, y, SMALL, LIGHTGRAY);
     y += LINE;
 
     snprintf(buf, sizeof(buf), "Time Loss: %.2f s",
-             (logger::elapsed() / 1000.0f) - snapshot.sim_time);
-    Color time_color = ((logger::elapsed() / 1000.0f) - snapshot.sim_time) > 2.9f
-                           ? RED
-                           : LIGHTGRAY;
+             ((logger::elapsed() - wall_time_offset_ms) / 1000.0f) - snapshot.sim_time);
+    Color time_color = (((logger::elapsed() - wall_time_offset_ms) / 1000.0f) - snapshot.sim_time) > 2.9f ? RED : LIGHTGRAY;
     DrawText(buf, PAD, y, SMALL, time_color);
     y += LINE;
 

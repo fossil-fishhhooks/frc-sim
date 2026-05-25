@@ -27,10 +27,13 @@ public:
 
     void SetWireframe(bool enabled) { m_wireframe = enabled; }
 
+    void SetWallTimeOffset(float ms) { m_wall_time_offset_ms = ms; }
+
 private:
     Camera3D m_camera{};
 
     bool m_wireframe = false;
+    float m_wall_time_offset_ms = 0.0f;
 
     // ── Main lighting shader ──────────────────────────────────────────────
     Shader m_shader{};

@@ -281,7 +281,7 @@ void Renderer::DrawFrame(const WorldSnapshot &snapshot,
         rlActiveTextureSlot(0);
     }
 
-    DrawDebugOverlay(snapshot, nt_connected, sim_hz, target_hz, nt_staleness_ms);
+    DrawDebugOverlay(snapshot, nt_connected, sim_hz, target_hz, nt_staleness_ms,m_wall_time_offset_ms);
     DrawText("WASD: movement  RMB drag: cam angle  EQ+Arrows: rotate view  Scroll: zoom   ESC: quit  TAB: lock/unlock camera",
              10, GetScreenHeight() - 20, 12, {200, 10, 10, 255});
     EndDrawing();
