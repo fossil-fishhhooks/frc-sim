@@ -16,6 +16,15 @@ void PreloadMesh(const BodyDef *def)
         return;
 
     Model m = LoadModel(def->mesh_path.c_str());
+    for (int i = 0; i < m.materialCount; ++i)
+        LOG_INFO("BodyDraw: debug texture info: mat[%d] tex_id=%d w=%d h=%d color={%d,%d,%d}",
+                 i,
+                 m.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture.id,
+                 m.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture.width,
+                 m.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture.height,
+                 m.materials[i].maps[MATERIAL_MAP_DIFFUSE].color.r,
+                 m.materials[i].maps[MATERIAL_MAP_DIFFUSE].color.g,
+                 m.materials[i].maps[MATERIAL_MAP_DIFFUSE].color.b);
     if (m.meshCount == 0)
     {
         LOG_WARN("BodyDraw: failed to load model: %s", def->mesh_path.c_str());
