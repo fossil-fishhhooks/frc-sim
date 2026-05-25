@@ -442,7 +442,6 @@ bool SimWorld::SpawnProjectile(const std::string &mesh_path, float mass,
 {
     auto proj_def = std::make_unique<BodyDef>();
     proj_def->name = piece_name;
-    proj_def->name = "projectile";
     proj_def->mesh_path = mesh_path;
     proj_def->mass = mass;
     // Default surface props; projectiles tumble freely.
