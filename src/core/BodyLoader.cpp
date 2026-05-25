@@ -35,6 +35,7 @@ std::optional<BodyDef> LoadBodyDef(const std::string& json_path,
     BodyDef def;
     def.name      = j.value("name", "unnamed");
     def.mesh_path = j.value("mesh", "");
+    def.collision_mesh_path = j.value("collision_mesh", ""); // optional
 
     if (j.contains("mass")) {
         auto& m = j["mass"];

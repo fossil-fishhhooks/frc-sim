@@ -131,7 +131,10 @@ JPH::BodyID SimWorld::SpawnBody(const BodyDef &def,
 {
     bool is_static = (def.mass == 0.0f);
 
-    auto shape = LoadShape(def.mesh_path, is_static);
+    const std::string &shape_path = def.collision_mesh_path.empty()
+                                        ? def.mesh_path
+                                        : def.collision_mesh_path;
+    auto shape = LoadShape(shape_path, is_static);
     if (!shape)
     {
         LOG_ERROR("SimWorld: SpawnBody failed for '%s' — no shape", def.name.c_str());

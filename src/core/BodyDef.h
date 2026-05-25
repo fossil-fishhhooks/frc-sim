@@ -28,7 +28,8 @@ struct MotorAttachmentDef {
 
 struct BodyDef {
     std::string   name;
-    std::string   mesh_path;   // used for both render and physics
+    std::string   mesh_path;   // used for render
+    std::string   collision_mesh_path;     // used for both physics
 
     // mass == 0.0f = infinite (static body, field walls etc.)
     float mass = 0.0f;
