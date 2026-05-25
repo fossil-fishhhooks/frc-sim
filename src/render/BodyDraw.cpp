@@ -16,7 +16,7 @@ void PreloadMesh(const BodyDef *def)
         return;
 
     Model m = LoadModel(def->mesh_path.c_str());
-    for (int i = 0; i < m.materialCount; ++i)
+    /*for (int i = 0; i < m.materialCount; ++i)
         LOG_INFO("BodyDraw: debug texture info: mat[%d] tex_id=%d w=%d h=%d color={%d,%d,%d}",
                  i,
                  m.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture.id,
@@ -25,6 +25,7 @@ void PreloadMesh(const BodyDef *def)
                  m.materials[i].maps[MATERIAL_MAP_DIFFUSE].color.r,
                  m.materials[i].maps[MATERIAL_MAP_DIFFUSE].color.g,
                  m.materials[i].maps[MATERIAL_MAP_DIFFUSE].color.b);
+                 */
     if (m.meshCount == 0)
     {
         LOG_WARN("BodyDraw: failed to load model: %s", def->mesh_path.c_str());
@@ -97,9 +98,10 @@ void DrawBodySnapshot(const BodySnapshot &body, Shader *shader, bool wireframe)
             // Only apply hash color if the mesh has no embedded texture.
             // GLBs with textures have a valid texture ID (> 0) in the diffuse slot —
             // overwriting colDiffuse with a hash color would tint the texture gray.
-            bool has_texture = mat.maps[MATERIAL_MAP_DIFFUSE].texture.id > 0 && mat.maps[MATERIAL_MAP_DIFFUSE].texture.id != rlGetTextureIdDefault();
-            if (!has_texture)
-                mat.maps[MATERIAL_MAP_DIFFUSE].color = col;
+            Color &mc = mat.maps[MATERIAL_MAP_DIFFUSE].color;
+            bool has_material_color = !(mc.r == 255 && mc.g == 255 && mc.b == 255);
+            if (!has_material_color)
+                mc = col; // no embedded color — use hash
             // if has_texture: leave color alone — whatever the GLB embedded is used
 
             DrawMesh(model.meshes[m], mat, transform);
