@@ -1,6 +1,19 @@
 ﻿cmake_minimum_required(VERSION 3.20)
 project(frc_sim LANGUAGES CXX)
 
+cmake_policy(SET CMP0091 NEW)
+
+# Default to Release if no build type specified
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+
+# Force release CRT (/MD) globally — including all FetchContent subprojects.
+# CMAKE_MSVC_RUNTIME_LIBRARY alone is insufficient because subprojects (Jolt)
+# call cmake_policy(CMP0091 NEW) themselves and set their own value.
+# CMAKE_USER_MAKE_RULES_OVERRIDE runs last and rewrites the flags directly.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -17,7 +30,10 @@ set(TARGET_UNIT_TESTS  OFF CACHE BOOL "" FORCE)
 set(TARGET_HELLO_WORLD OFF CACHE BOOL "" FORCE)
 set(TARGET_SAMPLES     OFF CACHE BOOL "" FORCE)
 set(TARGET_VIEWER      OFF CACHE BOOL "" FORCE)
-set(DEBUG_RENDERER_IN_DEBUG_AND_RELEASE OFF CACHE BOOL "" FORCE)
+set(JPH_DEBUG_RENDERER_IN_DEBUG_AND_RELEASE OFF CACHE BOOL "" FORCE)
+set(JPH_ENABLE_ASSERTS OFF CACHE BOOL "" FORCE)
+set(JPH_ENABLE_EXTERNAL_PROFILE OFF CACHE BOOL "" FORCE)
+set(JPH_DEBUG_RENDERER_DISABLED ON CACHE BOOL "" FORCE)
 
 FetchContent_Declare(JoltPhysics
     GIT_REPOSITORY https://github.com/jrouwe/JoltPhysics.git
@@ -25,6 +41,9 @@ FetchContent_Declare(JoltPhysics
     SOURCE_SUBDIR  Build
 )
 FetchContent_MakeAvailable(JoltPhysics)
+
+
+
 
 # ntcore (cherry-picked from allwpilib — just ntcore + wpiutil)
 FetchContent_Declare(allwpilib
@@ -80,6 +99,28 @@ target_link_libraries(frc_sim PRIVATE
 target_compile_definitions(frc_sim PRIVATE
     JPH_DEBUG_RENDERER_DISABLED
 )
+
+# Force release CRT at the linker level regardless of build type.
+# Explicitly ignore all debug CRT libs and replace with release equivalents.
+# This is the only reliable fix when FetchContent deps ignore CMAKE_MSVC_RUNTIME_LIBRARY.
+if(MSVC)
+    target_compile_options(frc_sim PRIVATE /MT)
+    target_link_options(frc_sim PRIVATE
+        /NODEFAULTLIB:libcmtd.lib
+        /NODEFAULTLIB:libcpmtd.lib
+        /NODEFAULTLIB:msvcrtd.lib
+        /NODEFAULTLIB:msvcprtd.lib
+        /NODEFAULTLIB:vcruntimed.lib
+        /NODEFAULTLIB:ucrtd.lib
+        /NODEFAULTLIB:msvcrt.lib
+        /NODEFAULTLIB:msvcprt.lib
+        /NODEFAULTLIB:vcruntime.lib
+        /NODEFAULTLIB:ucrt.lib
+        /DEFAULTLIB:libcmt.lib
+        /DEFAULTLIB:libcpmt.lib
+        /DEFAULTLIB:libucrt.lib
+    )
+endif()
 
 # Platform linker extras
 if(APPLE)
