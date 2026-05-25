@@ -69,19 +69,19 @@ void DrawDebugOverlay(const WorldSnapshot &snapshot,
         }
         else if (nt_staleness_ms > 100.0f)
         {
-            snprintf(buf, sizeof(buf), "  stale: %.0f ms", nt_staleness_ms);
+            snprintf(buf, sizeof(buf), "   %.1f ms", nt_staleness_ms);
             DrawText(buf, PAD + 140, y, SMALL, RED);
         }
         else if (nt_staleness_ms > 20.0f)
         {
-            snprintf(buf, sizeof(buf), "  stale: %.0f ms", nt_staleness_ms);
+            snprintf(buf, sizeof(buf), "   %.1f ms", nt_staleness_ms);
             DrawText(buf, PAD + 140, y, SMALL, YELLOW);
         }
         else
         {
-            snprintf(buf, sizeof(buf), "  %.0f ms", nt_staleness_ms);
+            snprintf(buf, sizeof(buf), "  %.1f ms", nt_staleness_ms);
             DrawText(buf, PAD + 140, y, SMALL,
-                     nt_staleness_ms < 100.0f ? GREEN : YELLOW);
+                     GREEN );
         }
     }
     y += LINE + 6;

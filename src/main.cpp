@@ -220,7 +220,7 @@ int main(int argc, char *argv[])
 
         nt.Tick(snapshot);
         renderer.DrawFrame(snapshot, nt.IsConnected(),
-                           sim.MeasuredHz(), sim.TargetHz(), nt.StalenessMs());
+                           sim.MeasuredHz(), sim.TargetHz(), nt.Ping());
     }
 
     // ── 10. Shutdown ──────────────────────────────────────────────────────

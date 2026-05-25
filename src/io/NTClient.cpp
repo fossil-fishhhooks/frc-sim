@@ -18,6 +18,9 @@ struct NTClient::Impl
 {
     nt::NetworkTableInstance inst;
 
+    std::atomic<int64_t> rtt2_us{-1}; // microseconds, -1 = no sync yet
+    NT_Listener time_sync_listener{0};
+
     // ── Drivetrain ────────────────────────────────────────────────────────
     struct MotorTopics {
         nt::FloatSubscriber     voltage_sub;
@@ -89,15 +92,38 @@ void NTClient::Init(const std::string &host, int port,
     LOG_INFO("NTClient: connecting to %s:%d (%d motor slots, mechanisms=%s)",
              host.c_str(), port, robot_motor_count,
              mechanisms ? "yes" : "no");
+
+    m_impl->time_sync_listener = inst.AddTimeSyncListener(false,
+                                                          [this](const nt::Event &e)
+                                                          {
+                                                              if (auto *ts = e.GetTimeSyncEventData())
+                                                              {
+                                                                  if (ts->valid)
+                                                                      m_impl->rtt2_us.store(ts->rtt2);
+                                                              }
+                                                          });
+    LOG_INFO("NTClient: set up latency measurement");
 }
 
 void NTClient::Shutdown()
 {
     if (!m_impl) return;
     m_impl->inst.StopClient();
+    if (m_impl->time_sync_listener)
+        m_impl->inst.RemoveListener(m_impl->time_sync_listener);
     delete m_impl;
     m_impl = nullptr;
     LOG_INFO("NTClient: shutdown");
+}
+
+float NTClient::Ping() const
+{
+    if (!m_impl)
+        return -1.0f;
+    int64_t rtt = m_impl->rtt2_us.load();
+    if (rtt < 0)
+        return -1.0f;
+    return (float)(rtt / 1000.0); // us -> ms
 }
 
 void NTClient::Tick(const WorldSnapshot &snapshot)
@@ -114,22 +140,10 @@ void NTClient::Tick(const WorldSnapshot &snapshot)
     if (robot_idx < 0) return;
 
     // ── Read voltages → SimWorld ──────────────────────────────────────────
-    bool got_update = false;
     for (int i = 0; i < m_robot_motor_count; ++i)
     {
-        // GetAtomic() returns a timestamped value — use it to detect fresh data
-        auto val = m_impl->motors[i].voltage_sub.GetAtomic();
-        float v = std::clamp(val.value, -1.0f, 1.0f);
+        float v = std::clamp(m_impl->motors[i].voltage_sub.Get(), -1.0f, 1.0f);
         m_world->SetMotorVoltage(robot_idx, i, v);
-        if (val.time > 0)
-            got_update = true;
-    }
-    if (got_update)
-    {
-        m_last_rx_ms.store(
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now().time_since_epoch())
-                .count());
     }
 
     // ── Publish motor state from snapshot ────────────────────────────────
