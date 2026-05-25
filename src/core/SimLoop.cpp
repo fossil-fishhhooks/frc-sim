@@ -41,72 +41,55 @@ WorldSnapshot SimLoop::GetSnapshot() const
 
 void SimLoop::Run()
 {
-    auto prev = Clock::now();
-    float accum = 0.0f;
+    using Dur = std::chrono::duration<double>;
 
-    // Hz measurement
+    // Wall-time interval between ticks (accounts for speed multiplier)
+    auto tick_interval = std::chrono::duration_cast<Clock::duration>(
+        Dur(m_fixed_dt / m_speed));
+
+    auto next_tick = Clock::now();
     int tick_count = 0;
     auto hz_timer = Clock::now();
 
     while (m_running)
     {
+        std::this_thread::sleep_until(next_tick);
+        next_tick += tick_interval;
+
+        // If we're behind, reset — don't try to catch up
         auto now = Clock::now();
-        float elapsed = static_cast<float>(Duration(now - prev).count());
-        prev = now;
+        if (now > next_tick)
+            next_tick = now;
 
-        // Apply speed multiplier  running at 2x doubles the physics time per wall second
-        elapsed *= m_speed;
+        // ── Physics step ──────────────────────────────────────────────
+        if (m_forces)
+            m_forces->Apply(m_fixed_dt);
+        if (m_mechanisms)
+            m_mechanisms->Tick(m_fixed_dt);
+        m_world.Step(m_fixed_dt);
+        ++tick_count;
 
-        // Clamp: never try to catch up more than 50ms worth of steps in one frame.
-        // Prevents spiral-of-death if the machine hiccups.
-        if (elapsed > 0.05f)
-            elapsed = 0.05f;
-
-        // Accumulate time across loop iterations.
-        accum += elapsed;
-
-        // Step physics in fixed increments
-        while (accum >= m_fixed_dt)
-        {
-            if (m_forces)
-                m_forces->Apply(m_fixed_dt);
-            if (m_mechanisms)
-                m_mechanisms->Tick(m_fixed_dt);
-            m_world.Step(m_fixed_dt);
-            accum -= m_fixed_dt;
-            ++tick_count;
-        }
-
-        // Capture snapshot into back buffer, then flip atomically
+        // ── Snapshot ──────────────────────────────────────────────────
         {
             std::lock_guard<std::mutex> lock(m_buf_mutex);
             int back = 1 - m_front.load(std::memory_order_relaxed);
             m_world.CaptureSnapshot(m_buf[back]);
-
-            // Mechanism state lives in MechanismSystem, not SimWorld —
-            // fill it here while we hold the buffer lock.
             if (m_mechanisms)
             {
                 m_buf[back].intake_held = m_mechanisms->HeldCount();
                 m_buf[back].intake_max_capacity = m_mechanisms->IntakeCapacity();
                 m_buf[back].shooter_armed = m_mechanisms->IsFirePending();
             }
-
             m_front.store(back, std::memory_order_release);
         }
 
-        // Update measured Hz once per second
-        double hz_elapsed = Duration(now - hz_timer).count();
+        // ── Hz measurement ────────────────────────────────────────────
+        double hz_elapsed = Dur(Clock::now() - hz_timer).count();
         if (hz_elapsed >= 1.0)
         {
-            m_measured_hz.store(static_cast<float>(tick_count / hz_elapsed));
+            m_measured_hz.store((float)(tick_count / hz_elapsed));
             tick_count = 0;
-            hz_timer = now;
+            hz_timer = Clock::now();
         }
-
-        // Yield ~500µs so we don't burn a full core when physics is fast.
-        // At 500Hz physics this loop runs ~2ms of real work; sleeping 500µs
-        // keeps CPU usage reasonable while still being very responsive.
-        std::this_thread::sleep_for(std::chrono::microseconds(500));
     }
 }
