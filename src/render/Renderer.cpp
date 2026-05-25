@@ -242,7 +242,7 @@ bool Renderer::ShouldClose() const { return WindowShouldClose(); }
 
 void Renderer::DrawFrame(const WorldSnapshot &snapshot,
                          bool nt_connected,
-                         float sim_hz, float target_hz)
+                         float sim_hz, float target_hz, float nt_staleness_ms)
 {
     if (IsKeyPressed(KEY_TAB))
         m_cameraLocked = !m_cameraLocked;
@@ -281,7 +281,7 @@ void Renderer::DrawFrame(const WorldSnapshot &snapshot,
         rlActiveTextureSlot(0);
     }
 
-    DrawDebugOverlay(snapshot, nt_connected, sim_hz, target_hz);
+    DrawDebugOverlay(snapshot, nt_connected, sim_hz, target_hz, nt_staleness_ms);
     DrawText("WASD: movement  RMB drag: cam angle  EQ+Arrows: rotate view  Scroll: zoom   ESC: quit  TAB: lock/unlock camera",
              10, GetScreenHeight() - 20, 12, {200, 10, 10, 255});
     EndDrawing();

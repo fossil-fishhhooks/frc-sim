@@ -21,7 +21,7 @@ public:
 
     void DrawFrame(const WorldSnapshot &snapshot,
                    bool nt_connected,
-                   float sim_hz, float target_hz);
+                   float sim_hz, float target_hz, float nt_staleness_ms);
 
     bool m_cameraLocked = false;
 

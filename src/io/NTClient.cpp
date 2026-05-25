@@ -114,11 +114,22 @@ void NTClient::Tick(const WorldSnapshot &snapshot)
     if (robot_idx < 0) return;
 
     // ── Read voltages → SimWorld ──────────────────────────────────────────
+    bool got_update = false;
     for (int i = 0; i < m_robot_motor_count; ++i)
     {
-        float v = m_impl->motors[i].voltage_sub.Get();
-        v = std::clamp(v, -1.0f, 1.0f);
+        // GetAtomic() returns a timestamped value — use it to detect fresh data
+        auto val = m_impl->motors[i].voltage_sub.GetAtomic();
+        float v = std::clamp(val.value, -1.0f, 1.0f);
         m_world->SetMotorVoltage(robot_idx, i, v);
+        if (val.time > 0)
+            got_update = true;
+    }
+    if (got_update)
+    {
+        m_last_rx_ms.store(
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now().time_since_epoch())
+                .count());
     }
 
     // ── Publish motor state from snapshot ────────────────────────────────

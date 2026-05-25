@@ -15,7 +15,7 @@ static void DrawBar(int x, int y, int w, int h,
 
 void DrawDebugOverlay(const WorldSnapshot &snapshot,
                       bool nt_connected,
-                      float sim_hz, float target_hz)
+                      float sim_hz, float target_hz, float nt_staleness_ms)
 {
     constexpr int PAD = 10;
     constexpr int LINE = 18;
@@ -60,6 +60,30 @@ void DrawDebugOverlay(const WorldSnapshot &snapshot,
     DrawCircle(PAD + 6, y + 6, 6, dot_col);
     DrawText(nt_connected ? "NT4  connected" : "NT4  disconnected",
              PAD + 18, y, SMALL, nt_connected ? GREEN : RED);
+    if (nt_connected)
+    {
+        if (nt_staleness_ms < 0)
+        {
+            snprintf(buf, sizeof(buf), "  (no data yet)");
+            DrawText(buf, PAD + 140, y, SMALL, ORANGE);
+        }
+        else if (nt_staleness_ms > 100.0f)
+        {
+            snprintf(buf, sizeof(buf), "  stale: %.0f ms", nt_staleness_ms);
+            DrawText(buf, PAD + 140, y, SMALL, RED);
+        }
+        else if (nt_staleness_ms > 20.0f)
+        {
+            snprintf(buf, sizeof(buf), "  stale: %.0f ms", nt_staleness_ms);
+            DrawText(buf, PAD + 140, y, SMALL, YELLOW);
+        }
+        else
+        {
+            snprintf(buf, sizeof(buf), "  %.0f ms", nt_staleness_ms);
+            DrawText(buf, PAD + 140, y, SMALL,
+                     nt_staleness_ms < 100.0f ? GREEN : YELLOW);
+        }
+    }
     y += LINE + 6;
 
     // ── Intake / Shooter HUD ──────────────────────────────────────────────

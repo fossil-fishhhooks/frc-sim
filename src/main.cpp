@@ -154,6 +154,7 @@ int main(int argc, char *argv[])
         auto &req = scene.bodies[i];
 
         PreloadMesh(&req.def);
+        
 
         auto id = world.SpawnBody(req.def,
                                   req.position.data(),
@@ -219,7 +220,7 @@ int main(int argc, char *argv[])
 
         nt.Tick(snapshot);
         renderer.DrawFrame(snapshot, nt.IsConnected(),
-                           sim.MeasuredHz(), sim.TargetHz());
+                           sim.MeasuredHz(), sim.TargetHz(), nt.StalenessMs());
     }
 
     // ── 10. Shutdown ──────────────────────────────────────────────────────

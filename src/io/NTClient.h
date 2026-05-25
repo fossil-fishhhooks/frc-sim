@@ -3,6 +3,7 @@
 #include "core/Snapshot.h"
 #include <string>
 #include <atomic>
+#include <chrono>
 
 // Forward-declare ntcore types
 namespace nt { class NetworkTableInstance; }
@@ -46,6 +47,16 @@ public:
 
     bool IsConnected() const { return m_connected.load(); }
 
+    float StalenessMs() const
+    {
+        if (m_last_rx_ms.load() == 0)
+            return -1.0f; // never received anything
+        auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+                       std::chrono::steady_clock::now().time_since_epoch())
+                       .count();
+        return (float)(now - m_last_rx_ms.load());
+    }
+
 private:
     struct Impl;
     Impl *m_impl = nullptr;
@@ -57,4 +68,6 @@ private:
 
     // Edge-detection for /sim/shooter/fire
     bool m_last_fire_val = false;
+
+    std::atomic<int64_t> m_last_rx_ms{0}; // ms timestamp of last voltage received
 };
