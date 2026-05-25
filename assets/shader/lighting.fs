@@ -12,17 +12,17 @@ uniform vec4      colDiffuse;
 
 out vec4 finalColor;
 
-#define MAX_LIGHTS        16
+#define MAX_LIGHTS        8
 #define LIGHT_DIRECTIONAL  0
 #define LIGHT_POINT        1
 
 // Tuneables
-#define SHININESS         88.0   // higher = tighter specular
+#define SHININESS         98.0   // higher = tighter specular
 #define SPECULAR_STRENGTH  0.6
 #define SHADOW_BIAS        0.005 //
 #define FRESNEL_STRENGTH   0.35  // rim light intensity
 #define FRESNEL_POWER      3.0   // rim falloff sharpness
-#define MIN_SHADOW        20
+#define MIN_SHADOW         32
 
 struct Light {
     int   enabled;
@@ -138,8 +138,6 @@ void main()
 
     finalColor = vec4(litColor, texelColor.a * tint.a);
 
-    // Gamma correction: convert linear light accumulation to sRGB for display.
-    // This is "a thing" because monitors expect sRGB but lighting math is linear.
-    // Without it colors are too dark and specular highlights blow out.
+
     finalColor = pow(finalColor, vec4(1.0 / 2.2));
 }
