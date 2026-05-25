@@ -190,6 +190,7 @@ void MechanismSystem::RunShooter()
     // Delegate to SimWorld which knows how to build a shape + body from a def
     bool ok = m_world.SpawnProjectile(m_shooter.piece_mesh_path,
                                       m_shooter.piece_mass,
+                                      m_shooter.piece_name,
                                       world_exit,
                                       velocity);
     if (ok)

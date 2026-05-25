@@ -89,6 +89,7 @@ public:
     // Loads the mesh shape the same way SpawnBody does.
     // Returns true on success. Called from MechanismSystem::RunShooter().
     bool SpawnProjectile(const std::string &mesh_path, float mass,
+                         const std::string &piece_name,
                          JPH::Vec3 world_pos, JPH::Vec3 world_vel);
 
     // Direct Jolt body interface — used by ForceApplicator.

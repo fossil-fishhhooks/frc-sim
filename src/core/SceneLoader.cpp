@@ -128,6 +128,7 @@ SceneData LoadScene(const std::string &scene_path, const MotorRegistry &motors)
             if (piece_def && !piece_def->mesh_path.empty())
             {
                 result.shooter.piece_mesh_path = piece_def->mesh_path;
+                result.shooter.piece_name = piece_def->name; // carry the name through
             }
             else
             {

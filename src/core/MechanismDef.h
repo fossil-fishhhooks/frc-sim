@@ -41,6 +41,7 @@ struct ShooterDef
 
     // Asset used to re-spawn the ejected piece (matches the original piece mesh)
     std::string piece_mesh_path;
+    std::string piece_name = "game_piece";
 
     // Mass of the re-spawned piece body (kg)
     float piece_mass = 0.25f;

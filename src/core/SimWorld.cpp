@@ -437,10 +437,11 @@ void SimWorld::MarkBodyRemoved(JPH::BodyID id)
     }
 }
 bool SimWorld::SpawnProjectile(const std::string &mesh_path, float mass,
+                               const std::string &piece_name,
                                JPH::Vec3 world_pos, JPH::Vec3 world_vel)
 {
-    // Build a minimal BodyDef for the projectile so the renderer can find the mesh.
     auto proj_def = std::make_unique<BodyDef>();
+    proj_def->name = piece_name;
     proj_def->name = "projectile";
     proj_def->mesh_path = mesh_path;
     proj_def->mass = mass;
