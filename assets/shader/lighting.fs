@@ -17,7 +17,7 @@ out vec4 finalColor;
 #define LIGHT_POINT        1
 
 // Tuneables
-#define SHININESS         98.0   // higher = tighter specular
+#define SHININESS         78.0   // higher = tighter specular
 #define SPECULAR_STRENGTH  0.6
 #define SHADOW_BIAS        0.005 //
 #define FRESNEL_STRENGTH   0.35  // rim light intensity

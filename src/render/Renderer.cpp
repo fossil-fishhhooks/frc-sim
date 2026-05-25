@@ -169,7 +169,7 @@ void Renderer::SetupLights()
     SetShaderValue(m_shader, m_lightLocs[0].type, &point, SHADER_UNIFORM_INT);
     float bar_pos[3] = {LIGHT_X, LIGHT_Y, LIGHT_Z};
     float bar_target[3] = {0.0f, 0.0f, 0.0f};
-    float bar_color[4] = {2.5f, 2.4f, 2.3f, 1.0f}; // was 1.0 — HDR value, compensates for falloff
+    float bar_color[4] = {1.8f, 1.7f, 1.62f, 1.0f}; // was 1.0 — HDR value, compensates for falloff
     SetShaderValue(m_shader, m_lightLocs[0].position, bar_pos, SHADER_UNIFORM_VEC3);
     SetShaderValue(m_shader, m_lightLocs[0].target, bar_target, SHADER_UNIFORM_VEC3);
     SetShaderValue(m_shader, m_lightLocs[0].color, bar_color, SHADER_UNIFORM_VEC4);
