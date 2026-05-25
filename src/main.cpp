@@ -28,6 +28,8 @@ struct Args
     float dt = 1.0f / 500.0f; // 500 Hz physics
     float speed = 1.0f;
     int target_fps = 60;
+    int width = 1280;
+    int height = 720;
     bool wireframe = false;
 };
 
@@ -40,6 +42,8 @@ static void PrintUsage(const char *argv0)
                                        "  --dt     <seconds>   Physics timestep    (default: 0.002)\n"
                                        "  --speed  <factor>    Sim speed multiplier(default: 1.0)\n"
                                        "  --fps    <target>    Target render FPS    (default: 60, zero: unlimited)\n"
+                                       "  --w      <width>     Render window width    (default: 1280)\n"
+                                       "  --h      <height>     Render window height    (default: 720)\n"
                                        "  --wireframe          Enable wireframe overlay      (default: off)\n"
                                        "\n";
 }
@@ -79,6 +83,14 @@ static Args ParseArgs(int argc, char *argv[])
         {
             args.target_fps = std::stoi(argv[++i]);
         }
+        else if (!strcmp(argv[i], "--w") && i + 1 < argc)
+        {
+            args.width = std::stoi(argv[++i]);
+        }
+        else if (!strcmp(argv[i], "--h") && i + 1 < argc)
+        {
+            args.height = std::stoi(argv[++i]);
+        }
         else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
         {
             PrintUsage(argv[0]);
@@ -111,6 +123,11 @@ int main(int argc, char *argv[])
     if (args.target_fps > 90)
         args.target_fps = 90; // raylib max
 
+    if(args.width <= 0 || args.height <= 0){
+        LOG_ERROR("main: bad window");
+        return 1;
+    }
+
     if (args.scene.empty())
     {
         PrintUsage(argv[0]);
@@ -124,7 +141,7 @@ int main(int argc, char *argv[])
 
     // ── 1. Renderer first (OpenGL context required before LoadModel) ──────
     Renderer renderer;
-    renderer.Init(1280, 720, "FRC Sim", args.target_fps);
+    renderer.Init(args.width, args.height, "FRC Sim", args.target_fps);
     renderer.SetWireframe(args.wireframe);
 
     // ── 2. Motor registry ─────────────────────────────────────────────────
