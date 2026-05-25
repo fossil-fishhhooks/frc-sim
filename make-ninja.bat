@@ -1,0 +1,2 @@
+rmdir /q /s C:\Users\max85\source\repos\frc-sim\build
+cmake -B build -G Ninja   -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl  -DCMAKE_TOOLCHAIN_FILE="C:\Program Files\Microsoft Visual Studio\2022\Community\VC\vcpkg\scripts\buildsystems\vcpkg.cmake" -DCMAKE_BUILD_TYPE=Release

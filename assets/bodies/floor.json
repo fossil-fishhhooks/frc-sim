@@ -1,6 +1,7 @@
 {
   "name": "floor",
-  "mesh": "./assets/bodies/field.glb",
+  "mesh": "./assets/bodies/field_render.glb",
+  "collision_mesh":  "./assets/bodies/field.glb",
   "mass": "inf",
   "spawn_position": [0.0, 0.0, 0.0],
   "surface": {

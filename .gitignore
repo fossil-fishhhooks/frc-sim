@@ -1,3 +1,5 @@
 build/
 vcpkg_installed/
 .vs/
+CMakeFiles/
+CMakeCache.txt
