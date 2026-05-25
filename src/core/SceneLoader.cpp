@@ -137,6 +137,7 @@ SceneData LoadScene(const std::string &scene_path, const MotorRegistry &motors)
             }
         }
         result.shooter.piece_mass = js.value("piece_mass", 0.25f);
+        result.shooter.fire_rate = js.value("fire_rate", 2.0f);
         LOG_INFO("SceneLoader: shooter loaded  mesh='%s'",
                  result.shooter.piece_mesh_path.c_str());
     }

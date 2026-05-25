@@ -45,4 +45,6 @@ struct ShooterDef
 
     // Mass of the re-spawned piece body (kg)
     float piece_mass = 0.25f;
+
+    float fire_rate = 2.0;
 };

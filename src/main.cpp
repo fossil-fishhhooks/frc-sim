@@ -498,7 +498,7 @@ int main(int argc, char *argv[])
             snapshot.intake_max_capacity = scene.intake.max_capacity;
         }
 
-        nt.Tick(snapshot);
+        nt.Tick(snapshot, GetFrameTime()); //not physics dt
         renderer.DrawFrame(snapshot, nt.IsConnected(),
                            sim.MeasuredHz(), sim.TargetHz(), nt.Ping());
     }

@@ -43,7 +43,7 @@ public:
     void Shutdown();
 
     // Call once per render frame (~60 Hz).
-    void Tick(const WorldSnapshot &snapshot);
+    void Tick(const WorldSnapshot &snapshot, float dt);
 
     bool IsConnected() const { return m_connected.load(); }
 
@@ -60,6 +60,6 @@ private:
 
     // Edge-detection for /sim/shooter/fire
     bool m_last_fire_val = false;
-
-    
+    float m_fire_cooldown = 0.0f; // seconds remaining until next shot allowed
+    float m_fire_rate = 2.0f;     // copied from ShooterDef at Init
 };

@@ -88,6 +88,7 @@ void NTClient::Init(const std::string &host, int port,
         m_impl->direction_sub = inst.GetFloatArrayTopic("/sim/shooter/direction")
                                     .Subscribe({});
     }
+    m_fire_rate = mechanisms ? mechanisms->GetShooterFireRate() : 2.0f;
 
     LOG_INFO("NTClient: connecting to %s:%d (%d motor slots, mechanisms=%s)",
              host.c_str(), port, robot_motor_count,
@@ -126,7 +127,7 @@ float NTClient::Ping() const
     return (float)(rtt / 1000.0); // us -> ms
 }
 
-void NTClient::Tick(const WorldSnapshot &snapshot)
+void NTClient::Tick(const WorldSnapshot &snapshot, float dt)
 {
     if (!m_impl || !m_world) return;
 
@@ -175,18 +176,36 @@ mechanisms:
 
     // ── Read shooter commands ─────────────────────────────────────────────
     bool fire_now = m_impl->fire_sub.Get();
-    if (fire_now && !m_last_fire_val)
+    m_fire_cooldown -= dt;
+
+    if (fire_now)
     {
-        // Rising edge → arm a shot
-        float speed = m_impl->speed_sub.Get();
+        // First press fires immediately; held fires at fire_rate
+        bool first_press = fire_now && !m_last_fire_val;
+        bool cooldown_done = m_fire_rate <= 0.0f || m_fire_cooldown <= 0.0f;
 
-        float dx = 0.f, dy = 0.707f, dz = 0.707f;
-        auto dir_arr = m_impl->direction_sub.Get();
-        if (dir_arr.size() >= 3) { dx = dir_arr[0]; dy = dir_arr[1]; dz = dir_arr[2]; }
+        if (first_press || cooldown_done)
+        {
+            float speed = m_impl->speed_sub.Get();
+            float dx = 0.f, dy = 0.707f, dz = 0.707f;
+            auto dir_arr = m_impl->direction_sub.Get();
+            if (dir_arr.size() >= 3)
+            {
+                dx = dir_arr[0];
+                dy = dir_arr[1];
+                dz = dir_arr[2];
+            }
+            m_mechanisms->ArmShot(speed, dx, dy, dz);
 
-        m_mechanisms->ArmShot(speed, dx, dy, dz);
-        LOG_INFO("NTClient: shot armed  speed=%.1f dir=(%.2f,%.2f,%.2f)",
-                 speed, dx, dy, dz);
+            m_fire_cooldown = m_fire_rate > 0.0f ? 1.0f / m_fire_rate : 0.0f;
+            LOG_INFO("NTClient: shot armed  speed=%.1f dir=(%.2f,%.2f,%.2f)",
+                     speed, dx, dy, dz);
+        }
+    }
+    else
+    {
+        // Released — reset cooldown so next press fires immediately
+        m_fire_cooldown = 0.0f;
     }
     m_last_fire_val = fire_now;
 }

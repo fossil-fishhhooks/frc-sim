@@ -48,6 +48,7 @@ public:
     int HeldCount() const { return m_held.load(); }
     int IntakeCapacity() const { return m_intake.max_capacity; }
     bool IsFirePending() const { return m_fire_pending.load(); }
+    float GetShooterFireRate() const { return m_shooter.fire_rate; }
 
 private:
     SimWorld &m_world;
@@ -66,4 +67,6 @@ private:
 
     void RunIntake();
     void RunShooter();
+
+
 };

@@ -6034,7 +6034,7 @@
   ],
   "intake": {
     "center": [
-      0.3,
+      -0.3,
       0.2,
       0.0
     ],
@@ -6063,6 +6063,7 @@
       0.0
     ],
     "piece_mesh_path": "../bodies/sphere.json",
-    "piece_mass": 0.5
+    "piece_mass": 0.5,
+    "fire_rate": 8.0
   }
 }
