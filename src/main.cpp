@@ -28,6 +28,7 @@ struct Args
     float dt = 1.0f / 500.0f; // 500 Hz physics
     float speed = 1.0f;
     int target_fps = 60;
+    bool wireframe = false;
 };
 
 static void PrintUsage(const char *argv0)
@@ -39,6 +40,7 @@ static void PrintUsage(const char *argv0)
                                        "  --dt     <seconds>   Physics timestep    (default: 0.002)\n"
                                        "  --speed  <factor>    Sim speed multiplier(default: 1.0)\n"
                                        "  --fps    <target>    Target render FPS    (default: 60, zero: unlimited)\n"
+                                       "  --wireframe          Enable wireframe overlay      (default: off)\n"
                                        "\n";
 }
 
@@ -82,6 +84,10 @@ static Args ParseArgs(int argc, char *argv[])
             PrintUsage(argv[0]);
             std::exit(0);
         }
+        else if (!strcmp(argv[i], "--wireframe"))
+        {
+            args.wireframe = true;
+        }
     }
     return args;
 }
@@ -119,6 +125,7 @@ int main(int argc, char *argv[])
     // ── 1. Renderer first (OpenGL context required before LoadModel) ──────
     Renderer renderer;
     renderer.Init(1280, 720, "FRC Sim", args.target_fps);
+    renderer.SetWireframe(args.wireframe);
 
     // ── 2. Motor registry ─────────────────────────────────────────────────
     MotorRegistry motors;

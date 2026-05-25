@@ -11,4 +11,4 @@ void PreloadMesh(const BodyDef* def);
 void UnloadAllMeshes();
 
 // Draw a single body from snapshot data.
-void DrawBodySnapshot(const BodySnapshot& body, Shader* shader); // OR nullptr = no hsader
+void DrawBodySnapshot(const BodySnapshot& body, Shader* shader, bool wireframe); // OR nullptr = no hsader

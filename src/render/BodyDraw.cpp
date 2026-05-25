@@ -62,7 +62,7 @@ static Color BodyColor(const BodyDef *def)
         255};
 }
 
-void DrawBodySnapshot(const BodySnapshot &body, Shader *shader)
+void DrawBodySnapshot(const BodySnapshot &body, Shader *shader, bool wireframe)
 {
     Vector3 pos = {body.pos[0], body.pos[1], body.pos[2]};
     Matrix rot = QuatToMatrix(body.rot);
@@ -89,15 +89,17 @@ void DrawBodySnapshot(const BodySnapshot &body, Shader *shader)
         }
 
         // Wireframe pass — always default shader, no lighting
-        static Material wire_mat = LoadMaterialDefault();
-        wire_mat.maps[MATERIAL_MAP_DIFFUSE].color = {30, 30, 30, 130};
-        rlPushMatrix();
-        rlMultMatrixf(MatrixToFloat(transform));
-        rlEnableWireMode();
-        for (int m = 0; m < model.meshCount; ++m)
-            DrawMesh(model.meshes[m], wire_mat, MatrixIdentity());
-        rlDisableWireMode();
-        rlPopMatrix();
+        if(wireframe){
+            static Material wire_mat = LoadMaterialDefault();
+            wire_mat.maps[MATERIAL_MAP_DIFFUSE].color = {30, 30, 30, 130};
+            rlPushMatrix();
+            rlMultMatrixf(MatrixToFloat(transform));
+            rlEnableWireMode();
+            for (int m = 0; m < model.meshCount; ++m)
+                DrawMesh(model.meshes[m], wire_mat, MatrixIdentity());
+            rlDisableWireMode();
+            rlPopMatrix();
+        }
     }
     else
     {
