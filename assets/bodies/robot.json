@@ -13,7 +13,7 @@
       "profile": "NEO",
       "gear_ratio": 8.45,
       "attachment": [ 0.28, 0.0,  0.28],
-      "direction":  [1.0, 0.0, 0.0],
+      "direction":  [-1.0, 0.0, 0.0],
       "is_wheel": true,
       "wheel": { "radius": 0.0508, "cof_static": 0.9, "cof_dynamic": 0.6 }
     },
@@ -21,7 +21,7 @@
       "profile": "NEO",
       "gear_ratio": 8.45,
       "attachment": [-0.28, 0.0,  0.28],
-      "direction":  [1.0, 0.0, 0.0],
+      "direction":  [-1.0, 0.0, 0.0],
       "is_wheel": true,
       "wheel": { "radius": 0.0508, "cof_static": 0.9, "cof_dynamic": 0.6 }
     },
@@ -29,7 +29,7 @@
       "profile": "NEO",
       "gear_ratio": 8.45,
       "attachment": [ 0.28, 0.0, -0.28],
-      "direction":  [1.0, 0.0, 0.0],
+      "direction":  [-1.0, 0.0, 0.0],
       "is_wheel": true,
       "wheel": { "radius": 0.0508, "cof_static": 0.9, "cof_dynamic": 0.6 }
     },
@@ -37,7 +37,7 @@
       "profile": "NEO",
       "gear_ratio": 8.45,
       "attachment": [-0.28, 0.0, -0.28],
-      "direction":  [1.0, 0.0, 0.0],
+      "direction":  [-1.0, 0.0, 0.0],
       "is_wheel": true,
       "wheel": { "radius": 0.0508, "cof_static": 0.9, "cof_dynamic": 0.6 }
     }
