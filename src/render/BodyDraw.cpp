@@ -50,7 +50,7 @@ static Color BodyColor(const BodyDef *def)
         return GRAY;
     // Static bodies: muted gray
     if (def->mass == 0.0f)
-        return {100, 100, 110, 255};
+        return {255, 255, 255, 255};
     // Dynamic: stable color from name hash
     unsigned h = 2166136261u;
     for (char c : def->name)
@@ -83,8 +83,16 @@ void DrawBodySnapshot(const BodySnapshot &body, Shader *shader, bool wireframe)
         {
             Material &mat = model.materials[model.meshMaterial[m]];
             if (shader)
-                mat.shader = *shader; // inject — no-op if nullptr
-            mat.maps[MATERIAL_MAP_DIFFUSE].color = col;
+                mat.shader = *shader;
+
+            // Only apply hash color if the mesh has no embedded texture.
+            // GLBs with textures have a valid texture ID (> 0) in the diffuse slot —
+            // overwriting colDiffuse with a hash color would tint the texture gray.
+            bool has_texture = mat.maps[MATERIAL_MAP_DIFFUSE].texture.id > 0 && mat.maps[MATERIAL_MAP_DIFFUSE].texture.id != rlGetTextureIdDefault();
+            if (!has_texture)
+                mat.maps[MATERIAL_MAP_DIFFUSE].color = col;
+            // if has_texture: leave color alone — whatever the GLB embedded is used
+
             DrawMesh(model.meshes[m], mat, transform);
         }
 
