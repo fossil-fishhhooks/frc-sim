@@ -5,8 +5,8 @@
   "mass": "inf",
   "spawn_position": [0.0, 0.0, 0.0],
   "surface": {
-    "cof_static":  2.8,
-    "cof_dynamic": 1.7,
-    "restitution": 0.1
+    "cof_static":  0.9,
+    "cof_dynamic": 0.7,
+    "restitution": 0.0
   }
 }

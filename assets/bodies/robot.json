@@ -4,9 +4,9 @@
   "mass": 54.0,
   "com_offset": [0.0, 0.0, 0.0],
   "surface": {
-    "cof_static":  0.6,
-    "cof_dynamic": 0.4,
-    "restitution": 0.05
+    "cof_static":  0.8,
+    "cof_dynamic": 0.5,
+    "restitution": 0.00
   },
   "motors": [
     {
@@ -15,7 +15,7 @@
       "attachment": [ 0.28, 0.0,  0.28],
       "direction":  [-1.0, 0.0, 0.0],
       "is_wheel": true,
-      "wheel": { "radius": 0.0508, "cof_static": 0.9, "cof_dynamic": 0.6 }
+      "wheel": { "radius": 0.0508, "cof_static": 1.2, "cof_dynamic": 0.9 }
     },
     {
       "profile": "NEO",
@@ -23,7 +23,7 @@
       "attachment": [-0.28, 0.0,  0.28],
       "direction":  [-1.0, 0.0, 0.0],
       "is_wheel": true,
-      "wheel": { "radius": 0.0508, "cof_static": 0.9, "cof_dynamic": 0.6 }
+      "wheel": { "radius": 0.0508, "cof_static": 1.2, "cof_dynamic": 0.9 }
     },
     {
       "profile": "NEO",
@@ -31,7 +31,7 @@
       "attachment": [ 0.28, 0.0, -0.28],
       "direction":  [-1.0, 0.0, 0.0],
       "is_wheel": true,
-      "wheel": { "radius": 0.0508, "cof_static": 0.9, "cof_dynamic": 0.6 }
+      "wheel": { "radius": 0.0508, "cof_static": 1.2, "cof_dynamic": 0.9 }
     },
     {
       "profile": "NEO",
@@ -39,7 +39,7 @@
       "attachment": [-0.28, 0.0, -0.28],
       "direction":  [-1.0, 0.0, 0.0],
       "is_wheel": true,
-      "wheel": { "radius": 0.0508, "cof_static": 0.9, "cof_dynamic": 0.6 }
+      "wheel": { "radius": 0.0508, "cof_static": 1.2, "cof_dynamic": 0.9 }
     }
   ]
 }

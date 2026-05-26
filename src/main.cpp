@@ -181,7 +181,7 @@ static void DrawLoadingFrame(LoadCtx &ctx)
 
     // ── App title ─────────────────────────────────────────────────────────
     int title_y = py + 20;
-    const char *title = "FRC SIM";
+    const char *title = "FRC SIM 3D";
     int title_sz = 28;
     int title_x = px + pw / 2 - MeasureText(title, title_sz) / 2;
     DrawText(title, title_x, title_y, title_sz, text_bright);
@@ -283,7 +283,7 @@ static void DrawLoadingFrame(LoadCtx &ctx)
     DrawText(elapsed_buf, px, status_y, 11, text_dim);
 
     // Right: build info
-    const char *build_tag = "BUILD  " __DATE__;
+    const char *build_tag = "FRC Sim 3d by Arin J BUILD " __DATE__;
     DrawText(build_tag, px + pw - MeasureText(build_tag, 11), status_y, 11, text_dim);
 
     EndDrawing();

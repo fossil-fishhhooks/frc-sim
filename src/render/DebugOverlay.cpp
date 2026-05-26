@@ -94,7 +94,7 @@ void DrawDebugOverlay(const WorldSnapshot &snapshot,
         DrawText(buf, PAD, y, SMALL, WHITE);
 
         
-        float frac2 = snapshot.intake_held/snapshot.intake_max_capacity;
+        float frac2 = (float)snapshot.intake_held/ (float)snapshot.intake_max_capacity;
         Color intake_c = GREEN;
         if(snapshot.intake_held == snapshot.intake_max_capacity){
             intake_c = BLUE;
