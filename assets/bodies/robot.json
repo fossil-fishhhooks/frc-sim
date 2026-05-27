@@ -1,6 +1,6 @@
 {
   "name": "robot",
-  "mesh": "./assets/bodies/complex_rotated.glb",
+  "mesh": "./assets/bodies/simpler_rotated.glb",
   "collision_mesh": "./assets/bodies/lowpoly_bbox.glb",
   "mass": 54.0,
   "com_offset": [0.0, 0.0, 0.0],

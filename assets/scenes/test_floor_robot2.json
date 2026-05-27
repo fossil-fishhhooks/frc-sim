@@ -6058,8 +6058,8 @@
       0.0
     ],
     "default_direction": [
-      0.707,
-      0.707,
+      0.0,
+      1.0,
       0.0
     ],
     "piece_mesh_path": "../bodies/sphere.json",
