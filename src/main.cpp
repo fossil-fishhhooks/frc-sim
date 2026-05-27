@@ -42,7 +42,7 @@ static void PrintUsage(const char *argv0)
                                        "  --nt     <host:port> NT4 server          (default: 127.0.0.1:5810)\n"
                                        "  --dt     <seconds>   Physics timestep    (default: 0.002)\n"
                                        "  --speed  <factor>    Sim speed multiplier(default: 1.0)\n"
-                                       "  --fps    <target>    Target render FPS    (default: 60)\n"
+                                       "  --fps    <target>    Target render FPS    (default: 60, max speed: 0)\n"
                                        "  --w      <width>     Window width         (default: 1280)\n"
                                        "  --h      <height>    Window height        (default: 720)\n"
                                        "  --wireframe          Enable wireframe overlay\n"
