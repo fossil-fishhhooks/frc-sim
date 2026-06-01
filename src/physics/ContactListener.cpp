@@ -4,6 +4,7 @@
 #include <Jolt/Physics/Collision/ContactListener.h>
 #include <Jolt/Physics/Body/Body.h>
 #include <Jolt/Physics/Body/MotionProperties.h>
+#include <Jolt/Physics/Collision/EstimateCollisionResponse.h>
 #include <algorithm>
 #include <cmath>
 
@@ -35,33 +36,29 @@ static constexpr float GRAVITY = 9.81f;
 
 static float ComputeNormalForce(const JPH::Body &body1,
                                 const JPH::Body &body2,
-                                const JPH::ContactManifold &manifold)
+                                const JPH::ContactManifold &manifold,
+                                float dt)
 {
-    JPH::Vec3 up(0.0f, 1.0f, 0.0f);
-    float cos_theta = std::abs(manifold.mWorldSpaceNormal.Dot(up));
+    // Use Jolt's impulse estimator — accounts for actual velocity, mass,
+    // inertia, and contact geometry rather than just mass * g * cos(theta).
+    // Accurate for two-body contacts (robot vs floor, piece vs floor).
+    JPH::CollisionEstimationResult result;
+    EstimateCollisionResponse(
+        body1, body2, manifold, result,
+        0.0f,   // combined friction — 0 so friction impulses don't contaminate normal
+        0.0f,   // combined restitution — 0 for static contact normal force estimate
+        1.0f,   // min velocity for restitution
+        1);     // 1 iteration — fast, friction skipped, normal impulse is accurate
 
-    bool b1_static = body1.IsStatic();
-    bool b2_static = body2.IsStatic();
+    // Sum contact impulses across all contact points
+    float total_impulse = 0.0f;
+    for (const auto &imp : result.mImpulses)
+        total_impulse += imp.mContactImpulse;
 
-    if (b1_static && !b2_static)
-    {
-        float mass = 1.0f / body2.GetMotionProperties()->GetInverseMass();
-        return mass * GRAVITY * cos_theta;
-    }
-    if (b2_static && !b1_static)
-    {
-        float mass = 1.0f / body1.GetMotionProperties()->GetInverseMass();
-        return mass * GRAVITY * cos_theta;
-    }
-    if (!b1_static && !b2_static)
-    {
-        float m1 = 1.0f / body1.GetMotionProperties()->GetInverseMass();
-        float m2 = 1.0f / body2.GetMotionProperties()->GetInverseMass();
-        return ((m1 + m2) * 0.5f) * GRAVITY * cos_theta;
-    }
-    return 0.0f;
+    // Convert impulse (kg⋅m/s) → force (N) by dividing by dt
+    // Clamp to zero — estimator can return tiny negatives on separation
+    return std::max(0.0f, total_impulse / dt);
 }
-
 // ── Sub-shape key ─────────────────────────────────────────────────────────────
 
 static uint64_t MakeSubShapeKey(JPH::SubShapeID s1, JPH::SubShapeID s2,
@@ -106,7 +103,7 @@ void ContactListener::OnContactAdded(const JPH::Body &body1,
                                      const JPH::ContactManifold &manifold,
                                      JPH::ContactSettings & /*settings*/)
 {
-    float force = ComputeNormalForce(body1, body2, manifold);
+    float force = ComputeNormalForce(body1, body2, manifold,m_dt);
     uint64_t body_key = MakeKey(body1.GetID(), body2.GetID());
     uint64_t sub_key = MakeSubShapeKey(manifold.mSubShapeID1, manifold.mSubShapeID2,
                                        body1.GetID(), body2.GetID());
@@ -133,7 +130,7 @@ void ContactListener::OnContactPersisted(const JPH::Body &body1,
                                          const JPH::ContactManifold &manifold,
                                          JPH::ContactSettings & /*settings*/)
 {
-    float force = ComputeNormalForce(body1, body2, manifold);
+    float force = ComputeNormalForce(body1, body2, manifold,m_dt);
     uint64_t body_key = MakeKey(body1.GetID(), body2.GetID());
 
     std::unique_lock<std::shared_mutex> lock(m_mutex);

@@ -44,6 +44,8 @@ public:
     // Initialises Jolt allocators, job system, physics system, gravity.
     void Init();
 
+    void SetPhysicsDt(float dt) { m_contact_listener.SetDt(dt); }
+
     // Spawn a body from a definition at the given world transform.
     // pos: world position (m), rot: xyzw quaternion
     // Returns BodyID — invalid if spawn failed.

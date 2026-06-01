@@ -382,6 +382,7 @@ int main(int argc, char *argv[])
 
     SimWorld world;
     world.Init();
+    world.SetPhysicsDt(args.dt);
 
     // ── 5. Spawn bodies ───────────────────────────────────────────────────
     int robot_motor_count = 0;
