@@ -154,11 +154,12 @@ void ForceApplicator::Apply(float dt)
             // Drive force, clamped to traction limit
             float motor_torque  = profile->torque_at(omega_shaft, voltage);
             float force_mag     = (motor_torque * md.gear_ratio) / md.wheel.radius;
-            float friction_cap  = md.wheel.cof_dynamic * normal_per_wheel;
-
-            bool slipping = std::abs(force_mag) > friction_cap;
+            float cap_static  = md.wheel.cof_static  * normal_per_wheel;
+            float cap_dynamic = md.wheel.cof_dynamic * normal_per_wheel;
+            bool  slipping    = std::abs(force_mag)  > cap_static;
+            float friction_cap = slipping ? cap_dynamic : cap_static;
             if (slipping)
-                force_mag = std::copysign(friction_cap, force_mag);
+                force_mag = std::copysign(cap_dynamic, force_mag);
 
             bi.AddForce(jph_id, world_dir * force_mag, world_att);
 

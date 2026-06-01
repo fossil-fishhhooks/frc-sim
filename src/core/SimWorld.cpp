@@ -183,16 +183,16 @@ JPH::BodyID SimWorld::SpawnBody(const BodyDef &def,
         settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
     }
 
-    // Dynamic bodies: zero Jolt friction — ForceApplicator
-    // owns all drive and lateral friction via AddForce().
-    // Letting Jolt also apply friction double-counts it:
-    // straight driving roughly cancels out, but during turns
-    // Jolt's constraint friction fights the drive forces and
-    // makes the robot feel locked to the ground.
-    // Static field bodies keep their friction normally so
-    // game pieces that aren't motor-driven behave correctly.
-    settings.mFriction = is_static ? def.surface.cof_static : 0.0f;
+    bool has_motors = !def.motors.empty();
+    settings.mFriction    = (is_static || !has_motors) ? def.surface.cof_dynamic : 0.0f;
     settings.mRestitution = def.surface.restitution;
+    settings.mRestitution = def.surface.restitution;
+
+    if (!is_static)
+    {
+        settings.mLinearDamping  = 0.15f;  // drivetrain rolling resistance
+        settings.mAngularDamping = 0.20f;  // rotational drag
+    }
 
     auto &bi = m_physics->GetBodyInterface();
     JPH::Body *body = bi.CreateBody(settings);
@@ -228,7 +228,7 @@ JPH::BodyID SimWorld::SpawnBody(const BodyDef &def,
 
 void SimWorld::Step(float dt)
 {
-    constexpr int collision_steps = 1;
+    constexpr int collision_steps = 2;
     m_physics->Update(dt, collision_steps, m_temp_alloc.get(), m_job_system.get());
     m_sim_time += dt;
 }
