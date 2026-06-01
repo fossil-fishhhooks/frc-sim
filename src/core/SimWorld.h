@@ -119,6 +119,12 @@ public:
     // Contact listener — pass to ForceApplicator.
     ContactListener &GetContactListener() { return m_contact_listener; }
 
+
+    const JPH::BodyLockInterface &GetBodyLockInterface() const
+    {
+        return m_physics->GetBodyLockInterface();
+    }
+
 private:
     ContactListener m_contact_listener;
 
@@ -151,6 +157,10 @@ private:
         std::atomic<float> normal_force[MAX_MOTORS];
         std::atomic<float> tractive_force[MAX_MOTORS];
         std::atomic<bool> slipping[MAX_MOTORS];
+
+        // Pre-allocated motor snapshot storage — sized once at SpawnBody,
+        // never resized at runtime. Static fields pre-filled at spawn.
+        std::vector<MotorSnapshot> motor_snap_cache;
     };
 
     // deque gives stable element addresses on growth — required because
@@ -166,4 +176,8 @@ private:
     // SpawnBody for scene bodies uses caller-owned defs (raw pointer);
     // projectiles need a stable def lifetime managed here.
     std::vector<std::unique_ptr<BodyDef>> m_projectile_defs;
+
+
+    mutable WorldSnapshot m_snap_scratch;
+    mutable bool          m_snap_scratch_ready = false;
 };

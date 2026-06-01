@@ -3,6 +3,7 @@
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/Body/Body.h>
+#include <Jolt/Physics/Body/BodyLock.h>
 
 #include <cmath>
 #include <algorithm>
@@ -66,13 +67,26 @@ void ForceApplicator::Apply(float dt)
         if (jph_id.IsInvalid())
             continue;
 
-        JPH::RMat44 body_transform = bi.GetWorldTransform(jph_id);
-        JPH::Vec3   body_com       = bi.GetCenterOfMassPosition(jph_id);
-        JPH::Vec3   body_vel       = bi.GetLinearVelocity(jph_id);
-        JPH::Vec3   body_ang_vel   = bi.GetAngularVelocity(jph_id);
-        float       body_mass      = body_def->mass;
-        float       inv_mass       = 1.0f / body_mass;
-        JPH::Mat44  inv_inertia    = bi.GetInverseInertia(jph_id);
+        JPH::RMat44 body_transform;
+        JPH::Vec3   body_com;
+        JPH::Vec3   body_vel;
+        JPH::Vec3   body_ang_vel;
+        JPH::Mat44  inv_inertia;
+
+        {
+            JPH::BodyLockRead lock(m_world.GetBodyLockInterface(), jph_id);
+            if (!lock.Succeeded()) continue;
+            const JPH::Body &body = lock.GetBody();
+
+            body_transform = body.GetWorldTransform();
+            body_com       = body.GetCenterOfMassPosition();
+            body_vel       = body.GetLinearVelocity();
+            body_ang_vel   = body.GetAngularVelocity();
+            inv_inertia    = body.GetInverseInertia();
+        }
+
+        float body_mass = body_def->mass;
+        float inv_mass  = 1.0f / body_mass;
 
         int n_motors = std::min((int)body_def->motors.size(),
                                 (int)SimWorld::MAX_MOTORS_PER_BODY);
