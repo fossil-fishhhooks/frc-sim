@@ -135,11 +135,19 @@ void ForceApplicator::Apply(float dt)
             float voltage  = m_world.GetMotorVoltage(body_idx, m);
             float max_omega = profile->free_speed * md.gear_ratio;
 
-            JPH::Vec3 world_dir = body_transform.Multiply3x3(
-                                      JPH::Vec3(md.direction[0],
-                                                md.direction[1],
-                                                md.direction[2])).Normalized();
-            JPH::Vec3 world_att = body_transform *
+             JPH::Vec3 local_dir(md.direction[0], md.direction[1], md.direction[2]);
+            if (md.is_steerable)
+            {
+                float sa = m_world.GetMotorSteerAngle(body_idx, m);
+                float cs = std::cos(sa), sn = std::sin(sa);
+                // Rotate around local +Y: x' = x*cos - z*sin, z' = x*sin + z*cos
+                float rx = local_dir.GetX() * cs - local_dir.GetZ() * sn;
+                float rz = local_dir.GetX() * sn + local_dir.GetZ() * cs;
+                local_dir = JPH::Vec3(rx, local_dir.GetY(), rz);
+            }
+
+            JPH::Vec3 world_dir = body_transform.Multiply3x3(local_dir).Normalized();
+                        JPH::Vec3 world_att = body_transform *
                                   JPH::Vec3(md.attachment[0],
                                             md.attachment[1],
                                             md.attachment[2]);

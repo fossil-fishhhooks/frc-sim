@@ -59,6 +59,7 @@ std::optional<BodyDef> LoadBodyDef(const std::string& json_path,
             motor.attachment   = readVec3(m, "attachment");
             motor.direction    = readVec3(m, "direction", {0,0,1});
             motor.is_wheel     = m.value("is_wheel", false);
+            motor.is_steerable = m.value("is_steerable", false);
 
             if (!motors.Lookup(motor.profile_name))
                 LOG_WARN("BodyLoader: unknown motor profile '%s' in %s",

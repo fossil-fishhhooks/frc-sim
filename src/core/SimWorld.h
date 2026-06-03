@@ -125,6 +125,9 @@ public:
         return m_physics->GetBodyLockInterface();
     }
 
+    void  SetMotorSteerAngle(int body_idx, int motor_idx, float radians);
+    float GetMotorSteerAngle(int body_idx, int motor_idx) const;
+
 private:
     ContactListener m_contact_listener;
 
@@ -157,6 +160,7 @@ private:
         std::atomic<float> normal_force[MAX_MOTORS];
         std::atomic<float> tractive_force[MAX_MOTORS];
         std::atomic<bool> slipping[MAX_MOTORS];
+        std::atomic<float> steer_angle[MAX_MOTORS];  // radians, written by NT
 
         // Pre-allocated motor snapshot storage — sized once at SpawnBody,
         // never resized at runtime. Static fields pre-filled at spawn.

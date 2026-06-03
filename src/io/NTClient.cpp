@@ -27,6 +27,7 @@ struct NTClient::Impl
         nt::FloatPublisher      omega_pub;
         nt::FloatArrayPublisher position_pub;
         nt::FloatArrayPublisher direction_pub;
+        nt::FloatSubscriber     steer_angle_sub;
     };
     std::vector<MotorTopics> motors;
 
@@ -66,6 +67,7 @@ void NTClient::Init(const std::string &host, int port,
         std::string base = "/sim/motors/" + std::to_string(i);
         auto &t = m_impl->motors[i];
         t.voltage_sub   = inst.GetFloatTopic(base + "/voltage").Subscribe(0.0f);
+        t.steer_angle_sub = inst.GetFloatTopic(base + "/steer_angle").Subscribe(0.0f);
         t.omega_pub     = inst.GetFloatTopic(base + "/omega").Publish();
         t.position_pub  = inst.GetFloatArrayTopic(base + "/position").Publish();
         t.direction_pub = inst.GetFloatArrayTopic(base + "/direction").Publish();
@@ -145,6 +147,9 @@ void NTClient::Tick(const WorldSnapshot &snapshot, float dt)
     {
         float v = std::clamp(m_impl->motors[i].voltage_sub.Get(), -1.0f, 1.0f);
         m_world->SetMotorVoltage(robot_idx, i, v);
+
+        float angle = m_impl->motors[i].steer_angle_sub.Get();
+        m_world->SetMotorSteerAngle(robot_idx, i, angle);
     }
 
     // ── Publish motor state from snapshot ────────────────────────────────

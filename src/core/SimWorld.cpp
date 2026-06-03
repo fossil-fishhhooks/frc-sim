@@ -181,6 +181,7 @@ JPH::BodyID SimWorld::SpawnBody(const BodyDef &def,
         rec.normal_force[i].store(0.0f);
         rec.tractive_force[i].store(0.0f);
         rec.slipping[i].store(false);
+        rec.steer_angle[i].store(0.0f);
     }
 
     // ── Pre-allocate motor snapshot cache ─────────────────────────────────
@@ -467,4 +468,18 @@ bool SimWorld::SpawnProjectile(const std::string &mesh_path, float mass,
              pos[0], pos[1], pos[2],
              world_vel.GetX(), world_vel.GetY(), world_vel.GetZ());
     return true;
+}
+
+void SimWorld::SetMotorSteerAngle(int body_idx, int motor_idx, float radians)
+{
+    if (body_idx < 0 || body_idx >= (int)m_bodies.size()) return;
+    if (motor_idx < 0 || motor_idx >= BodyRecord::MAX_MOTORS) return;
+    m_bodies[body_idx].steer_angle[motor_idx].store(radians);
+}
+
+float SimWorld::GetMotorSteerAngle(int body_idx, int motor_idx) const
+{
+    if (body_idx < 0 || body_idx >= (int)m_bodies.size()) return 0.0f;
+    if (motor_idx < 0 || motor_idx >= BodyRecord::MAX_MOTORS) return 0.0f;
+    return m_bodies[body_idx].steer_angle[motor_idx].load();
 }

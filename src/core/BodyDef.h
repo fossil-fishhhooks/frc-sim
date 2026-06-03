@@ -18,12 +18,13 @@ struct WheelProps {
 };
 
 struct MotorAttachmentDef {
-    std::string          profile_name;              // "Kraken", "NEO", etc.
+    std::string          profile_name;
     float                gear_ratio   = 1.0f;
-    std::array<float, 3> attachment   = {0,0,0};    // local offset from COM (m)
-    std::array<float, 3> direction    = {0,0,1};    // local unit vector
+    std::array<float, 3> attachment   = {0,0,0};
+    std::array<float, 3> direction    = {0,0,1};  // home direction (angle=0)
     bool                 is_wheel     = false;
-    WheelProps           wheel;                     // only valid if is_wheel
+    bool                 is_steerable = false;    // true = reads steer_angle from NT
+    WheelProps           wheel;
 };
 
 struct BodyDef {
