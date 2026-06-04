@@ -39,6 +39,15 @@ struct NTClient::Impl
     nt::BooleanSubscriber     fire_sub;
     nt::FloatSubscriber       speed_sub;
     nt::FloatArraySubscriber  direction_sub;
+
+    // POSE
+    nt::FloatPublisher pose_x_pub;
+    nt::FloatPublisher pose_y_pub;
+    nt::FloatPublisher pose_z_pub;
+    nt::FloatPublisher pose_qx_pub;
+    nt::FloatPublisher pose_qy_pub;
+    nt::FloatPublisher pose_qz_pub;
+    nt::FloatPublisher pose_qw_pub;
 };
 
 // ── NTClient ──────────────────────────────────────────────────────────────────
@@ -95,6 +104,15 @@ void NTClient::Init(const std::string &host, int port,
     LOG_INFO("NTClient: connecting to %s:%d (%d motor slots, mechanisms=%s)",
              host.c_str(), port, robot_motor_count,
              mechanisms ? "yes" : "no");
+
+    // ── Pose topics ───────────────────────────────────────────────────────
+    m_impl->pose_x_pub   = inst.GetFloatTopic("/sim/robot/x").Publish();
+    m_impl->pose_y_pub   = inst.GetFloatTopic("/sim/robot/y").Publish();
+    m_impl->pose_z_pub   = inst.GetFloatTopic("/sim/robot/z").Publish();
+    m_impl->pose_qx_pub  = inst.GetFloatTopic("/sim/robot/qx").Publish();
+    m_impl->pose_qy_pub  = inst.GetFloatTopic("/sim/robot/qy").Publish();
+    m_impl->pose_qz_pub  = inst.GetFloatTopic("/sim/robot/qz").Publish();
+    m_impl->pose_qw_pub  = inst.GetFloatTopic("/sim/robot/qw").Publish();
 
     m_impl->time_sync_listener = inst.AddTimeSyncListener(false,
                                                           [this](const nt::Event &e)
@@ -169,6 +187,20 @@ void NTClient::Tick(const WorldSnapshot &snapshot, float dt)
             t.position_pub .Set(std::span<const float>(pos, 3));
             t.direction_pub.Set(std::span<const float>(dir, 3));
         }
+    }
+    // ── Publish robot pose ────────────────────────────────────────────────
+    if (snapshot.robot_index >= 0 &&
+        snapshot.robot_index < (int)snapshot.bodies.size())
+    {
+        const BodySnapshot &robot = snapshot.bodies[snapshot.robot_index];
+
+        m_impl->pose_x_pub.Set(robot.pos[0]);
+        m_impl->pose_y_pub.Set(robot.pos[1]);
+        m_impl->pose_z_pub.Set(robot.pos[2]);
+        m_impl->pose_qx_pub.Set(robot.rot[0]);
+        m_impl->pose_qy_pub.Set(robot.rot[1]);
+        m_impl->pose_qz_pub.Set(robot.rot[2]);
+        m_impl->pose_qw_pub.Set(robot.rot[3]);
     }
 
 mechanisms:

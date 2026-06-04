@@ -27,6 +27,14 @@ class MechanismSystem;   // optional — nullptr = no mechanisms
 //   Subscribes:  /sim/shooter/fire            (bool, rising edge = fire)
 //                /sim/shooter/speed           (float, m/s)
 //                /sim/shooter/direction       (float[3], robot-local unit vec)
+// Pose:
+//   Publishes:   /sim/robot/x         (float, metres)
+//                /sim/robot/y         (float, metres)
+//                /sim/robot/z         (float, metres)
+//                /sim/robot/qx        (float, quaternion)
+//                /sim/robot/qy        (float)
+//                /sim/robot/qz        (float)
+//                /sim/robot/qw        (float)
 
 class NTClient
 {
