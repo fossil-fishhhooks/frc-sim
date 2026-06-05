@@ -12,3 +12,6 @@ windows
 cd build
 ninja
 .\frc_sim.exe --scene ./assets/scenes/test_floor_robot2.json --dt 0.01 --fps 90
+
+
+src/controller.py can be used as a basic robot-code replacement
