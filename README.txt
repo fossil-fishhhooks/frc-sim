@@ -1,4 +1,6 @@
 minimal build+run instuctions
+required components: vcpkg, cmake, C++ compiler, python + robotpy
+i reccomend using ninja-build
 
 
 linux
