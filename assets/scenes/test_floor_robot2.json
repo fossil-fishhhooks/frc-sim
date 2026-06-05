@@ -20,7 +20,7 @@
       "def": "../bodies/robot.json",
       "position": [
         5.0,
-        0.3,
+        0.1,
         0.0
       ],
       "orientation": [
@@ -6034,14 +6034,14 @@
   ],
   "intake": {
     "center": [
-      0.37,
-      0.15,
+      0.3,
+      0.2,
       0.0
     ],
     "half_extents": [
-      0.42,
-      0.25,
-      0.50
+      0.55,
+      0.32,
+      0.45
     ],
     "orientation": [
       0.0,
@@ -6053,9 +6053,9 @@
   },
   "shooter": {
     "exit_point": [
-      -0.08,
-      0.22,
-      0.217
+      0.0,
+      0.55,
+      0.0
     ],
     "default_direction": [
       0.0,

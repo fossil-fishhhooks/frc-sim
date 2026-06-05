@@ -79,6 +79,7 @@ JPH::Ref<JPH::Shape> LoadShape(const std::string& mesh_path, bool is_static)
         UnloadModel(model);
         return nullptr;
     }
+    
 
     JPH::Ref<JPH::Shape> shape;
 
