@@ -1,6 +1,7 @@
 #include "render/StreamEncoder.h"
 #include "io/EasyLog.h"
 #include <cstring>
+#include <initializer_list>
 
 // ── Platform shims ────────────────────────────────────────────────────────────
 #ifdef _WIN32
@@ -14,6 +15,32 @@
 #  define PCLOSE(f)   pclose((f))
 #endif
 
+static bool ffmpeg_encoder_works(const char *enc)
+{
+    char cmd[256];
+    // Try encoding 1 frame of a tiny black image to null output.
+    // If the encoder can't load its runtime (e.g. libcuda.so), this fails.
+#ifdef _WIN32
+    snprintf(cmd, sizeof(cmd),
+        "ffmpeg -hide_banner -loglevel error"
+        " -f lavfi -i color=black:s=16x16:r=1:d=1"
+        " -c:v %s -frames:v 1 -f null - >nul 2>&1", enc);
+#else
+    snprintf(cmd, sizeof(cmd),
+        "ffmpeg -hide_banner -loglevel error"
+        " -f lavfi -i color=black:s=16x16:r=1:d=1"
+        " -c:v %s -frames:v 1 -f null - 2>/dev/null", enc);
+#endif
+    return system(cmd) == 0;
+}
+
+static const char *pick_encoder()
+{
+    for (const char *enc : {"h264_nvenc", "h264_videotoolbox", "h264_qsv"})
+        if (ffmpeg_encoder_works(enc)) return enc;
+    return "libx264";
+}
+
 bool StreamEncoder::Init(const std::string &host, int port,
                          int width, int height, int fps)
 {
@@ -22,7 +49,6 @@ bool StreamEncoder::Init(const std::string &host, int port,
 
     // Build ffmpeg command:
     //   -f rawvideo -pix_fmt rgba      — input is raw RGBA from raylib readback
-    //   -c:v libx264 -preset ultrafast — low-latency encode
     //   -tune zerolatency              — minimize buffering
     //   -pix_fmt yuv420p               — required for most players
     //   -f mpegts udp://host:port      — MPEG-TS over UDP, no connection needed
@@ -30,18 +56,27 @@ bool StreamEncoder::Init(const std::string &host, int port,
     // pkt_size=1316 keeps UDP datagrams under typical MTU (2 * 188-byte TS
     // packets). Omitted on Windows because some builds of ffmpeg for Windows
     // misparse URL options and drop the stream entirely.
+        const char *encoder = pick_encoder();
+        const char *enc_opts = strcmp(encoder, "libx264") == 0
+            ? "-preset ultrafast -tune zerolatency"
+            : strcmp(encoder, "h264_nvenc") == 0
+                ? "-preset p1 -tune ll"
+                : "-preset veryfast";   // qsv / videotoolbox
+
+        LOG_INFO("StreamEncoder: using encoder %s", encoder);
+
     char cmd[512];
     snprintf(cmd, sizeof(cmd),
         "ffmpeg -loglevel warning"
         " -f rawvideo -pix_fmt rgba -s %dx%d -r %d -i pipe:0"
-        " -c:v libx264 -preset ultrafast -tune zerolatency"
+        " -c:v %s %s"
         " -pix_fmt yuv420p -g %d"
 #ifdef _WIN32
         " -f mpegts udp://%s:%d",
 #else
         " -f mpegts udp://%s:%d?pkt_size=1316",
 #endif
-        width, height, fps,
+        width, height, fps, encoder, enc_opts,
         fps,           // keyframe every 1 second
         host.c_str(), port);
 

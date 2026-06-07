@@ -6034,6 +6034,23 @@
         "piece_mass": 0.5,
         "fire_rate": 8.0
       }
+    },
+    {
+      "position": [-5.0, 0.3, 0.0],
+      "orientation": [0,0,0,1],
+      "intake": {
+        "center": [0.37, 0.15, 0.0],
+        "half_extents": [0.42, 0.25, 0.50],
+        "orientation": [0,0,0,1],
+        "max_capacity": 40
+      },
+      "shooter": {
+        "exit_point": [-0.08, 0.22, 0.217],
+        "default_direction": [0.0, 1.0, 0.0],
+        "piece_mesh_path": "../bodies/sphere.json",
+        "piece_mass": 0.5,
+        "fire_rate": 8.0
+      }
     }
   ]
 }
