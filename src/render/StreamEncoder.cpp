@@ -21,13 +21,13 @@ static bool ffmpeg_encoder_works(const char *enc)
 #ifdef _WIN32
     snprintf(cmd, sizeof(cmd),
         "ffmpeg -hide_banner -loglevel error"
-        " -f lavfi -i nullsrc=s=16x16:r=1"
+        " -f lavfi -i nullsrc=s=160x160:r=1"
         " -vf format=yuv420p"
         " -c:v %s -frames:v 1 -f null - >nul 2>&1", enc);
 #else
     snprintf(cmd, sizeof(cmd),
         "ffmpeg -hide_banner -loglevel error"
-        " -f lavfi -i nullsrc=s=16x16:r=1"
+        " -f lavfi -i nullsrc=s=160x160:r=1"
         " -vf format=yuv420p"
         " -c:v %s -frames:v 1 -f null - 2>/dev/null", enc);
 #endif
