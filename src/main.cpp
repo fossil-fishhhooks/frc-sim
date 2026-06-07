@@ -413,7 +413,7 @@ int main(int argc, char *argv[])
                      all_mechanisms[ri].get());
         ++spawn_slot;
         nt_clients.push_back(std::move(client));
-        LOG_INFO("main: NT client[%d] → %s:%d", ri, ra.nt_host.c_str(), ra.nt_port);
+        LOG_INFO("main: NT client[%d] -> %s:%d", ri, ra.nt_host.c_str(), ra.nt_port);
     }
 
     lctx.phase="READY"; lctx.detail=""; lctx.cur=1; lctx.total=1; lctx.overall=1.0f;

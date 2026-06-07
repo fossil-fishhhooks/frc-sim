@@ -63,16 +63,16 @@ std::optional<BodyDef> LoadBodyDef(const std::string& json_path,
 
             if (!motors.Lookup(motor.profile_name))
                 LOG_WARN("BodyLoader: unknown motor profile '%s' in %s",
-                         motor.profile_name.c_str(), json_path.c_str());
+                        motor.profile_name.c_str(), json_path.c_str());
 
-                if (motor.is_wheel && m.contains("wheel")) {
-                    const auto& w       = m["wheel"];
-                    motor.wheel.radius      = w.value("radius",      0.0508f);
-                    motor.wheel.cof_static  = w.value("cof_static",  0.9f);
-                    motor.wheel.cof_dynamic = w.value("cof_dynamic", 0.6f);
-                }
+            if (motor.is_wheel && m.contains("wheel")) {
+                const auto& w      = m["wheel"];
+                motor.wheel.radius      = w.value("radius",      0.0508f);
+                motor.wheel.cof_static  = w.value("cof_static",  0.9f);
+                motor.wheel.cof_dynamic = w.value("cof_dynamic", 0.6f);
+            }
 
-                def.motors.push_back(std::move(motor));
+            def.motors.push_back(std::move(motor));
         }
     }
 

@@ -18,20 +18,22 @@
 static bool ffmpeg_encoder_works(const char *enc)
 {
     char cmd[256];
-    // Try encoding 1 frame of a tiny black image to null output.
-    // If the encoder can't load its runtime (e.g. libcuda.so), this fails.
 #ifdef _WIN32
     snprintf(cmd, sizeof(cmd),
         "ffmpeg -hide_banner -loglevel error"
-        " -f lavfi -i color=black:s=16x16:r=1:d=1"
+        " -f lavfi -i nullsrc=s=16x16:r=1"
+        " -vf format=yuv420p"
         " -c:v %s -frames:v 1 -f null - >nul 2>&1", enc);
 #else
     snprintf(cmd, sizeof(cmd),
         "ffmpeg -hide_banner -loglevel error"
-        " -f lavfi -i color=black:s=16x16:r=1:d=1"
+        " -f lavfi -i nullsrc=s=16x16:r=1"
+        " -vf format=yuv420p"
         " -c:v %s -frames:v 1 -f null - 2>/dev/null", enc);
 #endif
-    return system(cmd) == 0;
+    int ret = system(cmd);
+    LOG_INFO("StreamEncoder: probe %s -> exit %d", enc, ret);
+    return ret == 0;
 }
 
 static const char *pick_encoder()
