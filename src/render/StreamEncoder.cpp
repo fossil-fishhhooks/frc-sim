@@ -68,18 +68,16 @@ bool StreamEncoder::Init(const std::string &host, int port,
         LOG_INFO("StreamEncoder: using encoder %s", encoder);
 
     char cmd[512];
-    int input_w = (strcmp(encoder, "h264_nvenc") == 0)
-    ? (width + 31) & ~31
-    : width;
-
-const char *pix_convert = strcmp(encoder, "h264_nvenc") == 0
-    ? "setfield=prog,format=nv12"
-    : "format=yuv420p";
+    char vf_buf[64];
+if (strcmp(encoder, "h264_nvenc") == 0)
+    vf_buf[0] = '\0';   // no -vf at all, feed rgba directly
+else
+    snprintf(vf_buf, sizeof(vf_buf), "-vf format=yuv420p");
 
 snprintf(cmd, sizeof(cmd),
     "ffmpeg -loglevel warning"
     " -f rawvideo -pix_fmt rgba -s %dx%d -r %d -i pipe:0"
-    " -vf %s"
+    " %s"                          // empty for nvenc, "-vf format=yuv420p" for others
     " -c:v %s %s"
     " -g %d"
     " -f mpegts -mpegts_flags resend_headers"
@@ -89,7 +87,7 @@ snprintf(cmd, sizeof(cmd),
     " udp://%s:%d?pkt_size=1316",
 #endif
     width, height, fps,
-    pix_convert,
+    vf_buf,
     encoder, enc_opts,
     fps,
     host.c_str(), port);
