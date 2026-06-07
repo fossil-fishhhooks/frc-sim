@@ -99,6 +99,7 @@ void StreamEncoder::Shutdown()
 {
     if (m_pipe)
     {
+        fflush(m_pipe);   // flush any buffered partial frame before closing
         PCLOSE(m_pipe);
         m_pipe = nullptr;
         LOG_INFO("StreamEncoder: stopped");
