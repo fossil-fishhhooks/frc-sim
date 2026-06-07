@@ -224,6 +224,7 @@ void Renderer::RenderShadowPass(const WorldSnapshot &snapshot)
 
 void Renderer::Shutdown()
 {
+    m_stream.Shutdown();
     if (m_shadowEnabled)
     {
         rlUnloadFramebuffer(m_shadowFBO);
@@ -285,6 +286,18 @@ void Renderer::DrawFrame(const WorldSnapshot &snapshot,
     DrawText("WASD: movement  RMB drag: cam angle  EQ+Arrows: rotate view  Scroll: zoom   ESC: quit  TAB: lock/unlock camera",
              10, GetScreenHeight() - 20, 12, {200, 10, 10, 255});
     EndDrawing();
+    if (m_stream.IsRunning())
+    {
+        Image frame = LoadImageFromScreen();
+        m_stream.PushFrame(frame.data, frame.width, frame.height);
+        UnloadImage(frame);
+    }
+}
+
+void Renderer::EnableStreaming(const std::string &host, int port, int fps)
+{
+    m_stream_fps = fps;
+    m_stream.Init(host, port, GetScreenWidth(), GetScreenHeight(), fps);
 }
 
 // ── Light gizmos ──────────────────────────────────────────────────────────────

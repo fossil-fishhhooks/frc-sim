@@ -1,5 +1,6 @@
 #pragma once
 #include "core/Snapshot.h"
+#include "render/StreamEncoder.h"
 #include <raylib.h>
 #include <rlgl.h>
 
@@ -28,6 +29,8 @@ public:
     void SetWireframe(bool enabled) { m_wireframe = enabled; }
 
     void SetWallTimeOffset(float ms) { m_wall_time_offset_ms = ms; }
+
+    void EnableStreaming(const std::string &host, int port, int fps);
 
 private:
     Camera3D m_camera{};
@@ -69,4 +72,7 @@ private:
     void DrawLightGizmos();
     void DrawForceVectors(const WorldSnapshot &);
     void DrawArrow3D(Vector3, Vector3, Color, float);
+
+    StreamEncoder m_stream;
+    int           m_stream_fps = 30;
 };

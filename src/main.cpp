@@ -40,6 +40,12 @@ struct Args
     int   width      = 1280;
     int   height     = 720;
     bool  wireframe  = false;
+
+
+    bool        stream      = false;
+    std::string stream_host = "127.0.0.1";
+    int         stream_port = 5000;
+    int         stream_fps  = 30;
 };
 
 static void PrintUsage(const char *argv0)
@@ -55,6 +61,8 @@ static void PrintUsage(const char *argv0)
                                        "  --w      <width>             Window width        (default: 1280)\n"
                                        "  --h      <height>            Window height       (default: 720)\n"
                                        "  --wireframe                  Enable wireframe overlay\n"
+                                       "  --stream <host:port>         Stream H.264 over UDP (default: 127.0.0.1:5000)\n"
+                                       "  --stream-fps <fps>           Stream frame rate     (default: 30)\n"       
                                        "\n";
 }
 
@@ -96,6 +104,23 @@ static Args ParseArgs(int argc, char *argv[])
         else if (!strcmp(argv[i], "--w")     && i + 1 < argc) args.width      = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--h")     && i + 1 < argc) args.height     = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--wireframe")) args.wireframe = true;
+        else if (!strcmp(argv[i], "--stream"))
+        {
+            args.stream = true;
+            if (i + 1 < argc && argv[i+1][0] != '-')
+            {
+                std::string s = argv[++i];
+                auto colon = s.rfind(':');
+                if (colon != std::string::npos) {
+                    args.stream_host = s.substr(0, colon);
+                    args.stream_port = std::stoi(s.substr(colon + 1));
+                } else {
+                    args.stream_host = s;
+                }
+            }
+        }
+        else if (!strcmp(argv[i], "--stream-fps") && i + 1 < argc)
+            args.stream_fps = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
         {
             PrintUsage(argv[0]);
@@ -232,6 +257,9 @@ int main(int argc, char *argv[])
     Renderer renderer;
     renderer.Init(args.width, args.height, "FRC Sim 3D", args.target_fps);
     renderer.SetWireframe(args.wireframe);
+
+    if (args.stream)
+        renderer.EnableStreaming(args.stream_host, args.stream_port, args.stream_fps);
 
     std::string scene_display = args.scene;
     { auto s=scene_display.rfind('/'); if(s!=std::string::npos) scene_display=scene_display.substr(s+1);

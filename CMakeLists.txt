@@ -79,6 +79,7 @@ add_executable(frc_sim
     src/render/Renderer.cpp
     src/render/BodyDraw.cpp
     src/render/DebugOverlay.cpp
+    src/render/StreamEncoder.cpp
 
     src/io/NTClient.cpp
 )
