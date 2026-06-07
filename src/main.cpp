@@ -150,83 +150,110 @@ static void DrawLoadingFrame(LoadCtx &ctx)
     ctx.elapsed += GetFrameTime();
     int sw = GetScreenWidth(), sh = GetScreenHeight();
 
-    Color bg        = {14,  16,  20,  255};
-    Color grid_col  = {28,  32,  40,  255};
-    Color panel_bg  = {20,  23,  30,  255};
-    Color panel_edge= {38,  44,  56,  255};
-    Color accent    = {64, 160, 255,  255};
-    Color accent_dim= {32,  80, 128,  255};
-    Color text_bright={220,228, 240,  255};
-    Color text_mid  = {120,132, 152,  255};
-    Color text_dim  = { 60, 68,  84,  255};
-    Color ok_green  = { 60,200, 120,  255};
+    Color lBG        = { 11,  13,  17, 255};
+    Color lPANEL     = { 17,  21,  28, 255};
+    Color lBORDER    = { 28,  34,  48, 255};
+    Color lACCENT    = {  0, 229, 255, 255};
+    Color lACCENT_DIM= {  0, 115, 128, 255};
+    Color lGREEN     = {  0, 230, 118, 255};
+    Color lTEXT      = {200, 214, 229, 255};
+    Color lDIM       = { 58,  74,  92, 255};
+    Color lSHADOW    = {  0,   0,   0,  80};
+    Color lBLACK_FADE = {  0,   0,   0,  80};
 
     BeginDrawing();
-    ClearBackground(bg);
+    ClearBackground(lBG);
 
-    for (int x = 0; x < sw; x += 32) DrawLine(x, 0, x, sh, grid_col);
-    for (int y = 0; y < sh; y += 32) DrawLine(0, y, sw, y, grid_col);
-    DrawRectangleGradientH(0,     0, 120, sh, bg, {14,16,20,0});
-    DrawRectangleGradientH(sw-120,0, 120, sh, {14,16,20,0}, bg);
-    DrawRectangleGradientV(0, 0,     sw, 80,  bg, {14,16,20,0});
-    DrawRectangleGradientV(0, sh-80, sw, 80,  {14,16,20,0}, bg);
+    // dot-grid background
+    for (int x = 0; x < sw; x += 24)
+        for (int y = 0; y < sh; y += 24)
+            DrawCircle(x, y, 2, lBORDER);
 
-    int pw=560, ph=280, px=sw/2-pw/2, py=sh/2-ph/2-10;
-    DrawRectangle(px+4, py+4, pw, ph, {0,0,0,80});
-    DrawRectangle(px, py, pw, ph, panel_bg);
-    DrawRectangleLines(px, py, pw, ph, panel_edge);
-    DrawRectangle(px, py, pw, 3, accent);
+    // vignette
+    DrawRectangleGradientH(0,      0, 160, sh, lBG, {11,13,17,0});
+    DrawRectangleGradientH(sw-160, 0, 160, sh, {11,13,17,0}, lBG);
+    DrawRectangleGradientV(0, 0,      sw, 100, lBG, {11,13,17,0});
+    DrawRectangleGradientV(0, sh-100, sw, 100, {11,13,17,0}, lBG);
 
-    int tk=8;
-    DrawLine(px-1,py-1,px+tk,py-1,panel_edge); DrawLine(px-1,py-1,px-1,py+tk,panel_edge);
-    DrawLine(px+pw-tk,py-1,px+pw+1,py-1,panel_edge); DrawLine(px+pw+1,py-1,px+pw+1,py+tk,panel_edge);
-    DrawLine(px-1,py+ph-tk,px-1,py+ph+1,panel_edge); DrawLine(px-1,py+ph+1,px+tk,py+ph+1,panel_edge);
-    DrawLine(px+pw-tk,py+ph+1,px+pw+1,py+ph+1,panel_edge); DrawLine(px+pw+1,py+ph-tk,px+pw+1,py+ph+1,panel_edge);
+    // card
+    int pw = 580, ph = 300;
+    int px = sw/2 - pw/2, py = sh/2 - ph/2 - 10;
+    DrawRectangle(px+6, py+6, pw, ph, lBLACK_FADE);
+    DrawRectangle(px, py, pw, ph, lPANEL);
+    DrawRectangleLines(px, py, pw, ph, lBORDER);
+    DrawRectangle(px, py, pw, 2, lACCENT);
 
-    const char *title = "FRC SIM 3D";
-    DrawText(title, px+pw/2-MeasureText(title,28)/2, py+20, 28, text_bright);
+    // corner ticks
+    int tk = 10;
+    DrawLine(px-1,    py+ph-tk, px-1,    py+ph+1, lACCENT);
+    DrawLine(px-1,    py+ph+1,  px+tk,   py+ph+1, lACCENT);
+    DrawLine(px+pw-tk,py+ph+1,  px+pw+1, py+ph+1, lACCENT);
+    DrawLine(px+pw+1, py+ph-tk, px+pw+1, py+ph+1, lACCENT);
+
+    // title
+    const char *title = "FRC SIM";
+    DrawText(title, px + pw/2 - MeasureText(title,32)/2, py + 22, 32, lTEXT);
+    const char *sub = "LOADING";
+    DrawText(sub, px + pw/2 - MeasureText(sub,10)/2, py + 60, 10, lDIM);
+
     if (!ctx.scene_name.empty()) {
-        char sl[128]; snprintf(sl,sizeof(sl),"SCENE  %s",ctx.scene_name.c_str());
-        DrawText(sl, px+pw/2-MeasureText(sl,14)/2, py+56, 14, text_mid);
+        char sl[128]; snprintf(sl, sizeof(sl), "SCENE  %s", ctx.scene_name.c_str());
+        DrawText(sl, px + pw/2 - MeasureText(sl,11)/2, py + 76, 11, lDIM);
     }
-    DrawLine(px+20, py+74, px+pw-20, py+74, panel_edge);
 
-    DrawText(ctx.phase, px+24, py+86, 13, accent);
+    DrawLine(px + 20, py + 96, px + pw - 20, py + 96, lBORDER);
+
+    // phase + detail
+    DrawText(ctx.phase, px + 24, py + 108, 12, lACCENT);
+
     if (ctx.detail && ctx.detail[0]) {
-        char db[64]; snprintf(db,sizeof(db),"%.60s",ctx.detail);
-        DrawText(db, px+24, py+108, 13, text_mid);
+        char db[80]; snprintf(db, sizeof(db), "%.76s", ctx.detail);
+        DrawText(db, px + 24, py + 128, 11, lDIM);
     }
+
     if (ctx.total > 0) {
-        char ctr[32]; snprintf(ctr,sizeof(ctr),"%d / %d",ctx.cur,ctx.total);
-        DrawText(ctr, px+pw-24-MeasureText(ctr,13), py+108, 13,
-                 ctx.cur==ctx.total ? ok_green : text_mid);
+        char ctr[32]; snprintf(ctr, sizeof(ctr), "%d / %d", ctx.cur, ctx.total);
+        Color ctr_col = (ctx.cur == ctx.total) ? GREEN : lDIM;
+        DrawText(ctr, px + pw - 24 - MeasureText(ctr,11), py + 128, 11, ctr_col);
     }
 
-    int bx=px+24, bw=pw-48, by=py+142;
-    float sf=(ctx.total>0)?std::min(1.0f,(float)ctx.cur/ctx.total):0.0f;
-    DrawRectangle(bx,by,bw,6,{30,36,48,255});
-    if(sf>0) DrawRectangle(bx,by,(int)(bw*sf),6,accent);
-    DrawRectangleLines(bx,by,bw,6,panel_edge);
-    if(sf>0.01f&&sf<1.0f) DrawRectangle(bx+(int)(bw*sf)-2,by-1,3,8,{180,220,255,120});
+    // step progress bar
+    int bx = px + 24, bw = pw - 48, by = py + 158;
+    float sf = (ctx.total > 0) ? std::min(1.0f, (float)ctx.cur / ctx.total) : 0.0f;
+    DrawRectangle(bx, by, bw, 5, lBORDER);
+    if (sf > 0.0f) DrawRectangle(bx, by, (int)(bw * sf), 5, lACCENT);
+    if (sf > 0.01f && sf < 1.0f)
+        DrawRectangle(bx + (int)(bw*sf) - 2, by - 1, 3, 7, {200, 245, 255, 160});
 
-    int oy=by+22;
-    DrawRectangle(bx,oy,bw,3,{24,28,38,255});
-    DrawRectangle(bx,oy,(int)(bw*ctx.overall),3,accent_dim);
-    DrawText("OVERALL",bx,oy+7,10,text_dim);
-    char op[16]; snprintf(op,sizeof(op),"%.0f%%",ctx.overall*100);
-    DrawText(op,bx+bw-MeasureText(op,10),oy+7,10,text_dim);
+    // overall progress bar
+    int oy = by + 18;
+    DrawRectangle(bx, oy, bw, 3, lBORDER);
+    if (ctx.overall > 0.0f)
+        DrawRectangle(bx, oy, (int)(bw * ctx.overall), 3, lACCENT_DIM);
+    DrawText("OVERALL", bx, oy + 7, 9, lDIM);
+    char op[16]; snprintf(op, sizeof(op), "%.0f%%", ctx.overall * 100.0f);
+    DrawText(op, bx + bw - MeasureText(op,9), oy + 7, 9, lDIM);
 
-    int sy=oy+28, dg=14, nd=5, dx2=px+pw/2-(nd-1)*dg/2;
-    for(int d=0;d<nd;++d){
-        float ph2=ctx.elapsed*2.5f-d*0.25f;
-        float br=0.3f+0.7f*(0.5f+0.5f*sinf(ph2*3.14159f));
-        DrawCircle(dx2+d*dg,sy,3,{(unsigned char)(accent.r*br),(unsigned char)(accent.g*br),(unsigned char)(accent.b*br),255});
+    // animated dots
+    int dot_y = oy + 32, nd = 5, gap = 16;
+    int dot_x0 = px + pw/2 - (nd-1)*gap/2;
+    for (int d = 0; d < nd; ++d) {
+        float phase = ctx.elapsed * 2.8f - d * 0.30f;
+        float br    = 0.25f + 0.75f * (0.5f + 0.5f * sinf(phase * 3.14159f));
+        Color dc = {
+            (unsigned char)(lACCENT.r * br),
+            (unsigned char)(lACCENT.g * br),
+            (unsigned char)(lACCENT.b * br), 255
+        };
+        DrawCircle(dot_x0 + d * gap, dot_y, 3, dc);
     }
 
-    char eb[32]; snprintf(eb,sizeof(eb),"%.1fs",ctx.elapsed);
-    DrawText(eb,px,py+ph+14,11,text_dim);
-    const char *bt="FRC Sim 3d BUILD " __DATE__;
-    DrawText(bt,px+pw-MeasureText(bt,11),py+ph+14,11,text_dim);
+    // footer
+    char eb[32]; snprintf(eb, sizeof(eb), "%.1fs", ctx.elapsed);
+    DrawText(eb, px, py + ph + 12, 10, lDIM);
+    const char *stamp = "FRC SIM 3D by Arin J BUILD " __DATE__;
+    DrawText(stamp, px + pw - MeasureText(stamp,10), py + ph + 12, 10, lDIM);
+
     EndDrawing();
 }
 
@@ -258,8 +285,7 @@ int main(int argc, char *argv[])
     renderer.Init(args.width, args.height, "FRC Sim 3D", args.target_fps);
     renderer.SetWireframe(args.wireframe);
 
-    if (args.stream)
-        renderer.EnableStreaming(args.stream_host, args.stream_port, args.stream_fps);
+    
 
     std::string scene_display = args.scene;
     { auto s=scene_display.rfind('/'); if(s!=std::string::npos) scene_display=scene_display.substr(s+1);
@@ -268,6 +294,13 @@ int main(int argc, char *argv[])
 
     LoadCtx lctx;
     lctx.scene_name = scene_display;
+
+    
+    if (args.stream)
+        lctx.phase="SETTING STREAM"; lctx.detail="Starting stream..."; lctx.overall=0.02f;
+        DrawLoadingFrame(lctx);
+        renderer.EnableStreaming(args.stream_host, args.stream_port, args.stream_fps);
+    
 
     // ── 2. Motor registry ─────────────────────────────────────────────────
     lctx.phase="LOADING MOTORS"; lctx.detail="assets/motors/"; lctx.overall=0.05f;

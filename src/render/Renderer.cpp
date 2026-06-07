@@ -109,7 +109,7 @@ void Renderer::Init(int width, int height, const char *title, int target_fps)
         }
         else
         {
-            LOG_INFO("Renderer: old shader detected — shadows not available");
+            LOG_INFO("Renderer: old shader detected: shadows not available");
         }
 
         LOG_INFO("Renderer: shader loaded  shadows=%s", m_shadowEnabled ? "yes" : "no");
