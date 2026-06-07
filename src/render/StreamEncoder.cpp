@@ -60,10 +60,10 @@ bool StreamEncoder::Init(const std::string &host, int port,
     // misparse URL options and drop the stream entirely.
         const char *encoder = pick_encoder();
         const char *enc_opts = strcmp(encoder, "libx264") == 0
-            ? "-preset ultrafast -tune zerolatency"
-            : strcmp(encoder, "h264_nvenc") == 0
-                ? "-preset p1 -tune ll"
-                : "-preset veryfast";   // qsv / videotoolbox
+    ? "-preset ultrafast -tune zerolatency"
+    : strcmp(encoder, "h264_nvenc") == 0
+        ? "-preset p1 -tune ll -delay 0 -rc cbr -cbr true"
+        : "-preset veryfast";
 
         LOG_INFO("StreamEncoder: using encoder %s", encoder);
 

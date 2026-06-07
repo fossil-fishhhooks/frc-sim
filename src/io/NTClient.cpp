@@ -60,7 +60,7 @@ void NTClient::Init(const std::string &host, int port,
                     int robot_body_index,
                     MechanismSystem *mechanisms)
 {
-    m_robot_slot = (int)world.GetRobotIndices().size() - 1;
+    m_robot_slot = robot_body_index;
     m_world             = &world;
     m_mechanisms        = mechanisms;
     m_robot_motor_count = robot_motor_count;
