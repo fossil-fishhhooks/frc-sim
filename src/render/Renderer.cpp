@@ -287,11 +287,17 @@ void Renderer::DrawFrame(const WorldSnapshot &snapshot,
              10, GetScreenHeight() - 20, 12, {200, 10, 10, 255});
     EndDrawing();
     if (m_stream.IsRunning())
+{
+    m_stream_accum += GetFrameTime();
+    float stream_dt = 1.0f / m_stream_fps;
+    if (m_stream_accum >= stream_dt)
     {
+        m_stream_accum -= stream_dt;
         Image frame = LoadImageFromScreen();
         m_stream.PushFrame(frame.data, frame.width, frame.height);
         UnloadImage(frame);
     }
+}
 }
 
 void Renderer::EnableStreaming(const std::string &host, int port, int fps)
