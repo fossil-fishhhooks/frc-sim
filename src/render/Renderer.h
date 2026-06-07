@@ -76,4 +76,6 @@ private:
     StreamEncoder m_stream;
     int           m_stream_fps = 30;
     float m_stream_accum = 0.0f;
+
+    RenderTexture2D m_stream_rt = {0};
 };
