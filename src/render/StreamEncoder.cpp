@@ -73,7 +73,7 @@ bool StreamEncoder::Init(const std::string &host, int port,
     : width;
 
 const char *pix_convert = strcmp(encoder, "h264_nvenc") == 0
-    ? "format=nv12"
+    ? "setfield=prog,format=nv12"
     : "format=yuv420p";
 
 snprintf(cmd, sizeof(cmd),
@@ -94,7 +94,7 @@ snprintf(cmd, sizeof(cmd),
     fps,
     host.c_str(), port);
 
-    
+
     LOG_INFO("StreamEncoder: launching: %s", cmd);
     m_pipe = POPEN(cmd);
     if (!m_pipe)
