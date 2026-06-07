@@ -18,12 +18,63 @@ Run:      python frc_sim_controller.py
 Then start frc_sim with --nt 127.0.0.1:5810
 """
 
-import math, time, sys, tty, termios, select, os
+import math, time, sys, os
 
 try:
     import ntcore
 except ImportError:
     print("pip install robotpy"); sys.exit(1)
+
+# ── Cross-platform raw keyboard input ─────────────────────────────────────────
+if sys.platform == "win32":
+    import msvcrt
+
+    class RawTerminal:
+        def __enter__(self): return self
+        def __exit__(self, *_): pass
+
+    def read_keys():
+        keys = set()
+        while msvcrt.kbhit():
+            ch = msvcrt.getwch()
+            if ch in ('\x00', '\xe0'):
+                msvcrt.getwch()   # consume second byte of arrow/function keys
+                continue
+            if ch in ('\x1b', '\x03'):
+                keys.add('esc')
+            elif ch == ' ':
+                keys.add('space')
+            else:
+                keys.add(ch.lower())
+        return keys
+
+else:
+    import tty, termios, select
+
+    class RawTerminal:
+        def __enter__(self):
+            self.fd  = sys.stdin.fileno()
+            self.old = termios.tcgetattr(self.fd)
+            tty.setraw(self.fd)
+            return self
+        def __exit__(self, *_):
+            termios.tcsetattr(self.fd, termios.TCSADRAIN, self.old)
+
+    def read_keys():
+        keys = set()
+        while select.select([sys.stdin], [], [], 0)[0]:
+            ch = os.read(sys.stdin.fileno(), 1)
+            if not ch:
+                break
+            if ch in (b'\x1b', b'\x03'):
+                keys.add('esc')
+            elif ch == b' ':
+                keys.add('space')
+            else:
+                c = ch.decode('utf-8', errors='ignore').lower()
+                if c:
+                    keys.add(c)
+        return keys
 
 # ── Config ────────────────────────────────────────────────────────────────────
 NT_PORT     = 5810
@@ -42,32 +93,6 @@ spubs = [inst.getFloatTopic(f"/sim/motors/{i}/steer_angle").publish() for i in r
 fire_pub  = inst.getBooleanTopic("/sim/shooter/fire").publish()
 speed_pub = inst.getFloatTopic("/sim/shooter/speed").publish()
 dir_pub   = inst.getFloatArrayTopic("/sim/shooter/direction").publish()
-
-# ── Raw terminal ──────────────────────────────────────────────────────────────
-class RawTerminal:
-    def __enter__(self):
-        self.fd = sys.stdin.fileno()
-        self.old = termios.tcgetattr(self.fd)
-        tty.setraw(self.fd)
-        return self
-    def __exit__(self, *_):
-        termios.tcsetattr(self.fd, termios.TCSADRAIN, self.old)
-
-def read_keys():
-    keys = set()
-    while select.select([sys.stdin], [], [], 0)[0]:
-        ch = os.read(sys.stdin.fileno(), 1)
-        if not ch:
-            break
-        if ch == b'\x1b' or ch == b'\x03':
-            keys.add('esc')
-        elif ch == b' ':
-            keys.add('space')
-        else:
-            c = ch.decode('utf-8', errors='ignore').lower()
-            if c:
-                keys.add(c)
-    return keys
 
 # ── Swerve kinematics ─────────────────────────────────────────────────────────
 # Robot frame: +X = forward, +Z = left (right-hand, Y-up).
