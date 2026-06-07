@@ -62,7 +62,7 @@ bool StreamEncoder::Init(const std::string &host, int port,
         const char *enc_opts = strcmp(encoder, "libx264") == 0
     ? "-preset ultrafast -tune zerolatency"
     : strcmp(encoder, "h264_nvenc") == 0
-        ? "-preset p1 -tune ll -delay 0 -rc cbr -cbr true"
+        ? "-preset p1 -rc cbr -delay 0 -bf 0 -2pass 0 -surfaces 1"
         : "-preset veryfast";
 
         LOG_INFO("StreamEncoder: using encoder %s", encoder);
@@ -72,23 +72,29 @@ bool StreamEncoder::Init(const std::string &host, int port,
     ? (width + 31) & ~31
     : width;
 
+const char *pix_convert = strcmp(encoder, "h264_nvenc") == 0
+    ? "format=nv12"
+    : "format=yuv420p";
+
 snprintf(cmd, sizeof(cmd),
     "ffmpeg -loglevel warning"
     " -f rawvideo -pix_fmt rgba -s %dx%d -r %d -i pipe:0"
-    " -vf crop=%d:%d:0:0,format=yuv420p"   // crop back to real size after stride correction
+    " -vf %s"
     " -c:v %s %s"
-    " -colorspace bt709 -color_primaries bt709 -color_trc bt709"
     " -g %d"
+    " -f mpegts -mpegts_flags resend_headers"
 #ifdef _WIN32
-    " -f mpegts udp://%s:%d",
+    " udp://%s:%d",
 #else
-    " -f mpegts udp://%s:%d?pkt_size=1316",
+    " udp://%s:%d?pkt_size=1316",
 #endif
-    input_w, height, fps,   // tell ffmpeg the aligned width as input size
-    width, height,           // crop back to real width
+    width, height, fps,
+    pix_convert,
     encoder, enc_opts,
     fps,
     host.c_str(), port);
+
+    
     LOG_INFO("StreamEncoder: launching: %s", cmd);
     m_pipe = POPEN(cmd);
     if (!m_pipe)
