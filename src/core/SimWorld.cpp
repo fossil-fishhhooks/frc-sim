@@ -232,7 +232,9 @@ void SimWorld::CaptureSnapshot(WorldSnapshot &out) const
             BodySnapshot bs;
             bs.def = m_bodies[i].def;
             // Motors only for robot body — pre-size from cache
-            if (i == m_robot_index && m_bodies[i].def)
+            bool _is_robot = false;
+        for (int ri : m_robot_indices) if (i == ri) { _is_robot = true; break; }
+        if (_is_robot && m_bodies[i].def)
                 bs.motors.resize(m_bodies[i].motor_snap_cache.size());
             m_snap_scratch.bodies.push_back(std::move(bs));
         }
@@ -240,7 +242,8 @@ void SimWorld::CaptureSnapshot(WorldSnapshot &out) const
     }
 
     m_snap_scratch.sim_time    = m_sim_time;
-    m_snap_scratch.robot_index = m_robot_index;
+    m_snap_scratch.robot_indices = m_robot_indices;
+    m_snap_scratch.robot_mech.resize(m_robot_indices.size());
 
     // ── Per-body update ───────────────────────────────────────────────────
     // Resize if bodies were added/removed since last setup
@@ -282,7 +285,9 @@ void SimWorld::CaptureSnapshot(WorldSnapshot &out) const
         bs.def = rec.def;
 
         // ── Motor state — robot only ──────────────────────────────────────
-        if (i == m_robot_index && rec.def)
+        bool is_robot = false;
+        for (int ri : m_robot_indices) if (i == ri) { is_robot = true; break; }
+        if (is_robot && rec.def)
         {
             int n = (int)rec.motor_snap_cache.size();
             // motors vec already correctly sized — no resize() call
@@ -388,6 +393,11 @@ JPH::BodyInterface &SimWorld::GetBodyInterface()
     return m_physics->GetBodyInterface();
 }
 
+const JPH::BodyLockInterface &SimWorld::GetBodyLockInterface() const
+{
+    return m_physics->GetBodyLockInterface();
+}
+
 JPH::BodyID SimWorld::GetBodyID(int idx) const
 {
     if (idx < 0 || idx >= (int)m_bodies.size()) return JPH::BodyID();
@@ -416,21 +426,30 @@ void SimWorld::MarkBodyRemoved(JPH::BodyID id)
         int last = (int)m_bodies.size() - 1;
 
         if (i != last) {
-            if (m_robot_index == last) m_robot_index = i;
+            // 1. Remove the body being deleted (slot i) from robot list, if it was a robot
+            m_robot_indices.erase(
+                std::remove(m_robot_indices.begin(), m_robot_indices.end(), i),
+                m_robot_indices.end());
+            // 2. Remap the surviving body (was at last, now moving to i)
+            for (auto &ri : m_robot_indices) if (ri == last) ri = i;
 
             m_bodies[i].jph_id = m_bodies[last].jph_id;
-            m_bodies[i].def    = m_bodies[last].def;
-            m_bodies[i].motor_snap_cache = std::move(m_bodies[last].motor_snap_cache);
-            for (int m = 0; m < BodyRecord::MAX_MOTORS; ++m) {
+        m_bodies[i].def    = m_bodies[last].def;
+        m_bodies[i].motor_snap_cache = std::move(m_bodies[last].motor_snap_cache);
+        for (int m = 0; m < BodyRecord::MAX_MOTORS; ++m) {
                 m_bodies[i].voltage[m].store(m_bodies[last].voltage[m].load());
                 m_bodies[i].omega[m].store(m_bodies[last].omega[m].load());
                 m_bodies[i].normal_force[m].store(m_bodies[last].normal_force[m].load());
                 m_bodies[i].tractive_force[m].store(m_bodies[last].tractive_force[m].load());
                 m_bodies[i].slipping[m].store(m_bodies[last].slipping[m].load());
+                m_bodies[i].steer_angle[m].store(m_bodies[last].steer_angle[m].load());  // ADD
             }
-        } else if (m_robot_index == last) {
-            m_robot_index = -1;
-        }
+    } else {
+        // i == last: just remove it from robot index list if present
+        m_robot_indices.erase(
+            std::remove(m_robot_indices.begin(), m_robot_indices.end(), last),
+            m_robot_indices.end());
+    }
 
         m_bodies.pop_back();
         m_snap_scratch_ready = false;  // body count changed — rebuild scratch
@@ -482,4 +501,12 @@ float SimWorld::GetMotorSteerAngle(int body_idx, int motor_idx) const
     if (body_idx < 0 || body_idx >= (int)m_bodies.size()) return 0.0f;
     if (motor_idx < 0 || motor_idx >= BodyRecord::MAX_MOTORS) return 0.0f;
     return m_bodies[body_idx].steer_angle[motor_idx].load();
+}
+
+int SimWorld::AddRobotIndex(int body_idx)
+{
+    int slot = (int)m_robot_indices.size();
+    m_robot_indices.push_back(body_idx);
+    LOG_INFO("SimWorld: robot slot %d = body_idx %d", slot, body_idx);
+    return slot;
 }

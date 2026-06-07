@@ -1,6 +1,7 @@
 #include "io/EasyLog.h"
 #include "core/MotorRegistry.h"
 #include "core/SceneLoader.h"
+#include "core/BodyLoader.h"
 #include "core/SimWorld.h"
 #include "core/SimLoop.h"
 #include "physics/ForceApplicator.h"
@@ -15,6 +16,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <memory>
+#include <vector>
 #include <cmath>
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -24,28 +26,35 @@
 struct Args
 {
     std::string scene;
-    std::string nt_host = "127.0.0.1";
-    int nt_port = 5810;
-    float dt = 1.0f / 500.0f;
-    float speed = 1.0f;
-    int target_fps = 60;
-    int width = 1280;
-    int height = 720;
-    bool wireframe = false;
+
+    struct RobotArg {
+        std::string def_path;
+        std::string nt_host = "127.0.0.1";
+        int         nt_port = 5810;
+    };
+    std::vector<RobotArg> robots;  // one per --robot flag, up to 6
+
+    float dt         = 1.0f / 500.0f;
+    float speed      = 1.0f;
+    int   target_fps = 60;
+    int   width      = 1280;
+    int   height     = 720;
+    bool  wireframe  = false;
 };
 
 static void PrintUsage(const char *argv0)
 {
-    std::cout << "Usage: " << argv0 << " --scene <path> [options]\n"
+    std::cout << "Usage: " << argv0 << " --scene <path> --robot <def@host:port> [--robot ...] [options]\n"
                                        "\n"
-                                       "  --scene  <path>      Scene JSON to load (required)\n"
-                                       "  --nt     <host:port> NT4 server          (default: 127.0.0.1:5810)\n"
-                                       "  --dt     <seconds>   Physics timestep    (default: 0.002)\n"
-                                       "  --speed  <factor>    Sim speed multiplier(default: 1.0)\n"
-                                       "  --fps    <target>    Target render FPS    (default: 60, max speed: 0)\n"
-                                       "  --w      <width>     Window width         (default: 1280)\n"
-                                       "  --h      <height>    Window height        (default: 720)\n"
-                                       "  --wireframe          Enable wireframe overlay\n"
+                                       "  --scene  <path>              Scene JSON (required)\n"
+                                       "  --robot  <def@host:port>     Add a robot (repeatable, up to 6)\n"
+                                       "                               e.g. assets/defs/robot.json@10.9.55.2:5810\n"
+                                       "  --dt     <seconds>           Physics timestep    (default: 0.002)\n"
+                                       "  --speed  <factor>            Sim speed multiplier(default: 1.0)\n"
+                                       "  --fps    <target>            Target render FPS   (default: 60)\n"
+                                       "  --w      <width>             Window width        (default: 1280)\n"
+                                       "  --h      <height>            Window height       (default: 720)\n"
+                                       "  --wireframe                  Enable wireframe overlay\n"
                                        "\n";
 }
 
@@ -55,33 +64,38 @@ static Args ParseArgs(int argc, char *argv[])
     for (int i = 1; i < argc; ++i)
     {
         if (!strcmp(argv[i], "--scene") && i + 1 < argc)
+        {
             args.scene = argv[++i];
-        else if (!strcmp(argv[i], "--nt") && i + 1 < argc)
+        }
+        else if (!strcmp(argv[i], "--robot") && i + 1 < argc)
         {
             std::string s = argv[++i];
-            auto colon = s.rfind(':');
-            if (colon != std::string::npos)
-            {
-                args.nt_host = s.substr(0, colon);
-                args.nt_port = std::stoi(s.substr(colon + 1));
+            Args::RobotArg ra;
+            auto at = s.rfind('@');
+            if (at != std::string::npos) {
+                ra.def_path = s.substr(0, at);
+                std::string addr = s.substr(at + 1);
+                auto colon = addr.rfind(':');
+                if (colon != std::string::npos) {
+                    ra.nt_host = addr.substr(0, colon);
+                    ra.nt_port = std::stoi(addr.substr(colon + 1));
+                } else {
+                    ra.nt_host = addr;
+                }
+            } else {
+                ra.def_path = s;
             }
+            if (args.robots.size() < 6)
+                args.robots.push_back(std::move(ra));
             else
-            {
-                args.nt_host = s;
-            }
+                LOG_WARN("main: max 6 robots, ignoring extra --robot");
         }
-        else if (!strcmp(argv[i], "--dt") && i + 1 < argc)
-            args.dt = std::stof(argv[++i]);
-        else if (!strcmp(argv[i], "--speed") && i + 1 < argc)
-            args.speed = std::stof(argv[++i]);
-        else if (!strcmp(argv[i], "--fps") && i + 1 < argc)
-            args.target_fps = std::stoi(argv[++i]);
-        else if (!strcmp(argv[i], "--w") && i + 1 < argc)
-            args.width = std::stoi(argv[++i]);
-        else if (!strcmp(argv[i], "--h") && i + 1 < argc)
-            args.height = std::stoi(argv[++i]);
-        else if (!strcmp(argv[i], "--wireframe"))
-            args.wireframe = true;
+        else if (!strcmp(argv[i], "--dt")    && i + 1 < argc) args.dt         = std::stof(argv[++i]);
+        else if (!strcmp(argv[i], "--speed") && i + 1 < argc) args.speed      = std::stof(argv[++i]);
+        else if (!strcmp(argv[i], "--fps")   && i + 1 < argc) args.target_fps = std::stoi(argv[++i]);
+        else if (!strcmp(argv[i], "--w")     && i + 1 < argc) args.width      = std::stoi(argv[++i]);
+        else if (!strcmp(argv[i], "--h")     && i + 1 < argc) args.height     = std::stoi(argv[++i]);
+        else if (!strcmp(argv[i], "--wireframe")) args.wireframe = true;
         else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
         {
             PrintUsage(argv[0]);
@@ -92,200 +106,102 @@ static Args ParseArgs(int argc, char *argv[])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Loading screen
-// ─────────────────────────────────────────────────────────────────────────────
-//
-// CAD-software aesthetic: dark engineering theme, subtle grid, monospaced
-// technical readouts, clean progress bar with step + item counters.
+// Loading screen (unchanged from single-robot version)
 // ─────────────────────────────────────────────────────────────────────────────
 
 struct LoadCtx
 {
-    // Current phase
-    const char *phase = "";  // e.g. "LOADING MOTORS"
-    const char *detail = ""; // e.g. "kraken_x60.json"
-    int cur = 0;             // items done in this phase
-    int total = 0;           // total items in this phase (0 = indeterminate)
-
-    // Overall progress  0.0 – 1.0
-    float overall = 0.0f;
-
-    // Elapsed seconds (set by DrawLoadingFrame)
-    float elapsed = 0.0f;
-
-    // Scene name shown at top
-    std::string scene_name;
+    const char  *phase   = "";
+    const char  *detail  = "";
+    int          cur     = 0;
+    int          total   = 0;
+    float        overall = 0.0f;
+    float        elapsed = 0.0f;
+    std::string  scene_name;
 };
 
 static void DrawLoadingFrame(LoadCtx &ctx)
 {
-    // Accumulate elapsed time using raylib's frame time
     ctx.elapsed += GetFrameTime();
+    int sw = GetScreenWidth(), sh = GetScreenHeight();
 
-    int sw = GetScreenWidth();
-    int sh = GetScreenHeight();
-
-    // ── Palette ───────────────────────────────────────────────────────────
-    Color bg = {14, 16, 20, 255};
-    Color grid_col = {28, 32, 40, 255};
-    Color panel_bg = {20, 23, 30, 255};
-    Color panel_edge = {38, 44, 56, 255};
-    Color accent = {64, 160, 255, 255}; // engineering blue
-    Color accent_dim = {32, 80, 128, 255};
-    Color text_bright = {220, 228, 240, 255};
-    Color text_mid = {120, 132, 152, 255};
-    Color text_dim = {60, 68, 84, 255};
-    Color ok_green = {60, 200, 120, 255};
+    Color bg        = {14,  16,  20,  255};
+    Color grid_col  = {28,  32,  40,  255};
+    Color panel_bg  = {20,  23,  30,  255};
+    Color panel_edge= {38,  44,  56,  255};
+    Color accent    = {64, 160, 255,  255};
+    Color accent_dim= {32,  80, 128,  255};
+    Color text_bright={220,228, 240,  255};
+    Color text_mid  = {120,132, 152,  255};
+    Color text_dim  = { 60, 68,  84,  255};
+    Color ok_green  = { 60,200, 120,  255};
 
     BeginDrawing();
     ClearBackground(bg);
 
-    // ── Background grid (subtle engineering paper) ────────────────────────
-    int grid_spacing = 32;
-    for (int x = 0; x < sw; x += grid_spacing)
-        DrawLine(x, 0, x, sh, grid_col);
-    for (int y = 0; y < sh; y += grid_spacing)
-        DrawLine(0, y, sw, y, grid_col);
+    for (int x = 0; x < sw; x += 32) DrawLine(x, 0, x, sh, grid_col);
+    for (int y = 0; y < sh; y += 32) DrawLine(0, y, sw, y, grid_col);
+    DrawRectangleGradientH(0,     0, 120, sh, bg, {14,16,20,0});
+    DrawRectangleGradientH(sw-120,0, 120, sh, {14,16,20,0}, bg);
+    DrawRectangleGradientV(0, 0,     sw, 80,  bg, {14,16,20,0});
+    DrawRectangleGradientV(0, sh-80, sw, 80,  {14,16,20,0}, bg);
 
-    // Fade grid at edges with overdraw rectangles
-    DrawRectangleGradientH(0, 0, 120, sh, bg, {14, 16, 20, 0});
-    DrawRectangleGradientH(sw - 120, 0, 120, sh, {14, 16, 20, 0}, bg);
-    DrawRectangleGradientV(0, 0, sw, 80, bg, {14, 16, 20, 0});
-    DrawRectangleGradientV(0, sh - 80, sw, 80, {14, 16, 20, 0}, bg);
-
-    // ── Central panel ─────────────────────────────────────────────────────
-    int pw = 560;
-    int ph = 280;
-    int px = sw / 2 - pw / 2;
-    int py = sh / 2 - ph / 2 - 10;
-
-    // Panel shadow
-    DrawRectangle(px + 4, py + 4, pw, ph, {0, 0, 0, 80});
-    // Panel fill
+    int pw=560, ph=280, px=sw/2-pw/2, py=sh/2-ph/2-10;
+    DrawRectangle(px+4, py+4, pw, ph, {0,0,0,80});
     DrawRectangle(px, py, pw, ph, panel_bg);
-    // Panel border
     DrawRectangleLines(px, py, pw, ph, panel_edge);
-    // Accent top bar
     DrawRectangle(px, py, pw, 3, accent);
 
-    // Corner tick marks (CAD aesthetic)
-    int tick = 8;
-    DrawLine(px - 1, py - 1, px + tick, py - 1, panel_edge);
-    DrawLine(px - 1, py - 1, px - 1, py + tick, panel_edge);
-    DrawLine(px + pw - tick, py - 1, px + pw + 1, py - 1, panel_edge);
-    DrawLine(px + pw + 1, py - 1, px + pw + 1, py + tick, panel_edge);
-    DrawLine(px - 1, py + ph - tick, px - 1, py + ph + 1, panel_edge);
-    DrawLine(px - 1, py + ph + 1, px + tick, py + ph + 1, panel_edge);
-    DrawLine(px + pw - tick, py + ph + 1, px + pw + 1, py + ph + 1, panel_edge);
-    DrawLine(px + pw + 1, py + ph - tick, px + pw + 1, py + ph + 1, panel_edge);
+    int tk=8;
+    DrawLine(px-1,py-1,px+tk,py-1,panel_edge); DrawLine(px-1,py-1,px-1,py+tk,panel_edge);
+    DrawLine(px+pw-tk,py-1,px+pw+1,py-1,panel_edge); DrawLine(px+pw+1,py-1,px+pw+1,py+tk,panel_edge);
+    DrawLine(px-1,py+ph-tk,px-1,py+ph+1,panel_edge); DrawLine(px-1,py+ph+1,px+tk,py+ph+1,panel_edge);
+    DrawLine(px+pw-tk,py+ph+1,px+pw+1,py+ph+1,panel_edge); DrawLine(px+pw+1,py+ph-tk,px+pw+1,py+ph+1,panel_edge);
 
-    // ── App title ─────────────────────────────────────────────────────────
-    int title_y = py + 20;
     const char *title = "FRC SIM 3D";
-    int title_sz = 28;
-    int title_x = px + pw / 2 - MeasureText(title, title_sz) / 2;
-    DrawText(title, title_x, title_y, title_sz, text_bright);
+    DrawText(title, px+pw/2-MeasureText(title,28)/2, py+20, 28, text_bright);
+    if (!ctx.scene_name.empty()) {
+        char sl[128]; snprintf(sl,sizeof(sl),"SCENE  %s",ctx.scene_name.c_str());
+        DrawText(sl, px+pw/2-MeasureText(sl,14)/2, py+56, 14, text_mid);
+    }
+    DrawLine(px+20, py+74, px+pw-20, py+74, panel_edge);
 
-    // Version / scene tag line
-    if (!ctx.scene_name.empty())
-    {
-        char scene_label[128];
-        snprintf(scene_label, sizeof(scene_label), "SCENE  %s", ctx.scene_name.c_str());
-        int sl_x = px + pw / 2 - MeasureText(scene_label, 14) / 2;
-        DrawText(scene_label, sl_x, title_y + 36, 14, text_mid);
+    DrawText(ctx.phase, px+24, py+86, 13, accent);
+    if (ctx.detail && ctx.detail[0]) {
+        char db[64]; snprintf(db,sizeof(db),"%.60s",ctx.detail);
+        DrawText(db, px+24, py+108, 13, text_mid);
+    }
+    if (ctx.total > 0) {
+        char ctr[32]; snprintf(ctr,sizeof(ctr),"%d / %d",ctx.cur,ctx.total);
+        DrawText(ctr, px+pw-24-MeasureText(ctr,13), py+108, 13,
+                 ctx.cur==ctx.total ? ok_green : text_mid);
     }
 
-    // Divider
-    DrawLine(px + 20, py + 74, px + pw - 20, py + 74, panel_edge);
+    int bx=px+24, bw=pw-48, by=py+142;
+    float sf=(ctx.total>0)?std::min(1.0f,(float)ctx.cur/ctx.total):0.0f;
+    DrawRectangle(bx,by,bw,6,{30,36,48,255});
+    if(sf>0) DrawRectangle(bx,by,(int)(bw*sf),6,accent);
+    DrawRectangleLines(bx,by,bw,6,panel_edge);
+    if(sf>0.01f&&sf<1.0f) DrawRectangle(bx+(int)(bw*sf)-2,by-1,3,8,{180,220,255,120});
 
-    // ── Phase label ───────────────────────────────────────────────────────
-    int phase_y = py + 86;
-    DrawText(ctx.phase, px + 24, phase_y, 13, accent);
+    int oy=by+22;
+    DrawRectangle(bx,oy,bw,3,{24,28,38,255});
+    DrawRectangle(bx,oy,(int)(bw*ctx.overall),3,accent_dim);
+    DrawText("OVERALL",bx,oy+7,10,text_dim);
+    char op[16]; snprintf(op,sizeof(op),"%.0f%%",ctx.overall*100);
+    DrawText(op,bx+bw-MeasureText(op,10),oy+7,10,text_dim);
 
-    // ── Detail + counter ──────────────────────────────────────────────────
-    int detail_y = phase_y + 22;
-    if (ctx.detail && ctx.detail[0])
-    {
-        // Truncate detail string if too long for panel
-        char detail_buf[64];
-        snprintf(detail_buf, sizeof(detail_buf), "%.60s", ctx.detail);
-        DrawText(detail_buf, px + 24, detail_y, 13, text_mid);
+    int sy=oy+28, dg=14, nd=5, dx2=px+pw/2-(nd-1)*dg/2;
+    for(int d=0;d<nd;++d){
+        float ph2=ctx.elapsed*2.5f-d*0.25f;
+        float br=0.3f+0.7f*(0.5f+0.5f*sinf(ph2*3.14159f));
+        DrawCircle(dx2+d*dg,sy,3,{(unsigned char)(accent.r*br),(unsigned char)(accent.g*br),(unsigned char)(accent.b*br),255});
     }
 
-    // Item counter (right-aligned inside panel)
-    if (ctx.total > 0)
-    {
-        char counter[32];
-        snprintf(counter, sizeof(counter), "%d / %d", ctx.cur, ctx.total);
-        int cx = px + pw - 24 - MeasureText(counter, 13);
-        DrawText(counter, cx, detail_y, 13, ctx.cur == ctx.total ? ok_green : text_mid);
-    }
-
-    // ── Step progress bar (item-level) ────────────────────────────────────
-    int bar_margin = 24;
-    int bar_y = py + 142;
-    int bar_w = pw - bar_margin * 2;
-    int bar_h = 6;
-    int bar_x = px + bar_margin;
-
-    float step_frac = (ctx.total > 0)
-                          ? std::min(1.0f, (float)ctx.cur / ctx.total)
-                          : 0.0f;
-
-    DrawRectangle(bar_x, bar_y, bar_w, bar_h, {30, 36, 48, 255});
-    if (step_frac > 0.0f)
-        DrawRectangle(bar_x, bar_y, (int)(bar_w * step_frac), bar_h, accent);
-    DrawRectangleLines(bar_x, bar_y, bar_w, bar_h, panel_edge);
-
-    // Glow on fill edge
-    if (step_frac > 0.01f && step_frac < 1.0f)
-    {
-        int fill_end = bar_x + (int)(bar_w * step_frac);
-        DrawRectangle(fill_end - 2, bar_y - 1, 3, bar_h + 2, {180, 220, 255, 120});
-    }
-
-    // ── Overall progress bar ──────────────────────────────────────────────
-    int ov_y = bar_y + 22;
-    int ov_h = 3;
-
-    DrawRectangle(bar_x, ov_y, bar_w, ov_h, {24, 28, 38, 255});
-    DrawRectangle(bar_x, ov_y, (int)(bar_w * ctx.overall), ov_h, accent_dim);
-    DrawText("OVERALL", bar_x, ov_y + 7, 10, text_dim);
-
-    char ov_pct[16];
-    snprintf(ov_pct, sizeof(ov_pct), "%.0f%%", ctx.overall * 100.0f);
-    DrawText(ov_pct, bar_x + bar_w - MeasureText(ov_pct, 10), ov_y + 7, 10, text_dim);
-
-    // ── Animated spinner (three dots cycling) ────────────────────────────
-    int spin_y = ov_y + 28;
-    int dot_r = 3;
-    int dot_gap = 14;
-    int n_dots = 5;
-    int dots_total_w = (n_dots - 1) * dot_gap;
-    int dots_x = px + pw / 2 - dots_total_w / 2;
-
-    for (int d = 0; d < n_dots; ++d)
-    {
-        float phase = ctx.elapsed * 2.5f - d * 0.25f;
-        float brightness = 0.3f + 0.7f * (0.5f + 0.5f * sinf(phase * 3.14159f));
-        Color dot_col = {
-            (unsigned char)(accent.r * brightness),
-            (unsigned char)(accent.g * brightness),
-            (unsigned char)(accent.b * brightness),
-            255};
-        DrawCircle(dots_x + d * dot_gap, spin_y, dot_r, dot_col);
-    }
-
-    // ── Bottom status bar ─────────────────────────────────────────────────
-    int status_y = py + ph + 14;
-    char elapsed_buf[32];
-    snprintf(elapsed_buf, sizeof(elapsed_buf), "%.1fs", ctx.elapsed);
-    DrawText(elapsed_buf, px, status_y, 11, text_dim);
-
-    // Right: build info
-    const char *build_tag = "FRC Sim 3d by Arin J BUILD " __DATE__;
-    DrawText(build_tag, px + pw - MeasureText(build_tag, 11), status_y, 11, text_dim);
-
+    char eb[32]; snprintf(eb,sizeof(eb),"%.1fs",ctx.elapsed);
+    DrawText(eb,px,py+ph+14,11,text_dim);
+    const char *bt="FRC Sim 3d BUILD " __DATE__;
+    DrawText(bt,px+pw-MeasureText(bt,11),py+ph+14,11,text_dim);
     EndDrawing();
 }
 
@@ -299,216 +215,211 @@ int main(int argc, char *argv[])
 
     Args args = ParseArgs(argc, argv);
 
-    if (args.dt <= 0.0f)
-        args.dt = 1.0f / 500.0f;
-    if (args.speed <= 0.0f)
-        args.speed = 1.0f;
-    if (args.target_fps < 0)
-        args.target_fps = 60;
-    if (args.target_fps > 90)
-        args.target_fps = 90;
-    if (args.width <= 0 || args.height <= 0)
-    {
-        LOG_ERROR("main: bad window dimensions");
-        return 1;
+    if (args.dt     <= 0.0f) args.dt     = 1.0f / 500.0f;
+    if (args.speed  <= 0.0f) args.speed  = 1.0f;
+    if (args.target_fps < 0) args.target_fps = 60;
+    if (args.width <= 0 || args.height <= 0) {
+        LOG_ERROR("main: bad window dimensions"); return 1;
     }
-    if (args.scene.empty())
-    {
-        PrintUsage(argv[0]);
-        LOG_ERROR("main: --scene is required");
-        return 1;
+    if (args.scene.empty()) {
+        PrintUsage(argv[0]); LOG_ERROR("main: --scene is required"); return 1;
     }
-
-    LOG_INFO("main: scene=%s  nt=%s:%d  dt=%.4f  speed=%.2f",
-             args.scene.c_str(), args.nt_host.c_str(), args.nt_port,
-             args.dt, args.speed);
+    if (args.robots.empty()) {
+        PrintUsage(argv[0]); LOG_ERROR("main: at least one --robot is required"); return 1;
+    }
 
     // ── 1. Renderer ───────────────────────────────────────────────────────
     Renderer renderer;
-    renderer.Init(args.width, args.height, "FRC Sim", args.target_fps);
+    renderer.Init(args.width, args.height, "FRC Sim 3D", args.target_fps);
     renderer.SetWireframe(args.wireframe);
 
-    // Extract scene name for display (filename without extension)
     std::string scene_display = args.scene;
-    {
-        auto slash = scene_display.rfind('/');
-        if (slash != std::string::npos)
-            scene_display = scene_display.substr(slash + 1);
-        auto dot = scene_display.rfind('.');
-        if (dot != std::string::npos)
-            scene_display = scene_display.substr(0, dot);
-        // uppercase
-        for (auto &c : scene_display)
-            c = (char)toupper(c);
-    }
+    { auto s=scene_display.rfind('/'); if(s!=std::string::npos) scene_display=scene_display.substr(s+1);
+      auto d=scene_display.rfind('.'); if(d!=std::string::npos) scene_display=scene_display.substr(0,d);
+      for(auto &c:scene_display) c=(char)toupper(c); }
 
     LoadCtx lctx;
     lctx.scene_name = scene_display;
 
     // ── 2. Motor registry ─────────────────────────────────────────────────
-    lctx.phase = "LOADING MOTORS";
-    lctx.detail = "assets/motors/";
-    lctx.cur = 0;
-    lctx.total = 0; // unknown count — indeterminate
-    lctx.overall = 0.05f;
+    lctx.phase="LOADING MOTORS"; lctx.detail="assets/motors/"; lctx.overall=0.05f;
     DrawLoadingFrame(lctx);
-
     MotorRegistry motors;
     motors.LoadFromDirectory("assets/motors");
 
-    // ── 3. Load scene JSON ────────────────────────────────────────────────
-    lctx.phase = "PARSING SCENE";
-    lctx.detail = args.scene.c_str();
-    lctx.cur = 0;
-    lctx.total = 0;
-    lctx.overall = 0.10f;
+    // ── 3. Load scene ─────────────────────────────────────────────────────
+    lctx.phase="PARSING SCENE"; lctx.detail=args.scene.c_str(); lctx.overall=0.10f;
     DrawLoadingFrame(lctx);
-
     SceneData scene = LoadScene(args.scene, motors);
-    if (scene.bodies.empty())
-    {
-        LOG_ERROR("main: scene loaded no bodies — check path and JSON");
-        renderer.Shutdown();
-        return 1;
-    }
 
     // ── 4. Physics world ──────────────────────────────────────────────────
-    lctx.phase = "INITIALISING PHYSICS";
-    lctx.detail = "Jolt Physics engine";
-    lctx.cur = 0;
-    lctx.total = 0;
-    lctx.overall = 0.20f;
+    lctx.phase="INITIALISING PHYSICS"; lctx.detail="Jolt Physics"; lctx.overall=0.20f;
     DrawLoadingFrame(lctx);
-
     SimWorld world;
     world.Init();
     world.SetPhysicsDt(args.dt);
 
-    // ── 5. Spawn bodies ───────────────────────────────────────────────────
-    int robot_motor_count = 0;
-    int total_bodies = (int)scene.bodies.size();
+    // ── 5. Spawn non-robot scene bodies ───────────────────────────────────
+    int total_bodies = (int)scene.bodies.size() + (int)args.robots.size();
 
-    for (int i = 0; i < total_bodies; ++i)
+    for (int i = 0; i < (int)scene.bodies.size(); ++i)
     {
         auto &req = scene.bodies[i];
-
-        lctx.phase = "LOADING MODELS";
-        lctx.detail = req.def.name.c_str();
-        lctx.cur = i;
-        lctx.total = total_bodies;
-        lctx.overall = 0.25f + 0.55f * ((float)i / total_bodies);
+        lctx.phase="LOADING MODELS"; lctx.detail=req.def.name.c_str();
+        lctx.cur=i; lctx.total=total_bodies;
+        lctx.overall=0.25f+0.40f*((float)i/total_bodies);
         DrawLoadingFrame(lctx);
 
         PreloadMesh(&req.def);
-
-        auto id = world.SpawnBody(req.def,
-                                  req.position.data(),
-                                  req.orientation.data());
+        auto id = world.SpawnBody(req.def, req.position.data(), req.orientation.data());
         if (id.IsInvalid())
-        {
             LOG_WARN("main: body '%s' failed to spawn", req.def.name.c_str());
+    }
+
+    // ── 6. Spawn robots + build mechanisms ───────────────────────────────
+    // Store robot defs here so pointers remain valid for the sim lifetime
+    std::vector<BodyDef>                          robot_defs;
+    std::vector<std::unique_ptr<MechanismSystem>> all_mechanisms;
+    std::vector<int>                              robot_motor_counts;
+
+    robot_defs.reserve(args.robots.size());
+
+    for (int ri = 0; ri < (int)args.robots.size(); ++ri)
+    {
+        auto &ra = args.robots[ri];
+
+        lctx.phase="LOADING ROBOT";
+        lctx.detail=ra.def_path.c_str();
+        lctx.cur=(int)scene.bodies.size()+ri;
+        lctx.total=total_bodies;
+        lctx.overall=0.25f+0.40f*((float)lctx.cur/total_bodies);
+        DrawLoadingFrame(lctx);
+
+        auto maybe = LoadBodyDef(ra.def_path, motors);
+        if (!maybe) {
+            LOG_ERROR("main: failed to load robot def: %s", ra.def_path.c_str());
+            robot_motor_counts.push_back(0);
+            all_mechanisms.push_back(nullptr);
+            continue;
+        }
+        robot_defs.push_back(std::move(*maybe));
+        BodyDef &def = robot_defs.back();
+
+        // Spawn position from scene robot_spawns[ri], fallback if not defined
+        float pos[3] = {0.f, 0.051f, (float)ri * 1.5f};
+        float rot[4] = {0.f, 0.f, 0.f, 1.f};
+        if (ri < (int)scene.robot_spawns.size()) {
+            auto &rs = scene.robot_spawns[ri];
+            pos[0]=rs.position[0]; pos[1]=rs.position[1]; pos[2]=rs.position[2];
+            rot[0]=rs.orientation[0]; rot[1]=rs.orientation[1];
+            rot[2]=rs.orientation[2]; rot[3]=rs.orientation[3];
+        }
+
+        PreloadMesh(&def);
+        auto id = world.SpawnBody(def, pos, rot);
+        if (id.IsInvalid()) {
+            LOG_ERROR("main: robot[%d] '%s' failed to spawn", ri, def.name.c_str());
+            robot_motor_counts.push_back(0);
+            all_mechanisms.push_back(nullptr);
             continue;
         }
 
-        int spawned_idx = world.BodyCount() - 1;
-        if (req.role == "robot")
+        int body_idx = world.BodyCount() - 1;
+        world.AddRobotIndex(body_idx);
+        robot_motor_counts.push_back((int)def.motors.size());
+        LOG_INFO("main: robot[%d] '%s' body_idx=%d motors=%d",
+                 ri, def.name.c_str(), body_idx, (int)def.motors.size());
+
+        // Mechanisms — from scene robot_spawns[ri] if defined
+        if (ri < (int)scene.robot_spawns.size() && scene.robot_spawns[ri].has_mechanisms)
         {
-            world.SetRobotIndex(spawned_idx);
-            robot_motor_count = (int)req.def.motors.size();
-            LOG_INFO("main: robot body at index %d (%d motors)",
-                     spawned_idx, robot_motor_count);
+            auto &rs = scene.robot_spawns[ri];
+            all_mechanisms.push_back(std::make_unique<MechanismSystem>(
+                world, rs.intake, rs.shooter, body_idx));
+            LOG_INFO("main: robot[%d] mechanisms created  intake_cap=%d",
+                     ri, rs.intake.max_capacity);
+        }
+        else
+        {
+            all_mechanisms.push_back(nullptr);
+            LOG_INFO("main: robot[%d] no mechanisms", ri);
         }
     }
 
-    // Show completion of model loading
-    lctx.cur = total_bodies;
-    lctx.overall = 0.80f;
+    lctx.cur=total_bodies; lctx.overall=0.80f;
     DrawLoadingFrame(lctx);
 
-    // ── 6. Mechanism system ───────────────────────────────────────────────
-    lctx.phase = "BUILDING MECHANISMS";
-    lctx.detail = scene.has_intake ? "intake + shooter" : "none";
-    lctx.cur = 0;
-    lctx.total = 0;
-    lctx.overall = 0.85f;
+    // ── 7. Sim loop ───────────────────────────────────────────────────────
+    lctx.phase="STARTING SIMULATION"; lctx.detail="physics thread"; lctx.overall=0.88f;
     DrawLoadingFrame(lctx);
 
-    std::unique_ptr<MechanismSystem> mechanisms;
-    if (scene.has_intake)
-    {
-        mechanisms = std::make_unique<MechanismSystem>(
-            world, scene.intake, scene.shooter);
-        LOG_INFO("main: MechanismSystem created  intake_cap=%d",
-                 scene.intake.max_capacity);
-    }
-    else
-    {
-        LOG_INFO("main: no intake/shooter defined in scene");
-    }
-
-    // ── 7. Sim loop + NT ──────────────────────────────────────────────────
-    lctx.phase = "STARTING SIMULATION";
-    lctx.detail = "physics thread + NT4 client";
-    lctx.cur = 0;
-    lctx.total = 0;
-    lctx.overall = 0.92f;
-    DrawLoadingFrame(lctx);
+    std::vector<MechanismSystem*> mech_ptrs;
+    for (auto &m : all_mechanisms) mech_ptrs.push_back(m.get());
 
     ForceApplicator forces(world, motors, world.GetContactListener());
-    SimLoop sim(world, &forces, mechanisms.get(), args.dt, args.speed);
-    renderer.SetWallTimeOffset(logger::elapsed());
+    SimLoop sim(world, &forces, std::move(mech_ptrs), args.dt, args.speed);
+
     sim.Start();
 
-    // ── 8. NT client ──────────────────────────────────────────────────────
-    lctx.phase = "CONNECTING NT4";
-    char nt_addr[64];
-    snprintf(nt_addr, sizeof(nt_addr), "%s:%d", args.nt_host.c_str(), args.nt_port);
-    lctx.detail = nt_addr;
-    lctx.cur = 0;
-    lctx.total = 0;
-    lctx.overall = 0.97f;
+    // ── 8. NT clients — one per robot ─────────────────────────────────────
+    std::vector<std::unique_ptr<NTClient>> nt_clients;
+    const auto &robot_indices = world.GetRobotIndices();
+
+    int spawn_slot = 0;
+    for (int ri = 0; ri < (int)args.robots.size(); ++ri)
+    {
+        if (robot_motor_counts[ri] == 0) continue;  // failed spawn, no NT client
+        if (spawn_slot >= (int)robot_indices.size()) break;
+
+        auto &ra = args.robots[ri];
+        lctx.phase="CONNECTING NT4";
+        char addr[64]; snprintf(addr,sizeof(addr),"%s:%d [robot %d]",
+                                ra.nt_host.c_str(), ra.nt_port, ri);
+        lctx.detail=addr; lctx.overall=0.90f+0.08f*(float)ri/args.robots.size();
+        DrawLoadingFrame(lctx);
+
+        auto client = std::make_unique<NTClient>();
+        client->Init(ra.nt_host, ra.nt_port, world,
+                     robot_motor_counts[ri],
+                     robot_indices[spawn_slot],      // ← spawn_slot
+                     all_mechanisms[ri].get());
+        ++spawn_slot;
+        nt_clients.push_back(std::move(client));
+        LOG_INFO("main: NT client[%d] → %s:%d", ri, ra.nt_host.c_str(), ra.nt_port);
+    }
+
+    lctx.phase="READY"; lctx.detail=""; lctx.cur=1; lctx.total=1; lctx.overall=1.0f;
     DrawLoadingFrame(lctx);
 
-    NTClient nt;
-    if (robot_motor_count > 0)
-    {
-        nt.Init(args.nt_host, args.nt_port, world, robot_motor_count,
-                mechanisms.get());
-    }
-    else
-    {
-        LOG_WARN("main: no robot body found — NT client not started");
-    }
 
-    // Final frame — complete
-    lctx.phase = "READY";
-    lctx.detail = "";
-    lctx.cur = 1;
-    lctx.total = 1;
-    lctx.overall = 1.0f;
-    DrawLoadingFrame(lctx);
-
+    renderer.SetWallTimeOffset(logger::elapsed());
+ 
     // ── 9. Main loop ──────────────────────────────────────────────────────
     while (!renderer.ShouldClose())
     {
         WorldSnapshot snapshot = sim.GetSnapshot();
 
-        if (mechanisms)
-        {
-            snapshot.intake_held = mechanisms->HeldCount();
-            snapshot.intake_max_capacity = scene.intake.max_capacity;
+        float frame_dt    = GetFrameTime();
+        bool  any_connected = false;
+        float best_ping   = -1.0f;
+
+        for (auto &nt : nt_clients) {
+            nt->Tick(snapshot, frame_dt);
+            if (nt->IsConnected()) {
+                any_connected = true;
+                float p = nt->Ping();
+                if (p >= 0) best_ping = p;
+            }
         }
 
-        nt.Tick(snapshot, GetFrameTime()); //not physics dt
-        renderer.DrawFrame(snapshot, nt.IsConnected(),
-                           sim.MeasuredHz(), sim.TargetHz(), nt.Ping());
+        renderer.DrawFrame(snapshot, any_connected,
+                           sim.MeasuredHz(), sim.TargetHz(), best_ping);
     }
 
     // ── 10. Shutdown ──────────────────────────────────────────────────────
     sim.Stop();
-    nt.Shutdown();
+    for (auto &nt : nt_clients) nt->Shutdown();
     renderer.Shutdown();
-
     LOG_INFO("main: clean exit");
     return 0;
 }

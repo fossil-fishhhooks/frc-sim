@@ -57,15 +57,17 @@ NTClient::~NTClient() { Shutdown(); }
 
 void NTClient::Init(const std::string &host, int port,
                     SimWorld &world, int robot_motor_count,
+                    int robot_body_index,
                     MechanismSystem *mechanisms)
 {
+    m_robot_slot = (int)world.GetRobotIndices().size() - 1;
     m_world             = &world;
     m_mechanisms        = mechanisms;
     m_robot_motor_count = robot_motor_count;
     m_impl              = new Impl();
 
     auto &inst = m_impl->inst;
-    inst = nt::NetworkTableInstance::GetDefault();
+    inst = nt::NetworkTableInstance::Create();
     inst.StartClient4("FRC Simulation 3D");
     inst.SetServer(host.c_str(), port);
 
@@ -132,6 +134,7 @@ void NTClient::Shutdown()
     m_impl->inst.StopClient();
     if (m_impl->time_sync_listener)
         m_impl->inst.RemoveListener(m_impl->time_sync_listener);
+    nt::NetworkTableInstance::Destroy(m_impl->inst); 
     delete m_impl;
     m_impl = nullptr;
     LOG_INFO("NTClient: shutdown");
@@ -157,8 +160,10 @@ void NTClient::Tick(const WorldSnapshot &snapshot, float dt)
         !m_impl->inst.GetConnections().empty()
     );
 
-    int robot_idx = m_world->RobotIndex();
-    if (robot_idx < 0) return;
+    const auto &ri_vec = m_world->GetRobotIndices();
+    if (m_robot_slot < 0 || m_robot_slot >= (int)ri_vec.size()) return;
+    int robot_idx = ri_vec[m_robot_slot];
+    if (robot_idx < 0 || robot_idx >= m_world->BodyCount()) return;
 
     // ── Read voltages → SimWorld ──────────────────────────────────────────
     for (int i = 0; i < m_robot_motor_count; ++i)
@@ -171,11 +176,11 @@ void NTClient::Tick(const WorldSnapshot &snapshot, float dt)
     }
 
     // ── Publish motor state from snapshot ────────────────────────────────
-    if (snapshot.robot_index < 0 ||
-        snapshot.robot_index >= (int)snapshot.bodies.size()) goto mechanisms;
+    if (robot_idx < 0 ||
+        robot_idx >= (int)snapshot.bodies.size()) return;
 
     {
-        const auto &robot = snapshot.bodies[snapshot.robot_index];
+        const auto &robot = snapshot.bodies[robot_idx];
         for (int i = 0;
              i < (int)robot.motors.size() && i < m_robot_motor_count; ++i)
         {
@@ -189,10 +194,10 @@ void NTClient::Tick(const WorldSnapshot &snapshot, float dt)
         }
     }
     // ── Publish robot pose ────────────────────────────────────────────────
-    if (snapshot.robot_index >= 0 &&
-        snapshot.robot_index < (int)snapshot.bodies.size())
+    if (robot_idx >= 0 &&
+        robot_idx < (int)snapshot.bodies.size())
     {
-        const BodySnapshot &robot = snapshot.bodies[snapshot.robot_index];
+        const BodySnapshot &robot = snapshot.bodies[robot_idx];
 
         m_impl->pose_x_pub.Set(robot.pos[0]);
         m_impl->pose_y_pub.Set(robot.pos[1]);
@@ -203,13 +208,12 @@ void NTClient::Tick(const WorldSnapshot &snapshot, float dt)
         m_impl->pose_qw_pub.Set(robot.rot[3]);
     }
 
-mechanisms:
     if (!m_mechanisms) return;
 
     // ── Publish intake state ──────────────────────────────────────────────
     m_impl->intake_held_pub.Set(m_mechanisms->HeldCount());
     // capacity is constant; republish every tick (cheap, and NT deduplicates)
-    m_impl->intake_capacity_pub.Set(snapshot.intake_max_capacity);
+    m_impl->intake_capacity_pub.Set(m_mechanisms->IntakeCapacity());
 
     // ── Read shooter commands ─────────────────────────────────────────────
     bool fire_now = m_impl->fire_sub.Get();

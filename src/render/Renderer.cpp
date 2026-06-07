@@ -300,44 +300,47 @@ void Renderer::DrawLightGizmos()
 
 void Renderer::DrawForceVectors(const WorldSnapshot &snapshot)
 {
-    if (snapshot.robot_index < 0 || snapshot.robot_index >= (int)snapshot.bodies.size())
-        return;
-    const BodySnapshot &robot = snapshot.bodies[snapshot.robot_index];
-    if (robot.motors.empty())
-        return;
-
-    Vector3 robot_pos = {robot.pos[0], robot.pos[1], robot.pos[2]};
-    Quaternion robot_rot = {robot.rot[0], robot.rot[1], robot.rot[2], robot.rot[3]};
-
-    for (int i = 0; i < (int)robot.motors.size(); ++i)
+    for (int ri = 0; ri < (int)snapshot.robot_indices.size(); ++ri)
     {
-        const MotorSnapshot &motor = robot.motors[i];
-        Vector3 local_pos = {motor.position[0], motor.position[1], motor.position[2]};
-        Vector3 world_pos = Vector3Add(robot_pos, Vector3RotateByQuaternion(local_pos, robot_rot));
+        int robot_index = snapshot.robot_indices[ri];
+        if (robot_index < 0 || robot_index >= (int)snapshot.bodies.size())
+            continue;
+        const BodySnapshot &robot = snapshot.bodies[robot_index];
+        if (robot.motors.empty())
+            continue;
 
-        if (motor.normal_force > 0.5f)
-        {
-            float len = motor.normal_force * 0.01f;
-            Vector3 tip = Vector3Add(world_pos, {0, len, 0});
-            DrawArrow3D(world_pos, tip, motor.normal_force > 10000.0f ? ORANGE : GREEN, 20.0f);
-        }
+        Vector3 robot_pos = {robot.pos[0], robot.pos[1], robot.pos[2]};
+        Quaternion robot_rot = {robot.rot[0], robot.rot[1], robot.rot[2], robot.rot[3]};
 
-        if (std::abs(motor.tractive_force) > 0.1f)
+        for (int i = 0; i < (int)robot.motors.size(); ++i)
         {
-            float len = std::abs(motor.tractive_force) * 0.001f;
-            Vector3 local_dir = {motor.direction[0], motor.direction[1], motor.direction[2]};
-            if (motor.tractive_force < 0)
-                local_dir = Vector3Negate(local_dir);
-            Vector3 world_dir = Vector3RotateByQuaternion(local_dir, robot_rot);
-            Vector3 tip = Vector3Add(world_pos, Vector3Scale(world_dir, len));
-            Color col = std::abs(motor.tractive_force) > 1000.0f ? ORANGE
-                        : motor.slipping                         ? RED
-                                                                 : BLUE;
-            DrawArrow3D(world_pos, tip, col, 0.02f);
+            const MotorSnapshot &motor = robot.motors[i];
+            Vector3 local_pos = {motor.position[0], motor.position[1], motor.position[2]};
+            Vector3 world_pos = Vector3Add(robot_pos, Vector3RotateByQuaternion(local_pos, robot_rot));
+
+            if (motor.normal_force > 0.5f)
+            {
+                float len = motor.normal_force * 0.01f;
+                Vector3 tip = Vector3Add(world_pos, {0, len, 0});
+                DrawArrow3D(world_pos, tip, motor.normal_force > 10000.0f ? ORANGE : GREEN, 20.0f);
+            }
+
+            if (std::abs(motor.tractive_force) > 0.1f)
+            {
+                float len = std::abs(motor.tractive_force) * 0.001f;
+                Vector3 local_dir = {motor.direction[0], motor.direction[1], motor.direction[2]};
+                if (motor.tractive_force < 0)
+                    local_dir = Vector3Negate(local_dir);
+                Vector3 world_dir = Vector3RotateByQuaternion(local_dir, robot_rot);
+                Vector3 tip = Vector3Add(world_pos, Vector3Scale(world_dir, len));
+                Color col = std::abs(motor.tractive_force) > 1000.0f ? ORANGE
+                            : motor.slipping                          ? RED
+                                                                      : BLUE;
+                DrawArrow3D(world_pos, tip, col, 0.02f);
+            }
         }
     }
 }
-
 void Renderer::DrawArrow3D(Vector3 start, Vector3 end, Color color, float thickness)
 {
     DrawLine3D(start, end, color);

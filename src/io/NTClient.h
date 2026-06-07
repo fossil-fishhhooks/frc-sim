@@ -5,36 +5,18 @@
 #include <atomic>
 #include <chrono>
 
-// Forward-declare ntcore types
 namespace nt { class NetworkTableInstance; }
+class MechanismSystem;
 
-class MechanismSystem;   // optional — nullptr = no mechanisms
-
-
-// NTClient — NetworkTables 4 IO.
+// NTClient — one instance per robot, each connecting to that robot's NT4 server.
 //
-// Drivetrain:
-//   Subscribes:  /sim/motors/{i}/voltage      → SimWorld::SetMotorVoltage()
-//   Publishes:   /sim/motors/{i}/omega        (rad/s)
-//                /sim/motors/{i}/position     (local xyz, float[3])
-//                /sim/motors/{i}/direction    (local xyz, float[3])
+// Subscribes:  /sim/motors/{i}/voltage
+//              /sim/motors/{i}/steer_angle
+//              /sim/shooter/fire, /sim/shooter/speed, /sim/shooter/direction
 //
-// Intake:
-//   Publishes:   /sim/intake/held             (int)
-//                /sim/intake/capacity         (int, constant after Init)
-//
-// Shooter:
-//   Subscribes:  /sim/shooter/fire            (bool, rising edge = fire)
-//                /sim/shooter/speed           (float, m/s)
-//                /sim/shooter/direction       (float[3], robot-local unit vec)
-// Pose:
-//   Publishes:   /sim/robot/x         (float, metres)
-//                /sim/robot/y         (float, metres)
-//                /sim/robot/z         (float, metres)
-//                /sim/robot/qx        (float, quaternion)
-//                /sim/robot/qy        (float)
-//                /sim/robot/qz        (float)
-//                /sim/robot/qw        (float)
+// Publishes:   /sim/motors/{i}/omega, position, direction
+//              /sim/intake/held, /sim/intake/capacity
+//              /sim/robot/x, y, z, qx, qy, qz, qw, yaw
 
 class NTClient
 {
@@ -42,32 +24,34 @@ public:
     NTClient();
     ~NTClient();
 
-    // Connect to NT4 server.
-    // mechanisms may be nullptr if the scene has no intake/shooter.
+    // robot_body_index: index of this robot's body in SimWorld::m_bodies
     void Init(const std::string &host, int port,
-              SimWorld &world, int robot_motor_count,
+              SimWorld &world,
+              int robot_motor_count,
+              int robot_body_index,
               MechanismSystem *mechanisms = nullptr);
 
     void Shutdown();
 
-    // Call once per render frame (~60 Hz).
+    // Call once per render frame
     void Tick(const WorldSnapshot &snapshot, float dt);
 
-    bool IsConnected() const { return m_connected.load(); }
-
-    float Ping() const;
+    bool  IsConnected() const { return m_connected.load(); }
+    float Ping()        const;
 
 private:
     struct Impl;
     Impl *m_impl = nullptr;
 
-    SimWorld         *m_world             = nullptr;
-    MechanismSystem  *m_mechanisms        = nullptr;
-    int               m_robot_motor_count = 0;
-    std::atomic<bool> m_connected         { false };
+    SimWorld        *m_world             = nullptr;
+    MechanismSystem *m_mechanisms        = nullptr;
+    int              m_robot_motor_count = 0;
 
-    // Edge-detection for /sim/shooter/fire
-    bool m_last_fire_val = false;
-    float m_fire_cooldown = 0.0f; // seconds remaining until next shot allowed
-    float m_fire_rate = 2.0f;     // copied from ShooterDef at Init
+    int m_robot_slot = 0;
+
+    std::atomic<bool> m_connected{false};
+
+    bool  m_last_fire_val = false;
+    float m_fire_cooldown = 0.0f;
+    float m_fire_rate     = 2.0f;
 };

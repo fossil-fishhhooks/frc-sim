@@ -7,13 +7,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 struct MotorSnapshot
 {
-    float omega = 0.f;          // shaft speed (rad/s)
-    float normal_force = 0.f;   // N
-    float tractive_force = 0.f; // N (signed)
-    bool slipping = false;
+    float omega          = 0.f;
+    float normal_force   = 0.f;
+    float tractive_force = 0.f;
+    bool  slipping       = false;
 
-    float position[3] = {};  // local attachment point (m)
-    float direction[3] = {}; // local drive direction (unit vec)
+    float position[3]  = {};
+    float direction[3] = {};
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -21,26 +21,35 @@ struct MotorSnapshot
 // ─────────────────────────────────────────────────────────────────────────────
 struct BodySnapshot
 {
-    float pos[3] = {}; // world position
-    float rot[4] = {}; // world rotation (xyzw quaternion)
+    float pos[3] = {};
+    float rot[4] = {};
 
-    const BodyDef *def = nullptr; // pointer into scene data — never freed here
+    const BodyDef *def = nullptr;
 
     std::vector<MotorSnapshot> motors;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Full world snapshot (lock-free copy taken by SimLoop at ~render rate)
+// Per-robot mechanism state — one entry per robot slot
+// ─────────────────────────────────────────────────────────────────────────────
+struct RobotMechSnapshot
+{
+    int  intake_held         = 0;
+    int  intake_max_capacity = 0;
+    bool shooter_armed       = false;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Full world snapshot
 // ─────────────────────────────────────────────────────────────────────────────
 struct WorldSnapshot
 {
     float sim_time = 0.f;
-    int robot_index = -1;
 
     std::vector<BodySnapshot> bodies;
 
-    // ── Mechanism state ───────────────────────────────────────────────────
-    int intake_held = 0;         // pieces currently held
-    int intake_max_capacity = 0; // max pieces (from scene def; 0 = no intake)
-    bool shooter_armed = false;  // true while m_fire_pending is set
+    // robot_indices[i] = body index of robot i in bodies[]
+    // robot_mech[i]    = mechanism state for robot i
+    std::vector<int>               robot_indices;
+    std::vector<RobotMechSnapshot> robot_mech;
 };

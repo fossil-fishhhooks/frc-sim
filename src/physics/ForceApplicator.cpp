@@ -212,11 +212,13 @@ void ForceApplicator::Apply(float dt)
             }
 
             static int tick_count = 0;
-            if (body_idx == m_world.RobotIndex() && ++tick_count % 499 == 0)
+            bool is_any_robot = false;
+            for (int ri : m_world.GetRobotIndices()) if (body_idx == ri) { is_any_robot = true; break; }
+            if (is_any_robot && ++tick_count % 499 == 0)
             {
-                LOG_INFO("Motor %d: T=%.2fNm  F=%.1fN  N=%.1fN  "
+                LOG_INFO("Body[%d] Motor %d: T=%.2fNm  F=%.1fN  N=%.1fN  "
                          "omega=%.1f rad/s  V=%.2f  slip=%d",
-                         m, motor_torque, force_mag, normal_per_wheel,
+                         body_idx, m, motor_torque, force_mag, normal_per_wheel,
                          omega_shaft, voltage, (int)slipping);
             }
         }
