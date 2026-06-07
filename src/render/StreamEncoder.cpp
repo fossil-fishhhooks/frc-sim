@@ -79,7 +79,7 @@ snprintf(cmd, sizeof(cmd),
     " -f rawvideo -pix_fmt rgba -s %dx%d -r %d -i pipe:0"
     " %s"                          // empty for nvenc, "-vf format=yuv420p" for others
     " -c:v %s %s"
-    " -g %d"
+    " -g 5"
     " -f mpegts -mpegts_flags resend_headers"
 #ifdef _WIN32
     " udp://%s:%d",
@@ -89,7 +89,7 @@ snprintf(cmd, sizeof(cmd),
     width, height, fps,
     vf_buf,
     encoder, enc_opts,
-    fps,
+
     host.c_str(), port);
 
 

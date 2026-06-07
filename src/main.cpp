@@ -282,6 +282,7 @@ int main(int argc, char *argv[])
 
     // ── 1. Renderer ───────────────────────────────────────────────────────
     Renderer renderer;
+    SetTraceLogLevel(LOG_WARNING);
     renderer.Init(args.width, args.height, "FRC Sim 3D", args.target_fps);
     renderer.SetWireframe(args.wireframe);
 
