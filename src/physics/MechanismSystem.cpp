@@ -27,7 +27,9 @@ MechanismSystem::MechanismSystem(SimWorld &world,
                                  int robot_body_index)
     : m_world(world), m_intake(intake), m_shooter(shooter)
 {
-    m_robot_slot = (int)world.GetRobotIndices().size() - 1;
+    const auto &ri = world.GetRobotIndices();
+    for (int i = 0; i < (int)ri.size(); ++i)
+        if (ri[i] == robot_body_index) { m_robot_slot = i; break; }
     LOG_INFO("MechanismSystem: bound to body_idx=%d  intake_cap=%d",
              robot_body_index, intake.max_capacity);
 }
