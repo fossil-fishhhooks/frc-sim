@@ -84,23 +84,37 @@ class VideoThread(threading.Thread):
         self.running = True
 
     def run(self):
-        cap = cv2.VideoCapture(self.url, cv2.CAP_FFMPEG)
-        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        cap = self._open()
+        frame_bytes = None
+
         while self.running:
             ok, frame = cap.read()
             if not ok:
-                time.sleep(0.15)
+                time.sleep(0.1)
                 cap.release()
-                cap = cv2.VideoCapture(self.url, cv2.CAP_FFMPEG)
-                cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                cap = self._open()
+                frame_bytes = None
                 continue
+
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            # keep only the latest frame
+
+            # Always discard stale frames — only keep the absolute latest
             while not self.frame_q.empty():
                 try: self.frame_q.get_nowait()
                 except queue.Empty: break
             self.frame_q.put(frame)
+
         cap.release()
+
+    def _open(self):
+        cap = cv2.VideoCapture(self.url, cv2.CAP_FFMPEG)
+        # Minimize opencv's internal decode buffer — 1 = smallest allowed
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        # Tell ffmpeg backend to not buffer (passed through CAP_FFMPEG)
+        cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 2000)
+        # Disable any frame dropping compensation
+        cap.set(cv2.CAP_PROP_FPS, 0)
+        return cap
 
     def stop(self):
         self.running = False
@@ -215,7 +229,7 @@ class Dashboard:
         self.photo      = None
         self.ctrl       = ControlThread(self.state)
 
-        root.title("FRC Sim — Multiplayer Dashboard")
+        root.title("FRC SIM 3D by Arin J — Multiplayer Dashboard")
         root.configure(bg=BG)
         root.minsize(960, 580)
 
@@ -328,7 +342,7 @@ class Dashboard:
         divider(f)
 
         # Fire indicator
-        self.fire_lbl = tk.Label(f, text="■  FIRE  ■", bg=PANEL, fg=BORDER,
+        self.fire_lbl = tk.Label(f, text="■  SHOOT  ■", bg=PANEL, fg=BORDER,
                                  font=(MONO, 18, "bold"))
         self.fire_lbl.pack(pady=8)
 
@@ -397,8 +411,15 @@ class Dashboard:
 
     def _tick_video(self):
         if HAS_VIDEO:
-            try:
-                frame = self.frame_q.get_nowait()
+            frame = None
+            # Drain entire queue, keep only last
+            while True:
+                try:
+                    frame = self.frame_q.get_nowait()
+                except queue.Empty:
+                    break
+
+            if frame is not None:
                 cw = self.canvas.winfo_width()
                 ch = self.canvas.winfo_height()
                 if cw > 1 and ch > 1:
@@ -410,8 +431,7 @@ class Dashboard:
                     self.canvas.delete("all")
                     self.canvas.create_image(cw//2, ch//2, image=self.photo, anchor="center")
                     self.stream_lbl.config(text="● LIVE", fg=GREEN)
-            except queue.Empty:
-                pass
+
         self.root.after(16, self._tick_video)
 
     # ── Status ────────────────────────────────────────────────────────────
