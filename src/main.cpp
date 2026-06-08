@@ -61,7 +61,7 @@ static void PrintUsage(const char *argv0)
                                        "  --w      <width>             Window width        (default: 1280)\n"
                                        "  --h      <height>            Window height       (default: 720)\n"
                                        "  --wireframe                  Enable wireframe overlay\n"
-                                       "  --stream <host:port>         Stream H.264 over UDP (default: 127.0.0.1:5000)\n"
+                                       "  --stream <port>         Stream H.264 over UDP (default: 127.0.0.1:5000)\n"
                                        "  --stream-fps <fps>           Stream frame rate     (default: 30)\n"       
                                        "\n";
 }
@@ -107,16 +107,8 @@ static Args ParseArgs(int argc, char *argv[])
         else if (!strcmp(argv[i], "--stream"))
         {
             args.stream = true;
-            if (i + 1 < argc && argv[i+1][0] != '-')
-            {
-                std::string s = argv[++i];
-                auto colon = s.rfind(':');
-                if (colon != std::string::npos) {
-                    args.stream_host = s.substr(0, colon);
-                    args.stream_port = std::stoi(s.substr(colon + 1));
-                } else {
-                    args.stream_host = s;
-                }
+            if(i+1 <argc){
+                args.stream_port = std::stoi(argv[++i]);
             }
         }
         else if (!strcmp(argv[i], "--stream-fps") && i + 1 < argc)
@@ -300,7 +292,7 @@ int main(int argc, char *argv[])
     if (args.stream)
         lctx.phase="SETTING STREAM"; lctx.detail="Starting stream..."; lctx.overall=0.02f;
         DrawLoadingFrame(lctx);
-        renderer.EnableStreaming(args.stream_host, args.stream_port, args.stream_fps);
+        renderer.EnableStreaming(args.stream_port, args.stream_fps);
     
 
     // ── 2. Motor registry ─────────────────────────────────────────────────

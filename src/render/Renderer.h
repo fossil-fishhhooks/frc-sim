@@ -30,7 +30,7 @@ public:
 
     void SetWallTimeOffset(float ms) { m_wall_time_offset_ms = ms; }
 
-    void EnableStreaming(const std::string &host, int port, int fps);
+    void EnableStreaming(int port, int fps);
 
 private:
     Camera3D m_camera{};

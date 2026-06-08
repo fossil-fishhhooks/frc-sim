@@ -135,6 +135,8 @@ class ControlThread(threading.Thread):
         prev_minus  = False
         key_age     = {}
 
+        pose_sub = inst.getFloatTopic("/sim/robot/x").subscribe(0.0)
+
         while self.running:
             t0 = time.monotonic()
 
@@ -180,8 +182,7 @@ class ControlThread(threading.Thread):
                 'tilt_deg': math.degrees(shoot_tilt),
                 'pan_deg':  math.degrees(shoot_pan),
                 'firing':    firing,
-                'connected': any(c.remote_ip not in ('127.0.0.1', '::1', '')
-                 for c in inst.getConnections()),
+                'connected': pose_sub.getAtomic().time > 0,
                 'held':      sorted(k for k, v in key_age.items() if v <= KEY_DECAY),
             })
 
@@ -280,7 +281,7 @@ class Dashboard:
 
         url_row = tk.Frame(f, bg=PANEL)
         url_row.pack(fill="x", padx=10, pady=(0,6))
-        label(url_row, "udp://", fg=DIM, size=10).pack(side="left")
+        label(url_row, "http://", fg=DIM, size=10).pack(side="left")
 
         self.ip_var   = tk.StringVar(value="127.0.0.1")
         self.port_var = tk.StringVar(value="5000")
@@ -301,7 +302,7 @@ class Dashboard:
         self.canvas = tk.Canvas(f, bg="#000", bd=0, highlightthickness=0)
         self.canvas.pack(fill="both", expand=True, padx=10, pady=(0,10))
         self._placeholder = self.canvas.create_text(
-            320, 180, text="No stream\nConnect a udp:// source above",
+            320, 180, text="No stream\nConnect a http:// source above",
             fill=DIM, font=(MONO, 11), justify="center")
 
     def _build_controls(self, parent):
@@ -386,6 +387,9 @@ class Dashboard:
         return None
 
     def _kp(self, event):
+        # Don't steal keys from Entry widgets
+        if isinstance(event.widget, tk.Entry):
+            return
         k = self._resolve(event)
         if k:
             self._held_gui.add(k)
@@ -393,18 +397,21 @@ class Dashboard:
             fresh.add(k)
 
     def _kr(self, event):
+        if isinstance(event.widget, tk.Entry):
+            return
         k = self._resolve(event)
         if k:
             self._held_gui.discard(k)
 
     # ── Video ─────────────────────────────────────────────────────────────
     def _connect(self):
+        self.root.focus_set()
         if not HAS_VIDEO:
             self.stream_lbl.config(text="NEED opencv-python pillow", fg=RED)
             return
         if self.vid_thread:
             self.vid_thread.stop()
-        url = f"udp://{self.ip_var.get().strip()}:{self.port_var.get().strip()}"
+        url = f"http://{self.ip_var.get().strip()}:{self.port_var.get().strip()}"
         self.stream_lbl.config(text="CONNECTING…", fg=DIM)
         self.frame_q   = queue.Queue(maxsize=2)
         self.vid_thread = VideoThread(url, self.frame_q)

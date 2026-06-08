@@ -321,11 +321,11 @@ if (m_stream.IsRunning())
 }
 }
 
-void Renderer::EnableStreaming(const std::string &host, int port, int fps)
+void Renderer::EnableStreaming(int port, int fps)
 {
     m_stream_fps  = fps;
     m_stream_rt   = LoadRenderTexture(GetScreenWidth(), GetScreenHeight());
-    m_stream.Init(host, port, GetScreenWidth(), GetScreenHeight(), fps);
+    m_stream.Init(port, GetScreenWidth(), GetScreenHeight(), fps);
 }
 
 // ── Light gizmos ──────────────────────────────────────────────────────────────
