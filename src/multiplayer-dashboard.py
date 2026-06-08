@@ -180,7 +180,8 @@ class ControlThread(threading.Thread):
                 'tilt_deg': math.degrees(shoot_tilt),
                 'pan_deg':  math.degrees(shoot_pan),
                 'firing':    firing,
-                'connected': len(inst.getConnections()) > 0,
+                'connected': any(c.remote_ip not in ('127.0.0.1', '::1', '')
+                 for c in inst.getConnections()),
                 'held':      sorted(k for k, v in key_age.items() if v <= KEY_DECAY),
             })
 

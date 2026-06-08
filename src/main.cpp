@@ -443,7 +443,7 @@ int main(int argc, char *argv[])
         auto client = std::make_unique<NTClient>();
         client->Init(ra.nt_host, ra.nt_port, world,
                      robot_motor_counts[ri],
-                     robot_indices[spawn_slot],      // ← spawn_slot
+                     ri,      // ← spawn_slot
                      all_mechanisms[ri].get());
         ++spawn_slot;
         nt_clients.push_back(std::move(client));
