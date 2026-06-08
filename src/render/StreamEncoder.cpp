@@ -14,18 +14,15 @@
 
 // ── Platform shims ────────────────────────────────────────────────────────────
 #ifdef _WIN32
-#  include <winsock2.h>
-#  include <ws2tcpip.h>
+// StreamEncoder.h already pulled in winsock2.h via the _WINSOCKAPI_ guard;
+// these are the remaining Windows headers we need here.
 #  include <windows.h>
 #  include <io.h>
 #  include <fcntl.h>
 #  pragma comment(lib, "ws2_32.lib")
-   using sock_t   = SOCKET;
    using ssize_t  = int;
-#  define BAD_SOCK    INVALID_SOCKET
 #  define sock_close  closesocket
 // Windows has no MSG_NOSIGNAL; send() doesn't raise signals anyway.
-// Broken-pipe is detected via return value only.
 #  define MSG_NOSIGNAL 0
 #else
 #  include <unistd.h>

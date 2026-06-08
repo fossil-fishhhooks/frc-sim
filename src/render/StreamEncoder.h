@@ -4,13 +4,17 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+#include <string>
+
 
 #ifdef _WIN32
-#  include <winsock2.h>
+#  ifndef _WINSOCKAPI_   // guard: winsock2.h defines this
+#    include <winsock2.h>
+#  endif
    using sock_t = SOCKET;
 #  define BAD_SOCK INVALID_SOCKET
 #else
-#  include <sys/types.h>   // pid_t
+#  include <sys/types.h>
    using sock_t = int;
 #  define BAD_SOCK (-1)
 #endif
@@ -25,9 +29,8 @@ public:
     bool IsRunning() const { return m_running && m_pipe; }
 
 private:
-    // ffmpeg process I/O
-    FILE   *m_pipe    = nullptr;     // write → ffmpeg stdin
-    int     m_read_fd = -1;          // read  ← ffmpeg stdout (raw CRT fd)
+    FILE   *m_pipe    = nullptr;
+    int     m_read_fd = -1;
 
 #ifdef _WIN32
     bool    m_wsa_initialized = false;
@@ -35,12 +38,10 @@ private:
     pid_t   m_child_pid = -1;
 #endif
 
-    // HTTP fanout server
     sock_t               m_server_fd = BAD_SOCK;
     std::mutex           m_clients_mtx;
     std::vector<sock_t>  m_clients;
 
-    // Background threads
     std::thread       m_read_thread;
     std::thread       m_accept_thread;
     std::atomic<bool> m_running{false};
