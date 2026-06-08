@@ -1,9 +1,9 @@
 #pragma once
-#include "render/win_raylib_compat.h"  // must precede raylib.h on Windows
 #include "core/Snapshot.h"
 #include "render/StreamEncoder.h"
 #include <raylib.h>
 #include <rlgl.h>
+
 struct LightUniform
 {
     int enabled;

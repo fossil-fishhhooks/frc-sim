@@ -121,6 +121,26 @@ if(MSVC)
         /DEFAULTLIB:libcpmt.lib
         /DEFAULTLIB:libucrt.lib
     )
+
+    # ── raylib / Windows SDK name collision fix ───────────────────────────────
+    # wingdi.h declares Rectangle() as a C function; winuser.h declares
+    # CloseWindow(), ShowCursor(), DrawText(), LoadImage(), PlaySound().
+    # raylib uses the same names for its own API.  These are real function
+    # declarations, not macros, so #undef cannot remove them.
+    #
+    # The only reliable fix: make raylib.h parse BEFORE windows.h in every
+    # translation unit.  MSVC's /FI (force-include) injects a header at the
+    # very start of every .cpp before any #include the file itself contains,
+    # including headers pulled in transitively through wpilib/ntcore.
+    #
+    # win_raylib_compat.h:
+    #   1. #includes raylib.h   ← compiler sees raylib's Rectangle struct first
+    #   2. #includes winsock2.h / windows.h
+    #   3. #undefs the handful of names that Windows also defines as macros
+    #      (DrawText→DrawTextA, LoadImage→LoadImageA, etc.)
+    target_compile_options(frc_sim PRIVATE
+        /FI "${CMAKE_SOURCE_DIR}/src/render/win_raylib_compat.h"
+    )
 endif()
 
 # Platform linker extras

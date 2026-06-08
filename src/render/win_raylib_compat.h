@@ -1,74 +1,65 @@
 #pragma once
-// win_raylib_compat.h
-// Include this BEFORE raylib.h in any translation unit on Windows.
+// win_raylib_compat.h — injected via /FI into every translation unit on MSVC.
 //
-// Windows SDK (winuser.h, wingdi.h, playsoundapi.h) defines several
-// names that collide with raylib's API.  The canonical fix is:
-//   1. Include windows.h first (with slimming macros).
-//   2. Immediately #undef every colliding name.
+// Problem: wingdi.h declares  int Rectangle(HDC, int, int, int, int)
+//          winuser.h declares CloseWindow(), ShowCursor()
+//          winuser.h #defines DrawText   → DrawTextA
+//          winuser.h #defines DrawTextEx → DrawTextExA
+//          winuser.h #defines LoadImage  → LoadImageA
+//          playsoundapi.h #defines PlaySound → PlaySoundA
+// All of these collide with raylib's identically-named API symbols.
 //
-// On non-Windows this header is a no-op.
+// Fix: parse raylib.h FIRST so the compiler sees raylib's struct/function
+// declarations before windows.h contaminates the global namespace.
+// Then include windows.h and immediately undef the macros it layered on top.
+//
+// This header is only active on Windows; on other platforms it is a no-op.
 
 #ifdef _WIN32
 
-// Slim down windows.h as much as possible.
-#  ifndef WIN32_LEAN_AND_MEAN
-#    define WIN32_LEAN_AND_MEAN
-#  endif
-#  ifndef NOMINMAX
-#    define NOMINMAX
-#  endif
-#  ifndef VC_EXTRA_LEAN
-#    define VC_EXTRA_LEAN
-#  endif
+// Step 1 — raylib first, before any Windows header gets a chance to run.
+#include <raylib.h>
 
-// Winsock must come before windows.h to avoid winsock/winsock2 conflicts.
-// wpilib and our StreamEncoder both need winsock2, so pull it in here once.
-#  include <winsock2.h>
-#  include <ws2tcpip.h>
-#  include <windows.h>
+// Step 2 — slim Windows headers.
+#ifndef WIN32_LEAN_AND_MEAN
+#  define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#  define NOMINMAX
+#endif
+#include <winsock2.h>   // must precede windows.h
+#include <ws2tcpip.h>
+#include <windows.h>
 
-// ── Undefine every Win32 symbol that collides with raylib ────────────────────
-
-// wingdi.h: Rectangle is a GDI function (wingdi.h line ~4639)
-#  ifdef Rectangle
-#    undef Rectangle
-#  endif
-
-// winuser.h: these are #define macros that expand to the A/W variants
-#  ifdef CloseWindow
-#    undef CloseWindow
-#  endif
-#  ifdef ShowCursor
-#    undef ShowCursor
-#  endif
-#  ifdef DrawText
-#    undef DrawText
-#  endif
-#  ifdef DrawTextEx
-#    undef DrawTextEx
-#  endif
-#  ifdef LoadImage
-#    undef LoadImage
-#  endif
-
-// playsoundapi.h
-#  ifdef PlaySound
-#    undef PlaySound
-#  endif
-
-// A few others that have been known to collide in some SDK versions
-#  ifdef CreateWindow
-#    undef CreateWindow
-#  endif
-#  ifdef GetObject
-#    undef GetObject
-#  endif
-#  ifdef GetMessage
-#    undef GetMessage
-#  endif
-#  ifdef MessageBox
-#    undef MessageBox
-#  endif
+// Step 3 — strip the macros Windows defined on top of raylib's names.
+// Rectangle in wingdi.h is a real function (not a macro) — including
+// raylib.h first already handled that one.  The rest below are macros.
+#ifdef DrawText
+#  undef DrawText
+#endif
+#ifdef DrawTextEx
+#  undef DrawTextEx
+#endif
+#ifdef LoadImage
+#  undef LoadImage
+#endif
+#ifdef PlaySound
+#  undef PlaySound
+#endif
+#ifdef CloseWindow
+#  undef CloseWindow
+#endif
+#ifdef ShowCursor
+#  undef ShowCursor
+#endif
+#ifdef CreateWindow
+#  undef CreateWindow
+#endif
+#ifdef GetObject
+#  undef GetObject
+#endif
+#ifdef GetMessage
+#  undef GetMessage
+#endif
 
 #endif // _WIN32
