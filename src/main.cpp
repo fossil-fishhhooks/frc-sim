@@ -476,7 +476,7 @@ int main(int argc, char *argv[])
         renderer.DrawFrame(snapshot, any_connected,
                            sim.MeasuredHz(), sim.TargetHz(), best_ping);
 
-        if (IsKeyPressed(KEY_SPACE) && score_tracker.GetPhase() == MatchPhase::WAITING)
+        if ((IsKeyPressed(KEY_LEFT_ALT) || IsKeyPressed(KEY_RIGHT_ALT)) && score_tracker.GetPhase() == MatchPhase::WAITING)
             score_tracker.StartMatch();
     }
 
