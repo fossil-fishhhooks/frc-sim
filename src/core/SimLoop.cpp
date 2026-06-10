@@ -9,9 +9,9 @@ using Duration = std::chrono::duration<double>;
 
 SimLoop::SimLoop(SimWorld &world, ForceApplicator *forces,
                  std::vector<MechanismSystem*> mechanisms,
-                 float fixed_dt, float speed)
+                 float fixed_dt, float speed, ScoreTracker* st)
     : m_world(world), m_fixed_dt(fixed_dt), m_speed(speed),
-      m_forces(forces), m_mechanisms(std::move(mechanisms))
+      m_forces(forces), m_mechanisms(std::move(mechanisms)), m_score_tracker(st)
 {
 }
 
@@ -90,7 +90,15 @@ void SimLoop::Run()
                 rmechs[_ri].shooter_armed       = mech->IsFirePending();
             }
             m_front.store(back, std::memory_order_release);
+
+            
         }
+
+        if (m_score_tracker){
+            m_score_tracker->Tick(m_fixed_dt, m_world);
+            m_buf[back].score_state = m_score_tracker->GetState();
+        }
+
 
         // ── Hz measurement ────────────────────────────────────────────
         double hz_elapsed = Dur(Clock::now() - hz_timer).count();

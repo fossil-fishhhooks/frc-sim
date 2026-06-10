@@ -7,6 +7,8 @@
 #include "physics/ForceApplicator.h"
 #include "physics/ContactListener.h"
 #include "physics/MechanismSystem.h"
+#include "core/ScoreTracker.h"
+#include "core/ScoringDef.h"
 #include "render/Renderer.h"
 #include "render/BodyDraw.h"
 #include "io/NTClient.h"
@@ -306,6 +308,11 @@ int main(int argc, char *argv[])
     DrawLoadingFrame(lctx);
     SceneData scene = LoadScene(args.scene, motors);
 
+
+    // -- 3.5 Score Zones ----------------------------------------------------
+    ScoreTracker score_tracker;
+    score_tracker.LoadZones(scene.scoring_zones);
+
     // ── 4. Physics world ──────────────────────────────────────────────────
     lctx.phase="INITIALISING PHYSICS"; lctx.detail="Jolt Physics"; lctx.overall=0.20f;
     DrawLoadingFrame(lctx);
@@ -411,7 +418,7 @@ int main(int argc, char *argv[])
     for (auto &m : all_mechanisms) mech_ptrs.push_back(m.get());
 
     ForceApplicator forces(world, motors, world.GetContactListener());
-    SimLoop sim(world, &forces, std::move(mech_ptrs), args.dt, args.speed);
+    SimLoop sim(world, &forces, std::move(mech_ptrs), &score_tracker, args.dt, args.speed);
 
     sim.Start();
 
@@ -468,6 +475,9 @@ int main(int argc, char *argv[])
 
         renderer.DrawFrame(snapshot, any_connected,
                            sim.MeasuredHz(), sim.TargetHz(), best_ping);
+
+        if (IsKeyPressed(KEY_SPACE) && score_tracker.GetPhase() == MatchPhase::WAITING)
+            score_tracker.StartMatch();
     }
 
     // ── 10. Shutdown ──────────────────────────────────────────────────────

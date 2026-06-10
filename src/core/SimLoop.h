@@ -3,6 +3,7 @@
 #include "core/Snapshot.h"
 #include "physics/ForceApplicator.h"
 #include "physics/MechanismSystem.h"
+#include "core/ScoreTracker.h"
 
 #include <atomic>
 #include <thread>
@@ -45,4 +46,6 @@ private:
 
     ForceApplicator              *m_forces;
     std::vector<MechanismSystem*> m_mechanisms;   // nullptrs allowed
+
+    ScoreTracker* m_score_tracker;
 };

@@ -48,6 +48,13 @@ struct NTClient::Impl
     nt::FloatPublisher pose_qy_pub;
     nt::FloatPublisher pose_qz_pub;
     nt::FloatPublisher pose_qw_pub;
+
+
+    // score + start
+    nt::IntegerPublisher score_pub[2];
+    nt::StringPublisher  phase_pub;
+    nt::FloatPublisher   match_time_pub;
+    nt::BooleanSubscriber start_match_sub;  // controller writes true to start
 };
 
 // ── NTClient ──────────────────────────────────────────────────────────────────
@@ -249,4 +256,18 @@ void NTClient::Tick(const WorldSnapshot &snapshot, float dt)
         m_fire_cooldown = 0.0f;
     }
     m_last_fire_val = fire_now;
+
+
+
+
+    const auto &ss = snapshot.score_state;
+    m_impl->score_pub[0].Set(ss.score[0]);
+    m_impl->score_pub[1].Set(ss.score[1]);
+    m_impl->match_time_pub.Set(ss.match_time);
+    // phase as string for human readability
+    m_impl->phase_pub.Set(PhaseToString(ss.phase));
+
+    // Game start trigger from controller
+    if (m_robot_slot == 0 && m_impl->start_match_sub.Get())
+        m_score_tracker->StartMatch();
 }

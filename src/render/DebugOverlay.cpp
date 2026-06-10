@@ -133,4 +133,35 @@ void DrawDebugOverlay(const WorldSnapshot &snapshot,
 
         y += 6; // gap between robots
     }
+
+
+
+
+    //scoreboard
+    // Centered scoreboard — only during/after match
+    const auto &ss = snapshot.score_state;
+    if (ss.phase != MatchPhase::WAITING) {
+        // Big score numbers
+        char t0[16], t1[16];
+        snprintf(t0, sizeof(t0), "%d", ss.score[0]);
+        snprintf(t1, sizeof(t1), "%d", ss.score[1]);
+        int cx = GetScreenWidth() / 2;
+        DrawText(t0, cx - 120, 20, 60, {100, 149, 237, 255});  // blue
+        DrawText(t1, cx + 60,  20, 60, {220,  50,  47, 255});  // red
+
+        // Match time or countdown
+        if (ss.phase == MatchPhase::COUNTDOWN) {
+            char cd[8]; snprintf(cd, sizeof(cd), "%.0f", ceilf(ss.countdown));
+            int tw = MeasureText(cd, 80);
+            DrawText(cd, cx - tw/2, 90, 80, YELLOW);
+        } else {
+            float remaining = (AUTO_DURATION + TELEOP_DURATION) - ss.match_time;
+            char mt[16]; snprintf(mt, sizeof(mt), "%d:%05.2f",
+                                (int)remaining/60, fmodf(remaining, 60.f));
+            DrawText(mt, cx - MeasureText(mt, 24)/2, 85, 24, WHITE);
+            // AUTO / TELEOP label
+            const char *phase_str = (ss.phase == MatchPhase::AUTO) ? "AUTO" : "TELEOP";
+            DrawText(phase_str, cx - MeasureText(phase_str,14)/2, 112, 14, LIGHTGRAY);
+        }
+    }
 }

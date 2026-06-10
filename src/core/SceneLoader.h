@@ -2,6 +2,7 @@
 #include "core/BodyDef.h"
 #include "core/MechanismDef.h"
 #include "core/MotorRegistry.h"
+#include "core/ScoringDef.h"
 #include <string>
 #include <vector>
 #include <array>
@@ -31,6 +32,7 @@ struct SceneData
 {
     std::vector<SpawnRequest> bodies;       // field + game pieces only
     std::vector<RobotSpawn>   robot_spawns; // one per robot slot
+    std::vector<ScoringZoneDef> scoring_zones;
 };
 
 SceneData LoadScene(const std::string &scene_path, const MotorRegistry &motors);

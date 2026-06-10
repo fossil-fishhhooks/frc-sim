@@ -6052,5 +6052,28 @@
         "fire_rate": 8.0
       }
     }
+  ],
+  "scoring_zones": [
+    {
+      "id": "speaker_blue",
+      "team": 0,
+      "points": 2,
+      "center": [-7.0, 2.0, 0.0],
+      "half_extents": [0.5, 0.5, 0.5],
+      "active_start": -1,
+      "active_end": -1,
+      "pass_through": true
+    },
+    {
+      "id": "amp_blue",
+      "team": 0,
+      "points": 1,
+      "center": [-7.5, 0.9, 2.7],
+      "half_extents": [0.3, 0.3, 0.3],
+      "active_start": 0,
+      "active_end": 150,
+      "pass_through": false
+    }
   ]
+
 }

@@ -275,6 +275,13 @@ void Renderer::DrawFrame(const WorldSnapshot &snapshot,
     for (const auto &body : snapshot.bodies)
         DrawBodySnapshot(body, m_shaderLoaded ? &m_shader : nullptr, m_wireframe);
 
+    for (auto &z : snapshot.score_zones) {  // add zones to snapshot too
+        if (!ZoneCurrentlyActive(z, ss)) continue;
+        Color c = (z.team == 0) ? (Color){60,100,255,80} : (Color){255,60,60,80};
+        DrawCubeWires({z.center[0],z.center[1],z.center[2]},
+                    z.half_extents[0]*2, z.half_extents[1]*2, z.half_extents[2]*2, c);
+    }
+
     DrawLightGizmos();
     DrawForceVectors(snapshot);
     EndMode3D();

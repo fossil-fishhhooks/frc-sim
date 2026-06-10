@@ -1,5 +1,6 @@
 #pragma once
 #include "core/BodyDef.h"
+#include "core/ScoreTracker.h"
 #include <vector>
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -52,4 +53,6 @@ struct WorldSnapshot
     // robot_mech[i]    = mechanism state for robot i
     std::vector<int>               robot_indices;
     std::vector<RobotMechSnapshot> robot_mech;
+
+    ScoreTracker::State score_state;
 };

@@ -157,5 +157,24 @@ SceneData LoadScene(const std::string &scene_path, const MotorRegistry &motors)
 
     LOG_INFO("SceneLoader: %zu bodies, %zu robot spawns from '%s'",
              result.bodies.size(), result.robot_spawns.size(), scene_name.c_str());
+
+    int scorezones = 0;
+    for (const auto &jz : j.value("scoring_zones", json::array())) {
+        ScoringZoneDef z;
+        z.id           = jz.value("id", "");
+        z.team         = jz.value("team", 0);
+        z.points       = jz.value("points", 1);
+        z.active_start = jz.value("active_start", -1.f);
+        z.active_end   = jz.value("active_end",   -1.f);
+        z.pass_through = jz.value("pass_through", false);
+        auto c = readVec3(jz, "center");
+        auto h = readVec3(jz, "half_extents", {0.3f,0.3f,0.3f});
+        memcpy(z.center,       c.data(), 12);
+        memcpy(z.half_extents, h.data(), 12);
+        result.scoring_zones.push_back(z);
+        scorezones++;
+    }
+    LOG_INFO("SceneLoader: parsed %zu score zones",scorezones);
+
     return result;
 }
