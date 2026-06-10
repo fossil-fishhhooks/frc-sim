@@ -30,8 +30,8 @@ public:
 
     const std::vector<ScoringZoneDef> &GetZones() const { return m_zones; }
 
-    static constexpr float AUTO_DURATION   = 15.0f;
-    static constexpr float TELEOP_DURATION = 135.0f;
+    static constexpr float AUTO_DURATION   = 20.0f;
+    static constexpr float TELEOP_DURATION = 115.0f;
 
 private:
     std::vector<ScoringZoneDef>  m_zones;
@@ -41,4 +41,6 @@ private:
     std::atomic<int>   m_phase      {(int)MatchPhase::WAITING};
 
     std::unordered_set<uint32_t> m_scored_ids;
+
+    std::unordered_set<uint32_t> m_in_zone_ids;
 };

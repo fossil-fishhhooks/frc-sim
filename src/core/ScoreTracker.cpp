@@ -30,6 +30,7 @@ void ScoreTracker::StartMatch() {
     m_match_time.store(0.f);
     m_countdown.store(3.f);
     m_scored_ids.clear();
+    m_in_zone_ids.clear();
     m_phase.store((int)MatchPhase::COUNTDOWN);
     LOG_INFO("ScoreTracker: match started (countdown)");
 }
@@ -86,8 +87,9 @@ void ScoreTracker::Tick(float dt, SimWorld &world) {
     const auto &robot_indices = world.GetRobotIndices();
     auto &bi = world.GetBodyInterface();
 
+    std::unordered_set<uint32_t> still_in_zone;
+
     for (int i = 0; i < world.BodyCount(); ++i) {
-        // skip robots
         bool is_robot = false;
         for (int ri : robot_indices) if (i == ri) { is_robot = true; break; }
         if (is_robot) continue;
@@ -105,8 +107,13 @@ void ScoreTracker::Tick(float dt, SimWorld &world) {
             if (!ZoneActive(z, t)) continue;
             if (!BodyInZone(z, aabb)) continue;
 
-            bool should_score = z.pass_through;
-            if (!should_score) {
+            still_in_zone.insert(uid);
+            bool just_entered = !m_in_zone_ids.count(uid);
+
+            bool should_score = false;
+            if (z.pass_through)
+                should_score = just_entered;  // only on first overlapping tick
+            else {
                 JPH::Vec3 vel = bi.GetLinearVelocity(bid);
                 should_score = vel.LengthSq() < 0.05f;
             }
@@ -114,11 +121,20 @@ void ScoreTracker::Tick(float dt, SimWorld &world) {
             if (should_score) {
                 m_score[z.team & 1].fetch_add(z.points);
                 m_scored_ids.insert(uid);
+                if (z.has_reset_pos) {
+                    bi.SetPosition(bid,
+                        JPH::RVec3(z.reset_pos[0], z.reset_pos[1], z.reset_pos[2]),
+                        JPH::EActivation::DontActivate);
+                    bi.SetLinearVelocity(bid, JPH::Vec3::sZero());
+                    bi.SetAngularVelocity(bid, JPH::Vec3::sZero());
+                }
                 LOG_INFO("ScoreTracker: +%d team%d (zone '%s')  total=%d",
-                         z.points, z.team, z.id.c_str(),
-                         m_score[z.team & 1].load());
-                break;
+                        z.points, z.team, z.id.c_str(),
+                        m_score[z.team & 1].load());
             }
+            break;
         }
     }
+
+    m_in_zone_ids = std::move(still_in_zone);
 }

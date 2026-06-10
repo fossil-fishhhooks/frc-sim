@@ -167,6 +167,11 @@ SceneData LoadScene(const std::string &scene_path, const MotorRegistry &motors)
         z.active_start = jz.value("active_start", -1.f);
         z.active_end   = jz.value("active_end",   -1.f);
         z.pass_through = jz.value("pass_through", false);
+        if (jz.contains("reset_position")) {
+            auto rp = jz["reset_position"].get<std::vector<float>>();
+            z.has_reset_pos = true;
+            z.reset_pos[0] = rp[0]; z.reset_pos[1] = rp[1]; z.reset_pos[2] = rp[2];
+        }
         auto c = readVec3(jz, "center");
         auto h = readVec3(jz, "half_extents", {0.3f,0.3f,0.3f});
         memcpy(z.center,       c.data(), 12);
