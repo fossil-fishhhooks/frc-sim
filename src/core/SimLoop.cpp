@@ -9,7 +9,8 @@ using Duration = std::chrono::duration<double>;
 
 SimLoop::SimLoop(SimWorld &world, ForceApplicator *forces,
                  std::vector<MechanismSystem*> mechanisms,
-                 float fixed_dt, float speed, ScoreTracker* st)
+                 ScoreTracker *st,
+                 float fixed_dt, float speed)
     : m_world(world), m_fixed_dt(fixed_dt), m_speed(speed),
       m_forces(forces), m_mechanisms(std::move(mechanisms)), m_score_tracker(st)
 {
@@ -77,6 +78,9 @@ void SimLoop::Run()
         {
             std::lock_guard<std::mutex> lock(m_buf_mutex);
             int back = 1 - m_front.load(std::memory_order_relaxed);
+            if (m_score_tracker){
+                m_score_tracker->Tick(m_fixed_dt, m_world);
+            }
             m_world.CaptureSnapshot(m_buf[back]);
             // Fill per-robot mechanism state
             auto &rmechs = m_buf[back].robot_mech;
@@ -89,15 +93,17 @@ void SimLoop::Run()
                 rmechs[_ri].intake_max_capacity = mech->IntakeCapacity();
                 rmechs[_ri].shooter_armed       = mech->IsFirePending();
             }
+            
+            if (m_score_tracker){
+                m_buf[back].score_state = m_score_tracker->GetState();
+                m_buf[back].score_zones = m_score_tracker->GetZones();
+            }
             m_front.store(back, std::memory_order_release);
 
             
         }
 
-        if (m_score_tracker){
-            m_score_tracker->Tick(m_fixed_dt, m_world);
-            m_buf[back].score_state = m_score_tracker->GetState();
-        }
+        
 
 
         // ── Hz measurement ────────────────────────────────────────────

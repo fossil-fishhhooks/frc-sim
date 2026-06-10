@@ -275,11 +275,24 @@ void Renderer::DrawFrame(const WorldSnapshot &snapshot,
     for (const auto &body : snapshot.bodies)
         DrawBodySnapshot(body, m_shaderLoaded ? &m_shader : nullptr, m_wireframe);
 
-    for (auto &z : snapshot.score_zones) {  // add zones to snapshot too
-        if (!ZoneCurrentlyActive(z, ss)) continue;
-        Color c = (z.team == 0) ? (Color){60,100,255,80} : (Color){255,60,60,80};
-        DrawCubeWires({z.center[0],z.center[1],z.center[2]},
-                    z.half_extents[0]*2, z.half_extents[1]*2, z.half_extents[2]*2, c);
+    const auto &ss = snapshot.score_state;
+    float match_t = ss.match_time;
+    for (const auto &z : snapshot.score_zones) {
+        // active_start/end check
+        bool active = true;
+        if (z.active_start >= 0.f && match_t < z.active_start) active = false;
+        if (z.active_end   >= 0.f && match_t > z.active_end)   active = false;
+        if (!active) continue;
+
+        Color c = (z.team == 0)
+            ? Color{60, 100, 255, 180}
+            : Color{255, 60,  60,  180};
+        DrawCubeWires(
+            Vector3{z.center[0], z.center[1], z.center[2]},
+            z.half_extents[0] * 2.f,
+            z.half_extents[1] * 2.f,
+            z.half_extents[2] * 2.f,
+            c);
     }
 
     DrawLightGizmos();

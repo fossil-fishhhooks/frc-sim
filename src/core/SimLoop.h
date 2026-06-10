@@ -13,11 +13,7 @@
 class SimLoop
 {
 public:
-    explicit SimLoop(SimWorld &world,
-                     ForceApplicator *forces,
-                     std::vector<MechanismSystem*> mechanisms,  // one per robot, may be null
-                     float fixed_dt = 1.0f / 500.0f,
-                     float speed    = 1.0f);
+    explicit SimLoop(SimWorld&, ForceApplicator*, std::vector<MechanismSystem*>, ScoreTracker*, float, float);
     ~SimLoop();
 
     void Start();

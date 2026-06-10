@@ -155,7 +155,7 @@ void DrawDebugOverlay(const WorldSnapshot &snapshot,
             int tw = MeasureText(cd, 80);
             DrawText(cd, cx - tw/2, 90, 80, YELLOW);
         } else {
-            float remaining = (AUTO_DURATION + TELEOP_DURATION) - ss.match_time;
+            float remaining = ss.remaining;
             char mt[16]; snprintf(mt, sizeof(mt), "%d:%05.2f",
                                 (int)remaining/60, fmodf(remaining, 60.f));
             DrawText(mt, cx - MeasureText(mt, 24)/2, 85, 24, WHITE);

@@ -70,6 +70,7 @@ add_executable(frc_sim
     src/core/SceneLoader.cpp
     src/core/SimWorld.cpp
     src/core/SimLoop.cpp
+    src/core/ScoreTracker.cpp
 
     src/physics/ShapeLoader.cpp
     src/physics/ForceApplicator.cpp

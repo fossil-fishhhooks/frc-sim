@@ -7,6 +7,8 @@
 #include <networktables/FloatArrayTopic.h>
 #include <networktables/IntegerTopic.h>
 #include <networktables/BooleanTopic.h>
+#include <networktables/StringTopic.h>
+#include <networktables/GenericEntry.h>
 
 #include <string>
 #include <span>
@@ -52,9 +54,8 @@ struct NTClient::Impl
 
     // score + start
     nt::IntegerPublisher score_pub[2];
-    nt::StringPublisher  phase_pub;
+    nt::GenericPublisher phase_pub;
     nt::FloatPublisher   match_time_pub;
-    nt::BooleanSubscriber start_match_sub;  // controller writes true to start
 };
 
 // ── NTClient ──────────────────────────────────────────────────────────────────
@@ -123,6 +124,14 @@ void NTClient::Init(const std::string &host, int port,
     m_impl->pose_qz_pub  = inst.GetFloatTopic("/sim/robot/qz").Publish();
     m_impl->pose_qw_pub  = inst.GetFloatTopic("/sim/robot/qw").Publish();
 
+
+    if (m_robot_slot == 0) {
+        m_impl->score_pub[0]   = inst.GetIntegerTopic("/sim/score/team0").Publish();
+        m_impl->score_pub[1]   = inst.GetIntegerTopic("/sim/score/team1").Publish();
+        m_impl->match_time_pub = inst.GetFloatTopic("/sim/match/time").Publish();
+        m_impl->phase_pub      = inst.GetStringTopic("/sim/match/phase").GenericPublish("string");
+    }
+
     m_impl->time_sync_listener = inst.AddTimeSyncListener(false,
                                                           [this](const nt::Event &e)
                                                           {
@@ -155,6 +164,17 @@ float NTClient::Ping() const
     if (rtt < 0)
         return -1.0f;
     return (float)(rtt / 1000.0); // us -> ms
+}
+
+static const char* PhaseToString(MatchPhase p) {
+    switch (p) {
+        case MatchPhase::WAITING:   return "waiting";
+        case MatchPhase::COUNTDOWN: return "countdown";
+        case MatchPhase::AUTO:      return "auto";
+        case MatchPhase::TELEOP:    return "teleop";
+        case MatchPhase::ENDED:     return "ended";
+        default:                    return "unknown";
+    }
 }
 
 void NTClient::Tick(const WorldSnapshot &snapshot, float dt)
@@ -261,13 +281,12 @@ void NTClient::Tick(const WorldSnapshot &snapshot, float dt)
 
 
     const auto &ss = snapshot.score_state;
-    m_impl->score_pub[0].Set(ss.score[0]);
-    m_impl->score_pub[1].Set(ss.score[1]);
-    m_impl->match_time_pub.Set(ss.match_time);
-    // phase as string for human readability
-    m_impl->phase_pub.Set(PhaseToString(ss.phase));
+   if (m_robot_slot == 0) {
+        m_impl->score_pub[0].Set(ss.score[0]);
+        m_impl->score_pub[1].Set(ss.score[1]);
+        m_impl->match_time_pub.Set(ss.match_time);
+        m_impl->phase_pub.Set(nt::Value::MakeString(PhaseToString(ss.phase)));
+    }
 
-    // Game start trigger from controller
-    if (m_robot_slot == 0 && m_impl->start_match_sub.Get())
-        m_score_tracker->StartMatch();
+
 }

@@ -1,44 +1,44 @@
 #pragma once
-#include "ScoringDef.h"
+#include "core/ScoringDef.h"
 #include <atomic>
 #include <unordered_set>
 #include <vector>
-#include <Jolt/Geometry/AABox.h>
+
+class SimWorld;  // forward declare — no Jolt headers here
+
 enum class MatchPhase { WAITING, COUNTDOWN, AUTO, TELEOP, ENDED };
 
 class ScoreTracker {
 public:
     void LoadZones(const std::vector<ScoringZoneDef> &zones);
-    void StartMatch();   // called externally (NT trigger or keypress)
+    void StartMatch();
     void Tick(float dt, SimWorld &world);
 
-    MatchPhase GetPhase()      const;
-    float      GetMatchTime()  const;  // seconds elapsed since AUTO start
-    float      GetCountdown()  const;  // 3..0 during COUNTDOWN
+    MatchPhase GetPhase()     const;
+    float      GetMatchTime() const;
+    float      GetCountdown() const;
     int        GetScore(int team) const;
 
-    // For snapshot
     struct State {
-        MatchPhase phase;
-        float      match_time;
-        float      countdown;
-        int        score[2];
+        MatchPhase phase     = MatchPhase::WAITING;
+        float      match_time = 0.f;
+        float      countdown  = 3.f;
+        float      remaining  = 0.f;
+        int        score[2]   = {};
     };
-    State GetState() const;  // atomic read
+    State GetState() const;
+
+    const std::vector<ScoringZoneDef> &GetZones() const { return m_zones; }
+
+    static constexpr float AUTO_DURATION   = 15.0f;
+    static constexpr float TELEOP_DURATION = 135.0f;
 
 private:
-    std::vector<ScoringZoneDef> m_zones;
-    std::atomic<int>   m_score[2]  {};
-    std::atomic<float> m_match_time{0};
-    std::atomic<float> m_countdown {3};
-    std::atomic<int>   m_phase     {(int)MatchPhase::WAITING};
+    std::vector<ScoringZoneDef>  m_zones;
+    std::atomic<int>   m_score[2]   {};
+    std::atomic<float> m_match_time {0};
+    std::atomic<float> m_countdown  {3};
+    std::atomic<int>   m_phase      {(int)MatchPhase::WAITING};
 
-    std::unordered_set<uint32_t> m_scored_ids;  // BodyID indices already scored
-
-    static constexpr float AUTO_DURATION    = 15.0f;
-    static constexpr float TELEOP_DURATION  = 135.0f;
-    static constexpr float COUNTDOWN_SECS   = 3.0f;
-
-    bool ZoneActive(const ScoringZoneDef &z, float match_time) const;
-    bool BodyInZone(const ScoringZoneDef &z, JPH::AABox aabb) const;
+    std::unordered_set<uint32_t> m_scored_ids;
 };

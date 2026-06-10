@@ -55,4 +55,5 @@ struct WorldSnapshot
     std::vector<RobotMechSnapshot> robot_mech;
 
     ScoreTracker::State score_state;
+    std::vector<ScoringZoneDef> score_zones;
 };
