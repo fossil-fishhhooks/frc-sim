@@ -34,6 +34,11 @@ MechanismSystem::MechanismSystem(SimWorld &world,
              robot_body_index, intake.max_capacity);
 }
 
+void MechanismSystem::Reset() {
+    m_held.store(0);
+    m_fire_pending.store(false);
+}
+
 void MechanismSystem::Tick(float dt)
 {
     RunIntake();

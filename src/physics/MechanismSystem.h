@@ -20,6 +20,7 @@ public:
     int  IntakeCapacity()    const { return m_intake.max_capacity; }
     bool IsFirePending()     const { return m_fire_pending.load(); }
     float GetShooterFireRate() const { return m_shooter.fire_rate; }
+    void Reset();
 
 private:
     SimWorld          &m_world;

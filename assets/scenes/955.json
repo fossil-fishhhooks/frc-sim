@@ -6031,7 +6031,7 @@
         "exit_point": [-0.08, 0.22, 0.217],
         "default_direction": [0.0, 1.0, 0.0],
         "piece_mesh_path": "../bodies/sphere.json",
-        "piece_mass": 0.5,
+        "piece_mass": 0.3,
         "fire_rate": 8.0
       }
     },
@@ -6048,7 +6048,7 @@
         "exit_point": [-0.08, 0.22, 0.217],
         "default_direction": [0.0, 1.0, 0.0],
         "piece_mesh_path": "../bodies/sphere.json",
-        "piece_mass": 0.5,
+        "piece_mass": 0.3,
         "fire_rate": 8.0
       }
     }

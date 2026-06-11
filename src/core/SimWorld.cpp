@@ -273,6 +273,7 @@ void SimWorld::CaptureSnapshot(WorldSnapshot &out) const
 
             JPH::RVec3 pos = body.GetPosition();
             JPH::Quat  rot = body.GetRotation();
+            JPH::Vec3 v = body.GetLinearVelocity();  
 
             bs.pos[0] = (float)pos.GetX();
             bs.pos[1] = (float)pos.GetY();
@@ -281,6 +282,7 @@ void SimWorld::CaptureSnapshot(WorldSnapshot &out) const
             bs.rot[1] = rot.GetY();
             bs.rot[2] = rot.GetZ();
             bs.rot[3] = rot.GetW();
+            bs.vel[0]=v.GetX(); bs.vel[1]=v.GetY(); bs.vel[2]=v.GetZ();
         }
         bs.def = rec.def;
 

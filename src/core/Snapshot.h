@@ -26,6 +26,7 @@ struct BodySnapshot
     float rot[4] = {};
 
     const BodyDef *def = nullptr;
+    float vel[3] = {};  // linear velocity m/s — add after rot[4]
 
     std::vector<MotorSnapshot> motors;
 };

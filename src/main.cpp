@@ -251,6 +251,8 @@ static void DrawLoadingFrame(LoadCtx &ctx)
     EndDrawing();
 }
 
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 // main
 // ─────────────────────────────────────────────────────────────────────────────
@@ -422,6 +424,72 @@ int main(int argc, char *argv[])
 
     sim.Start();
 
+    auto do_reset = [&]() {
+        LOG_INFO("main: reset triggered via NT");
+
+        // Stop physics briefly — reset runs on render thread, physics on sim thread
+        // Safest: set a flag, handle on next sim tick. But since SpawnBody/MarkBodyRemoved
+        // are already called from main thread during init, we can pause the sim loop.
+        sim.Stop();
+
+        // Destroy all non-robot dynamic bodies (game pieces + projectiles)
+        auto &bi = world.GetBodyInterface();
+        std::vector<JPH::BodyID> to_remove;
+        const auto &ri_vec = world.GetRobotIndices();
+        for (int i = 0; i < world.BodyCount(); ++i) {
+            bool is_robot = false;
+            for (int ri : ri_vec) if (i == ri) { is_robot = true; break; }
+            if (is_robot) continue;
+            const BodyDef *def = world.GetBodyDef(i);
+            if (!def || def->mass == 0.f) continue;  // skip static field
+            to_remove.push_back(world.GetBodyID(i));
+        }
+        for (auto id : to_remove) {
+            bi.RemoveBody(id);
+            bi.DestroyBody(id);
+            world.MarkBodyRemoved(id);
+        }
+
+        // Respawn game pieces from scene
+        for (auto &req : scene.bodies) {
+            if (req.role != "gamepiece") continue;
+            world.SpawnBody(req.def, req.position.data(), req.orientation.data());
+        }
+
+        // Teleport robots back to spawn positions, zero velocity
+        for (int ri = 0; ri < (int)args.robots.size(); ++ri) {
+            if (ri >= (int)world.GetRobotIndices().size()) break;
+            int body_idx = world.GetRobotIndices()[ri];
+            JPH::BodyID bid = world.GetBodyID(body_idx);
+            if (bid.IsInvalid()) continue;
+
+            float px=0,py=0.3f,pz=0;
+            float rx=0,ry=0,rz=0,rw=1;
+            if (ri < (int)scene.robot_spawns.size()) {
+                auto &rs = scene.robot_spawns[ri];
+                px=rs.position[0]; py=rs.position[1]; pz=rs.position[2];
+                rx=rs.orientation[0]; ry=rs.orientation[1];
+                rz=rs.orientation[2]; rw=rs.orientation[3];
+            }
+            bi.SetPositionAndRotation(bid,
+                JPH::RVec3(px,py,pz),
+                JPH::Quat(rx,ry,rz,rw),
+                JPH::EActivation::Activate);
+            bi.SetLinearVelocity(bid,  JPH::Vec3::sZero());
+            bi.SetAngularVelocity(bid, JPH::Vec3::sZero());
+        }
+
+        // Reset mechanisms — clear held pieces
+        for (auto &mech : all_mechanisms)
+            if (mech) mech->Reset();  // need to add Reset() to MechanismSystem
+
+        // Reset score + auto-start
+        score_tracker.StartMatch();
+
+        sim.Start();
+        LOG_INFO("main: reset complete, match auto-started");
+    };
+
     // ── 8. NT clients — one per robot ─────────────────────────────────────
     std::vector<std::unique_ptr<NTClient>> nt_clients;
     const auto &robot_indices = world.GetRobotIndices();
@@ -441,9 +509,10 @@ int main(int argc, char *argv[])
 
         auto client = std::make_unique<NTClient>();
         client->Init(ra.nt_host, ra.nt_port, world,
-                     robot_motor_counts[ri],
-                     ri,      // ← spawn_slot
-                     all_mechanisms[ri].get());
+             robot_motor_counts[ri],
+             ri,
+             all_mechanisms[ri].get(),
+             (ri == 0) ? do_reset : std::function<void()>{});
         ++spawn_slot;
         nt_clients.push_back(std::move(client));
         LOG_INFO("main: NT client[%d] -> %s:%d", ri, ra.nt_host.c_str(), ra.nt_port);
@@ -454,6 +523,8 @@ int main(int argc, char *argv[])
 
 
     renderer.SetWallTimeOffset(logger::elapsed());
+
+    
  
     // ── 9. Main loop ──────────────────────────────────────────────────────
     while (!renderer.ShouldClose())

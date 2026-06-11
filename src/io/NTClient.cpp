@@ -56,6 +56,13 @@ struct NTClient::Impl
     nt::IntegerPublisher score_pub[2];
     nt::GenericPublisher phase_pub;
     nt::FloatPublisher   match_time_pub;
+
+    nt::BooleanSubscriber reset_sub;
+    // velocity pubs
+    nt::FloatPublisher robot_vx_pub;
+    nt::FloatPublisher robot_vz_pub;
+    // gamepieces
+    nt::FloatArrayPublisher gamepieces_pub;
 };
 
 // ── NTClient ──────────────────────────────────────────────────────────────────
@@ -66,7 +73,7 @@ NTClient::~NTClient() { Shutdown(); }
 void NTClient::Init(const std::string &host, int port,
                     SimWorld &world, int robot_motor_count,
                     int robot_body_index,
-                    MechanismSystem *mechanisms)
+                    MechanismSystem *mechanisms, std::function<void()> reset_cb)
 {
     m_robot_slot = robot_body_index;
     m_world             = &world;
@@ -124,6 +131,11 @@ void NTClient::Init(const std::string &host, int port,
     m_impl->pose_qz_pub  = inst.GetFloatTopic("/sim/robot/qz").Publish();
     m_impl->pose_qw_pub  = inst.GetFloatTopic("/sim/robot/qw").Publish();
 
+    m_reset_cb = reset_cb;
+    m_impl->reset_sub      = inst.GetBooleanTopic("/sim/reset").Subscribe(false);
+    m_impl->robot_vx_pub   = inst.GetFloatTopic("/sim/robot/vx").Publish();
+    m_impl->robot_vz_pub   = inst.GetFloatTopic("/sim/robot/vz").Publish();
+    m_impl->gamepieces_pub = inst.GetFloatArrayTopic("/sim/gamepieces").Publish();
 
     if (m_robot_slot == 0) {
         m_impl->score_pub[0]   = inst.GetIntegerTopic("/sim/score/team0").Publish();
@@ -233,6 +245,10 @@ void NTClient::Tick(const WorldSnapshot &snapshot, float dt)
         m_impl->pose_qy_pub.Set(robot.rot[1]);
         m_impl->pose_qz_pub.Set(robot.rot[2]);
         m_impl->pose_qw_pub.Set(robot.rot[3]);
+
+        // velocity
+    m_impl->robot_vx_pub.Set(robot.vel[0]);
+    m_impl->robot_vz_pub.Set(robot.vel[2]);
     }
 
     if (!m_mechanisms) return;
@@ -286,6 +302,33 @@ void NTClient::Tick(const WorldSnapshot &snapshot, float dt)
         m_impl->score_pub[1].Set(ss.score[1]);
         m_impl->match_time_pub.Set(ss.match_time);
         m_impl->phase_pub.Set(nt::Value::MakeString(PhaseToString(ss.phase)));
+    }
+
+
+    
+
+    // game pieces — only robot 0 publishes to avoid duplicate writes
+    if (m_robot_slot == 0) {
+        std::vector<float> gp_flat;
+        const auto &ri_set = m_world->GetRobotIndices();
+        for (int i = 0; i < (int)snapshot.bodies.size(); ++i) {
+            // skip robots
+            bool is_robot = false;
+            for (int ri : ri_set) if (i == ri) { is_robot = true; break; }
+            if (is_robot) continue;
+            const auto &b = snapshot.bodies[i];
+            if (!b.def || b.def->mass == 0.f) continue;  // skip static
+            gp_flat.push_back(b.pos[0]);
+            gp_flat.push_back(b.pos[1]);
+            gp_flat.push_back(b.pos[2]);
+        }
+        m_impl->gamepieces_pub.Set(std::span<const float>(gp_flat));
+
+        // reset — edge detect
+        bool reset_now = m_impl->reset_sub.Get();
+        if (reset_now && !m_last_reset_val && m_reset_cb)
+            m_reset_cb();
+        m_last_reset_val = reset_now;
     }
 
 

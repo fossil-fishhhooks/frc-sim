@@ -1,6 +1,7 @@
 #pragma once
 #include "core/SimWorld.h"
 #include "core/Snapshot.h"
+#include <functional>
 #include <string>
 #include <atomic>
 #include <chrono>
@@ -17,6 +18,12 @@ class MechanismSystem;
 // Publishes:   /sim/motors/{i}/omega, position, direction
 //              /sim/intake/held, /sim/intake/capacity
 //              /sim/robot/x, y, z, qx, qy, qz, qw, yaw
+// nt::BooleanSubscriber reset_sub;
+// velocity pubs
+//nt::FloatPublisher robot_vx_pub;
+//nt::FloatPublisher robot_vz_pub;
+// gamepieces
+//nt::FloatArrayPublisher gamepieces_pub;
 
 class NTClient
 {
@@ -26,10 +33,10 @@ public:
 
     // robot_body_index: index of this robot's body in SimWorld::m_bodies
     void Init(const std::string &host, int port,
-              SimWorld &world,
-              int robot_motor_count,
-              int robot_body_index,
-              MechanismSystem *mechanisms = nullptr);
+          SimWorld &world, int robot_motor_count,
+          int robot_body_index,
+          MechanismSystem *mechanisms,
+          std::function<void()> reset_cb = {});
 
     void Shutdown();
 
@@ -54,4 +61,7 @@ private:
     bool  m_last_fire_val = false;
     float m_fire_cooldown = 0.0f;
     float m_fire_rate     = 2.0f;
+
+    bool m_last_reset_val = false;
+    std::function<void()> m_reset_cb;  // called on rising edge
 };
