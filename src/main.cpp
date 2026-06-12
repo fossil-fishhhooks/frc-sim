@@ -424,6 +424,7 @@ int main(int argc, char *argv[])
 
     sim.Start();
 
+    bool reset_just_happened = false;
     auto do_reset = [&]() {
         LOG_INFO("main: reset triggered via NT");
 
@@ -487,6 +488,7 @@ int main(int argc, char *argv[])
         score_tracker.StartMatch();
 
         sim.Start();
+        reset_just_happened = true;
         LOG_INFO("main: reset complete, match auto-started");
     };
 
@@ -541,6 +543,14 @@ int main(int argc, char *argv[])
                 any_connected = true;
                 float p = nt->Ping();
                 if (p >= 0) best_ping = p;
+            }
+        }
+
+        if (reset_just_happened) {
+            reset_just_happened = false;
+            snapshot = sim.GetSnapshot();
+            for (auto &nt : nt_clients) {
+                nt->Tick(snapshot, frame_dt);
             }
         }
 
