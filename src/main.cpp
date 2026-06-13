@@ -38,6 +38,7 @@ struct Args
 
     float dt         = 1.0f / 500.0f;
     float speed      = 1.0f;
+    int   substeps = 2;
     int   target_fps = 60;
     int   width      = 1280;
     int   height     = 720;
@@ -58,12 +59,13 @@ static void PrintUsage(const char *argv0)
                                        "  --robot  <def@host:port>     Add a robot (repeatable, up to 6)\n"
                                        "                               e.g. assets/defs/robot.json@10.9.55.2:5810\n"
                                        "  --dt     <seconds>           Physics timestep    (default: 0.002)\n"
+                                       "  --substeps <n>               Jolt collision steps per tick (default: 2)\n"
                                        "  --speed  <factor>            Sim speed multiplier(default: 1.0)\n"
                                        "  --fps    <target>            Target render FPS   (default: 60)\n"
                                        "  --w      <width>             Window width        (default: 1280)\n"
                                        "  --h      <height>            Window height       (default: 720)\n"
                                        "  --wireframe                  Enable wireframe overlay\n"
-                                       "  --stream <port>         Stream H.264 over UDP (default: 127.0.0.1:5000)\n"
+                                       "  --stream <port>              Stream H.264 over UDP (default: 127.0.0.1:5000)\n"
                                        "  --stream-fps <fps>           Stream frame rate     (default: 30)\n"       
                                        "\n";
 }
@@ -101,6 +103,7 @@ static Args ParseArgs(int argc, char *argv[])
                 LOG_WARN("main: max 6 robots, ignoring extra --robot");
         }
         else if (!strcmp(argv[i], "--dt")    && i + 1 < argc) args.dt         = std::stof(argv[++i]);
+        else if (!strcmp(argv[i], "--substeps") && i + 1 < argc) args.substeps = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--speed") && i + 1 < argc) args.speed      = std::stof(argv[++i]);
         else if (!strcmp(argv[i], "--fps")   && i + 1 < argc) args.target_fps = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--w")     && i + 1 < argc) args.width      = std::stoi(argv[++i]);
@@ -321,6 +324,8 @@ int main(int argc, char *argv[])
     SimWorld world;
     world.Init();
     world.SetPhysicsDt(args.dt);
+    world.SetCollisionSteps(args.substeps);
+    LOG_INFO("main: collision_steps=%d", args.substeps);
 
     // ── 5. Spawn non-robot scene bodies ───────────────────────────────────
     int total_bodies = (int)scene.bodies.size() + (int)args.robots.size();
@@ -511,10 +516,13 @@ int main(int argc, char *argv[])
 
         auto client = std::make_unique<NTClient>();
         client->Init(ra.nt_host, ra.nt_port, world,
-             robot_motor_counts[ri],
-             ri,
-             all_mechanisms[ri].get(),
-             (ri == 0) ? do_reset : std::function<void()>{});
+            robot_motor_counts[ri],
+            ri,
+            all_mechanisms[ri].get(),
+            scene.has_field_bounds,
+            scene.field_half_x,
+            scene.field_half_z,
+            (ri == 0) ? do_reset : std::function<void()>{});
         ++spawn_slot;
         nt_clients.push_back(std::move(client));
         LOG_INFO("main: NT client[%d] -> %s:%d", ri, ra.nt_host.c_str(), ra.nt_port);

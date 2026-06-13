@@ -4,6 +4,7 @@ ppo.py — Rollout buffer and PPO update.
 Kept separate from train.py so the update logic is testable in isolation.
 """
 
+import math
 import numpy as np
 import torch
 import torch.nn as nn
@@ -11,6 +12,27 @@ import torch.nn.functional as F
 
 from config import Config
 from model  import ActorCritic
+
+
+# ── Running reward normalizer ────────────────────────────────────────────────
+class RewardNormalizer:
+    """
+    Fixed-scale reward scaling. Previously did return-based normalization,
+    but that divided by a std dominated by OOB-penalty spikes, crushing the
+    intake-rate signal for long episodes (see history). Kept as a class for
+    train.py interface compatibility; the gamma/ret/mean/var state is unused.
+    """
+    def __init__(self, gamma: float, clip: float = 10.0):
+        self.gamma  = gamma
+        self.clip   = clip
+        self._mean  = 0.0
+        self._var   = 1.0
+        self._count = 0
+        self._ret   = 0.0
+
+    def update_and_normalize(self, reward: float, done: bool) -> float:
+        FIXED_SCALE = 20.0
+        return float(np.clip(reward / FIXED_SCALE, -self.clip, self.clip))
 
 
 # ── Rollout buffer ────────────────────────────────────────────────────────────

@@ -5,3 +5,5 @@ CMakeFiles/
 CMakeCache.txt
 src/.continue/
 
+src/ml/__pycache__
+src/ml/checkpoints
