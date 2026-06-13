@@ -1,0 +1,6151 @@
+{
+  "name": "test_floor_robot",
+  "bodies": [
+    {
+      "def": "../bodies/floor.json",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "orientation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "role": "field"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        -0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.9,
+        0.0912,
+        3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        -0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.7000000000000001,
+        0.0912,
+        3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        -0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.5,
+        0.0912,
+        3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        -0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.30000000000000004,
+        0.0912,
+        3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        -0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        -0.1,
+        0.0912,
+        3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        -0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.1,
+        0.0912,
+        3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        -0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.30000000000000004,
+        0.0912,
+        3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        -0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.5,
+        0.0912,
+        3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        -0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.7000000000000001,
+        0.0912,
+        3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        -0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        0.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        0.30000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        0.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        0.7000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        0.9
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        1.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        1.3
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        1.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        1.7000000000000002
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        1.9000000000000001
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        2.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        2.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        2.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        2.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        2.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        3.1
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        3.3000000000000003
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        3.5
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        3.7
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    },
+    {
+      "def": "../bodies/sphere.json",
+      "position": [
+        0.9,
+        0.0912,
+        3.9000000000000004
+      ],
+      "orientation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "role": "gamepiece"
+    }
+  ],
+  "robots": [
+    {
+      "position": [ 5.0, 0.3, 0.0 ],
+      "orientation": [ 0, 0, 0, 1 ],
+      "intake": {
+        "center": [ 0.37, 0.15, 0.0 ],
+        "half_extents": [ 0.42, 0.25, 0.50 ],
+        "orientation": [ 0, 0, 0, 1 ],
+        "max_capacity": 400
+      },
+      "shooter": {
+        "exit_point": [ -0.08, 0.22, 0.217 ],
+        "default_direction": [ 0.0, 1.0, 0.0 ],
+        "piece_mesh_path": "../bodies/sphere.json",
+        "piece_mass": 0.3,
+        "fire_rate": 8.0
+      }
+    },
+    {
+      "position": [ -5.0, 0.3, 0.0 ],
+      "orientation": [ 0, 0, 0, 1 ],
+      "intake": {
+        "center": [ 0.37, 0.15, 0.0 ],
+        "half_extents": [ 0.42, 0.25, 0.50 ],
+        "orientation": [ 0, 0, 0, 1 ],
+        "max_capacity": 400
+      },
+      "shooter": {
+        "exit_point": [ -0.08, 0.22, 0.217 ],
+        "default_direction": [ 0.0, 1.0, 0.0 ],
+        "piece_mesh_path": "../bodies/sphere.json",
+        "piece_mass": 0.3,
+        "fire_rate": 8.0
+      }
+    }
+  ],
+  "field_bounds": {
+    "half_x": 7.35,
+    "half_z": 4.05
+  },
+  "scoring_zones": [
+    {
+      "id": "auto_and_transition_blue",
+      "team": 0,
+      "points": 1,
+      "center": [ 3.62, 1.3, 0.0 ],
+      "half_extents": [ 0.27, 0.1, 0.27 ],
+      "active_start": 0,
+      "active_end": 30,
+      "pass_through": true,
+      "reset_position": [ 3.1, 0.5, 0.0 ]
+    },
+    {
+      "id": "auto_and_transition_red",
+      "team": 1,
+      "points": 1,
+      "center": [ -3.62, 1.3, 0.0 ],
+      "half_extents": [ 0.27, 0.1, 0.27 ],
+      "active_start": 0,
+      "active_end": 30,
+      "pass_through": true,
+      "reset_position": [ -3.1, 0.5, 0.0 ]
+    },
+    {
+      "id": "s1_red",
+      "team": 1,
+      "points": 1,
+      "center": [ -3.62, 1.3, 0.0 ],
+      "half_extents": [ 0.27, 0.1, 0.27 ],
+      "active_start": 30,
+      "active_end": 55,
+      "pass_through": true,
+      "reset_position": [ -3.1, 0.5, 0.0 ]
+    },
+    {
+      "id": "s2_blue",
+      "team": 0,
+      "points": 1,
+      "center": [ 3.62, 1.3, 0.0 ],
+      "half_extents": [ 0.27, 0.1, 0.27 ],
+      "active_start": 55,
+      "active_end": 80,
+      "pass_through": true,
+      "reset_position": [ 3.1, 0.5, 0.0 ]
+    },
+    {
+      "id": "s3_red",
+      "team": 1,
+      "points": 1,
+      "center": [ -3.62, 1.3, 0.0 ],
+      "half_extents": [ 0.27, 0.1, 0.27 ],
+      "active_start": 80,
+      "active_end": 105,
+      "pass_through": true,
+      "reset_position": [ -3.1, 0.5, 0.0 ]
+    },
+    {
+      "id": "s4_blue",
+      "team": 0,
+      "points": 1,
+      "center": [ 3.62, 1.3, 0.0 ],
+      "half_extents": [ 0.27, 0.1, 0.27 ],
+      "active_start": 80,
+      "active_end": 105,
+      "pass_through": true,
+      "reset_position": [ 3.1, 0.5, 0.0 ]
+    },
+    {
+      "id": "endgame_blue",
+      "team": 0,
+      "points": 1,
+      "center": [ 3.62, 1.3, 0.0 ],
+      "half_extents": [ 0.27, 0.1, 0.27 ],
+      "active_start": 105,
+      "active_end": 135,
+      "pass_through": true,
+      "reset_position": [ 3.1, 0.5, 0.0 ]
+    },
+    {
+      "id": "endgame_red",
+      "team": 1,
+      "points": 1,
+      "center": [ -3.62, 1.3, 0.0 ],
+      "half_extents": [ 0.27, 0.1, 0.27 ],
+      "active_start": 105,
+      "active_end": 135,
+      "pass_through": true,
+      "reset_position": [ -3.1, 0.5, 0.0 ]
+    }
+  ]
+
+}

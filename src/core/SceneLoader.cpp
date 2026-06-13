@@ -181,5 +181,14 @@ SceneData LoadScene(const std::string &scene_path, const MotorRegistry &motors)
     }
     LOG_INFO("SceneLoader: parsed %zu score zones",scorezones);
 
+    if (j.contains("field_bounds")) {
+        const auto& fb = j["field_bounds"];
+        result.has_field_bounds = true;
+        result.field_half_x = fb.value("half_x", 0.0f);
+        result.field_half_z = fb.value("half_z", 0.0f);
+        LOG_INFO("SceneLoader: field_bounds half_x=%.2f half_z=%.2f",
+            result.field_half_x, result.field_half_z);
+    }
+
     return result;
 }

@@ -213,8 +213,7 @@ JPH::BodyID SimWorld::SpawnBody(const BodyDef &def,
 
 void SimWorld::Step(float dt)
 {
-    constexpr int collision_steps = 2;
-    m_physics->Update(dt, collision_steps, m_temp_alloc.get(), m_job_system.get());
+    m_physics->Update(dt, m_collision_steps, m_temp_alloc.get(), m_job_system.get());
     m_sim_time += dt;
 }
 

@@ -33,6 +33,9 @@ struct SceneData
     std::vector<SpawnRequest> bodies;       // field + game pieces only
     std::vector<RobotSpawn>   robot_spawns; // one per robot slot
     std::vector<ScoringZoneDef> scoring_zones;
+    bool  has_field_bounds = false;
+    float field_half_x = 0.0f;
+    float field_half_z = 0.0f;
 };
 
 SceneData LoadScene(const std::string &scene_path, const MotorRegistry &motors);

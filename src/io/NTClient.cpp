@@ -63,6 +63,8 @@ struct NTClient::Impl
     nt::FloatPublisher robot_vz_pub;
     // gamepieces
     nt::FloatArrayPublisher gamepieces_pub;
+
+    nt::BooleanPublisher     oob_pub;
 };
 
 // ── NTClient ──────────────────────────────────────────────────────────────────
@@ -70,10 +72,13 @@ struct NTClient::Impl
 NTClient::NTClient()  = default;
 NTClient::~NTClient() { Shutdown(); }
 
-void NTClient::Init(const std::string &host, int port,
-                    SimWorld &world, int robot_motor_count,
-                    int robot_body_index,
-                    MechanismSystem *mechanisms, std::function<void()> reset_cb)
+void NTClient::Init(const std::string& host, int port,
+    SimWorld& world, int robot_motor_count,
+    int robot_body_index,
+    MechanismSystem* mechanisms,
+    bool has_field_bounds,
+    float field_half_x, float field_half_z,
+    std::function<void()> reset_cb)
 {
     m_robot_slot = robot_body_index;
     m_world             = &world;
@@ -85,6 +90,12 @@ void NTClient::Init(const std::string &host, int port,
     inst = nt::NetworkTableInstance::Create();
     inst.StartClient4("FRC Simulation 3D");
     inst.SetServer(host.c_str(), port);
+
+    m_oob_enabled = has_field_bounds;
+    m_field_half_x = field_half_x;
+    m_field_half_z = field_half_z;
+    if (has_field_bounds)
+        m_impl->oob_pub = inst.GetBooleanTopic("/sim/robot/oob").Publish();
 
     // ── Drivetrain topics ─────────────────────────────────────────────────
     m_impl->motors.resize(robot_motor_count);
@@ -247,8 +258,15 @@ void NTClient::Tick(const WorldSnapshot &snapshot, float dt)
         m_impl->pose_qw_pub.Set(robot.rot[3]);
 
         // velocity
-    m_impl->robot_vx_pub.Set(robot.vel[0]);
-    m_impl->robot_vz_pub.Set(robot.vel[2]);
+        m_impl->robot_vx_pub.Set(robot.vel[0]);
+        m_impl->robot_vz_pub.Set(robot.vel[2]);
+
+        if (m_oob_enabled) {
+
+            bool oob = (std::abs(robot.pos[0]) > m_field_half_x ||
+                std::abs(robot.pos[2]) > m_field_half_z);
+            m_impl->oob_pub.Set(oob);
+        }
     }
 
     if (!m_mechanisms) return;
@@ -330,6 +348,8 @@ void NTClient::Tick(const WorldSnapshot &snapshot, float dt)
             m_reset_cb();
         m_last_reset_val = reset_now;
     }
+
+    
 
 
 }
