@@ -77,7 +77,7 @@ struct SimWorld::OOLayerImpl : public JPH::ObjectLayerPairFilter
 SimWorld::SimWorld() = default;
 SimWorld::~SimWorld() = default;
 
-void SimWorld::Init()
+void SimWorld::Init(int num_threads)
 {
     JPH::RegisterDefaultAllocator();
     JPH::Trace = TraceImpl;
@@ -89,7 +89,9 @@ void SimWorld::Init()
 
     m_temp_alloc = std::make_unique<JPH::TempAllocatorImpl>(32 * 1024 * 1024);
 
-    int threads = std::max(1, (int)std::thread::hardware_concurrency() - 1);
+    int threads = num_threads > 0
+        ? num_threads
+        : std::max(1, (int)std::thread::hardware_concurrency() - 1);
     m_job_system = std::make_unique<JPH::JobSystemThreadPool>(
         JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsBarriers, threads);
 

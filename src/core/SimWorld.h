@@ -35,7 +35,7 @@ public:
     SimWorld();
     ~SimWorld();
 
-    void Init();
+    void Init(int num_threads = 0);
     void SetPhysicsDt(float dt) { m_contact_listener.SetDt(dt); }
     void SetCollisionSteps(int steps) { m_collision_steps = std::max(1, steps); }
 

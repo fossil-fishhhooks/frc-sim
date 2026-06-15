@@ -38,7 +38,8 @@ struct Args
 
     float dt         = 1.0f / 500.0f;
     float speed      = 1.0f;
-    int   substeps = 2;
+    int   substeps   = 2;
+    int   threads    = 0;   // 0 = auto (nproc-1)
     int   target_fps = 60;
     int   width      = 1280;
     int   height     = 720;
@@ -64,7 +65,8 @@ static void PrintUsage(const char *argv0)
                                        "  --fps    <target>            Target render FPS   (default: 60)\n"
                                        "  --w      <width>             Window width        (default: 1280)\n"
                                        "  --h      <height>            Window height       (default: 720)\n"
-                                       "  --wireframe                  Enable wireframe overlay\n"
+                                        "  --threads <n>                Jolt worker threads   (default: auto)\n"
+                                        "  --wireframe                  Enable wireframe overlay\n"
                                        "  --stream <port>              Stream H.264 over UDP (default: 127.0.0.1:5000)\n"
                                        "  --stream-fps <fps>           Stream frame rate     (default: 30)\n"       
                                        "\n";
@@ -108,6 +110,7 @@ static Args ParseArgs(int argc, char *argv[])
         else if (!strcmp(argv[i], "--fps")   && i + 1 < argc) args.target_fps = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--w")     && i + 1 < argc) args.width      = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--h")     && i + 1 < argc) args.height     = std::stoi(argv[++i]);
+        else if (!strcmp(argv[i], "--threads") && i + 1 < argc) args.threads   = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--wireframe")) args.wireframe = true;
         else if (!strcmp(argv[i], "--stream"))
         {
@@ -297,9 +300,11 @@ int main(int argc, char *argv[])
 
     
     if (args.stream)
+    {
         lctx.phase="SETTING STREAM"; lctx.detail="Starting stream..."; lctx.overall=0.02f;
         DrawLoadingFrame(lctx);
         renderer.EnableStreaming(args.stream_port, args.stream_fps);
+    }
     
 
     // ── 2. Motor registry ─────────────────────────────────────────────────
@@ -322,7 +327,7 @@ int main(int argc, char *argv[])
     lctx.phase="INITIALISING PHYSICS"; lctx.detail="Jolt Physics"; lctx.overall=0.20f;
     DrawLoadingFrame(lctx);
     SimWorld world;
-    world.Init();
+    world.Init(args.threads);
     world.SetPhysicsDt(args.dt);
     world.SetCollisionSteps(args.substeps);
     LOG_INFO("main: collision_steps=%d", args.substeps);
