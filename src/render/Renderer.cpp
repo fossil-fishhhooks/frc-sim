@@ -225,7 +225,8 @@ void Renderer::RenderShadowPass(const WorldSnapshot &snapshot)
 
 void Renderer::Shutdown()
 {
-    m_stream.Shutdown();
+    if (m_stream)
+        m_stream->Shutdown();
     if (m_stream_rt.id > 0) UnloadRenderTexture(m_stream_rt);
     if (m_shadowEnabled)
     {
@@ -264,7 +265,7 @@ void Renderer::DrawFrame(const WorldSnapshot &snapshot,
         rlActiveTextureSlot(1);
         rlEnableTexture(m_shadowDepthTex);
     }
-    if (m_stream.IsRunning())
+    if (m_stream)
         BeginTextureMode(m_stream_rt);
 
     // ── Main pass ─────────────────────────────────────────────────────────
@@ -309,7 +310,7 @@ void Renderer::DrawFrame(const WorldSnapshot &snapshot,
     DrawDebugOverlay(snapshot, nt_connected, sim_hz, target_hz, nt_staleness_ms,m_wall_time_offset_ms);
     DrawText("WASD: movement  RMB drag: cam angle  EQ+Arrows: rotate view  Scroll: zoom   ESC: quit  TAB: lock/unlock camera",
              10, GetScreenHeight() - 20, 12, {200, 10, 10, 255});
-    if (m_stream.IsRunning())
+    if (m_stream)
         {
             EndTextureMode();
             BeginDrawing();
@@ -325,17 +326,16 @@ void Renderer::DrawFrame(const WorldSnapshot &snapshot,
 
 
 
-if (m_stream.IsRunning())
+if (m_stream)
 {
     m_stream_accum += GetFrameTime();
     if (m_stream_accum >= 1.0f / m_stream_fps)
     {
         m_stream_accum -= 1.0f / m_stream_fps;
 
-        // Read from texture — correct on all platforms, no glReadPixels timing issues
         Image frame = LoadImageFromTexture(m_stream_rt.texture);
-        ImageFlipVertical(&frame);   // RenderTexture is flipped in OpenGL
-        m_stream.PushFrame(frame.data, frame.width, frame.height);
+        ImageFlipVertical(&frame);
+        m_stream->PushFrame(frame.data, frame.width, frame.height);
         UnloadImage(frame);
     }
 }
@@ -345,7 +345,8 @@ void Renderer::EnableStreaming(int port, int fps)
 {
     m_stream_fps  = fps;
     m_stream_rt   = LoadRenderTexture(GetScreenWidth(), GetScreenHeight());
-    m_stream.Init(port, GetScreenWidth(), GetScreenHeight(), fps);
+    m_stream = std::make_unique<StreamEncoder>();
+    m_stream->Init(port, GetScreenWidth(), GetScreenHeight(), fps);
 }
 
 // ── Light gizmos ──────────────────────────────────────────────────────────────

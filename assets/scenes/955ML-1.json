@@ -2,7 +2,7 @@
   "name": "test_floor_robot",
   "bodies": [
     {
-      "def": "../bodies/floor.json",
+      "def": "../bodies/flat_floor.json",
       "position": [
         0.0,
         0.0,
@@ -6053,10 +6053,6 @@
       }
     }
   ],
-  "field_bounds": {
-    "half_x": 7.25,
-    "half_z": 4.05
-  },
   "scoring_zones": [
     {
       "id": "auto_and_transition_blue",
