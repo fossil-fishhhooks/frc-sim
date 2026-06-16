@@ -48,6 +48,7 @@ public:
     bool  IsConnected() const { return m_connected.load(); }
     float Ping()        const;
 
+    nt::NetworkTableInstance &GetInst();
 private:
     struct Impl;
     Impl *m_impl = nullptr;

@@ -12,6 +12,8 @@
 #include "render/Renderer.h"
 #include "render/BodyDraw.h"
 #include "io/NTClient.h"
+#include "io/RaycastDef.h"
+#include "io/Raycaster.h"
 
 #include <string>
 #include <cstring>
@@ -50,6 +52,8 @@ struct Args
     std::string stream_host = "127.0.0.1";
     int         stream_port = 5000;
     int         stream_fps  = 30;
+
+    std::string raycast_path;
 };
 
 static void PrintUsage(const char *argv0)
@@ -68,7 +72,8 @@ static void PrintUsage(const char *argv0)
                                         "  --threads <n>                Jolt worker threads   (default: auto)\n"
                                         "  --wireframe                  Enable wireframe overlay\n"
                                        "  --stream <port>              Stream H.264 over UDP (default: 127.0.0.1:5000)\n"
-                                       "  --stream-fps <fps>           Stream frame rate     (default: 30)\n"       
+                                       "  --stream-fps <fps>           Stream frame rate     (default: 30)\n" 
+                                       "  --raycast <path.json>        Optional raycast sensor definitions\n"      
                                        "\n";
 }
 
@@ -112,6 +117,8 @@ static Args ParseArgs(int argc, char *argv[])
         else if (!strcmp(argv[i], "--h")     && i + 1 < argc) args.height     = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--threads") && i + 1 < argc) args.threads   = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--wireframe")) args.wireframe = true;
+        else if (!strcmp(argv[i], "--raycast") && i + 1 < argc)
+                args.raycast_path = argv[++i];
         else if (!strcmp(argv[i], "--stream"))
         {
             args.stream = true;
@@ -533,6 +540,31 @@ int main(int argc, char *argv[])
         LOG_INFO("main: NT client[%d] -> %s:%d", ri, ra.nt_host.c_str(), ra.nt_port);
     }
 
+    lctx.phase="Building Raycasts"; lctx.detail=""; lctx.cur=1; lctx.total=1; lctx.overall=0.99f;
+    DrawLoadingFrame(lctx);
+
+    // ── Raycasters ────────────────────────────────────────────────────────────
+    std::vector<std::unique_ptr<Raycaster>> raycasters;
+    std::optional<RaycastConfig> raycast_cfg;
+
+    if (!args.raycast_path.empty()) {
+        raycast_cfg = LoadRaycastConfig(args.raycast_path);
+        if (raycast_cfg) {
+            for (int ri = 0; ri < (int)nt_clients.size(); ++ri) {
+                auto rc = std::make_unique<Raycaster>();
+                rc->Init(*raycast_cfg, nt_clients[ri]->GetInst(), ri);
+                raycasters.push_back(std::move(rc));
+            }
+        }
+    }
+
+    // Pass raw pointers to renderer for debug draw
+    {
+        std::vector<Raycaster*> rc_ptrs;
+        for (auto &rc : raycasters) rc_ptrs.push_back(rc.get());
+        renderer.SetRaycasters(std::move(rc_ptrs));
+    }
+
     lctx.phase="READY"; lctx.detail=""; lctx.cur=1; lctx.total=1; lctx.overall=1.0f;
     DrawLoadingFrame(lctx);
 
@@ -557,6 +589,8 @@ int main(int argc, char *argv[])
                 float p = nt->Ping();
                 if (p >= 0) best_ping = p;
             }
+             for (auto &rc : raycasters)
+                 rc->CastAndPublish(snapshot, world);
         }
 
         if (reset_just_happened) {
@@ -565,6 +599,7 @@ int main(int argc, char *argv[])
             for (auto &nt : nt_clients) {
                 nt->Tick(snapshot, frame_dt);
             }
+           
         }
 
         renderer.DrawFrame(snapshot, any_connected,

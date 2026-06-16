@@ -83,6 +83,8 @@ public:
 
     ContactListener &GetContactListener() { return m_contact_listener; }
 
+    const JPH::NarrowPhaseQuery &GetNarrowPhaseQuery() const;
+
 
 private:
     ContactListener m_contact_listener;

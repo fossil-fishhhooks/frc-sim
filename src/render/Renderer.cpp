@@ -298,6 +298,7 @@ void Renderer::DrawFrame(const WorldSnapshot &snapshot,
 
     DrawLightGizmos();
     DrawForceVectors(snapshot);
+    DrawRaycasts(m_raycasters);
     EndMode3D();
 
     if (m_shadowEnabled)
@@ -422,4 +423,34 @@ void Renderer::DrawArrow3D(Vector3 start, Vector3 end, Color color, float thickn
     DrawLine3D(head_end, Vector3Add(arrowhead, Vector3Scale(perp1, -w)), color);
     DrawLine3D(head_end, Vector3Add(arrowhead, Vector3Scale(perp2, w)), color);
     DrawLine3D(head_end, Vector3Add(arrowhead, Vector3Scale(perp2, -w)), color);
+}
+
+void Renderer::DrawRaycasts(const std::vector<Raycaster*> &raycasters)
+{
+    //LOG_INFO("DrawRaycasts: %zu raycasters", raycasters.size());
+    for (const Raycaster *rc : raycasters)
+    {
+        if (!rc) continue;
+        
+        for (const RayRenderData &r : rc->RenderData())
+        {
+            Color col = { r.color[0], r.color[1], r.color[2], r.color[3] };
+            Color hit_col = r.did_hit
+                ? Color{ (uint8_t)std::min(255, (int)r.color[0] + 60),
+                         r.color[1], r.color[2], 255 }
+                : Color{ r.color[0], r.color[1], r.color[2],
+                         (uint8_t)(r.color[3] / 3) };  // dim if no hit
+
+            // Ray line
+            DrawLine3D(
+                Vector3{ r.origin[0], r.origin[1], r.origin[2] },
+                Vector3{ r.hit[0],    r.hit[1],    r.hit[2]    },
+                col
+            );
+
+            // Hit sphere marker
+            if (r.did_hit)
+                DrawSphere(Vector3{ r.hit[0], r.hit[1], r.hit[2] }, 0.04f, hit_col);
+        }
+    }
 }
