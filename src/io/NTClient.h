@@ -32,11 +32,13 @@ public:
     ~NTClient();
 
     // robot_body_index: index of this robot's body in SimWorld::m_bodies
-    void Init(const std::string &host, int port,
-          SimWorld &world, int robot_motor_count,
-          int robot_body_index,
-          MechanismSystem *mechanisms,
-          std::function<void()> reset_cb = {});
+    void Init(const std::string& host, int port,
+        SimWorld& world, int robot_motor_count,
+        int robot_body_index,
+        MechanismSystem* mechanisms,
+        bool has_field_bounds,
+        float field_half_x, float field_half_z,
+        std::function<void()> reset_cb);
 
     void Shutdown();
 
@@ -61,6 +63,10 @@ private:
     bool  m_last_fire_val = false;
     float m_fire_cooldown = 0.0f;
     float m_fire_rate     = 2.0f;
+
+    bool  m_oob_enabled = false;
+    float m_field_half_x = 0.0f;
+    float m_field_half_z = 0.0f;
 
     bool m_last_reset_val = false;
     std::function<void()> m_reset_cb;  // called on rising edge

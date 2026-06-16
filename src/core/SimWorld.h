@@ -35,8 +35,9 @@ public:
     SimWorld();
     ~SimWorld();
 
-    void Init();
+    void Init(int num_threads = 0);
     void SetPhysicsDt(float dt) { m_contact_listener.SetDt(dt); }
+    void SetCollisionSteps(int steps) { m_collision_steps = std::max(1, steps); }
 
     JPH::BodyID SpawnBody(const BodyDef &def,
                           const float pos[3],
@@ -116,6 +117,7 @@ private:
     std::deque<BodyRecord> m_bodies;
     std::vector<int>       m_robot_indices;   // all robot body indices
 
+    int    m_collision_steps = 2;
     double m_sim_time = 0.0;
 
     mutable WorldSnapshot m_snap_scratch;

@@ -38,6 +38,8 @@ struct Args
 
     float dt         = 1.0f / 500.0f;
     float speed      = 1.0f;
+    int   substeps   = 2;
+    int   threads    = 0;   // 0 = auto (nproc-1)
     int   target_fps = 60;
     int   width      = 1280;
     int   height     = 720;
@@ -58,12 +60,14 @@ static void PrintUsage(const char *argv0)
                                        "  --robot  <def@host:port>     Add a robot (repeatable, up to 6)\n"
                                        "                               e.g. assets/defs/robot.json@10.9.55.2:5810\n"
                                        "  --dt     <seconds>           Physics timestep    (default: 0.002)\n"
+                                       "  --substeps <n>               Jolt collision steps per tick (default: 2)\n"
                                        "  --speed  <factor>            Sim speed multiplier(default: 1.0)\n"
                                        "  --fps    <target>            Target render FPS   (default: 60)\n"
                                        "  --w      <width>             Window width        (default: 1280)\n"
                                        "  --h      <height>            Window height       (default: 720)\n"
-                                       "  --wireframe                  Enable wireframe overlay\n"
-                                       "  --stream <port>         Stream H.264 over UDP (default: 127.0.0.1:5000)\n"
+                                        "  --threads <n>                Jolt worker threads   (default: auto)\n"
+                                        "  --wireframe                  Enable wireframe overlay\n"
+                                       "  --stream <port>              Stream H.264 over UDP (default: 127.0.0.1:5000)\n"
                                        "  --stream-fps <fps>           Stream frame rate     (default: 30)\n"       
                                        "\n";
 }
@@ -101,10 +105,12 @@ static Args ParseArgs(int argc, char *argv[])
                 LOG_WARN("main: max 6 robots, ignoring extra --robot");
         }
         else if (!strcmp(argv[i], "--dt")    && i + 1 < argc) args.dt         = std::stof(argv[++i]);
+        else if (!strcmp(argv[i], "--substeps") && i + 1 < argc) args.substeps = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--speed") && i + 1 < argc) args.speed      = std::stof(argv[++i]);
         else if (!strcmp(argv[i], "--fps")   && i + 1 < argc) args.target_fps = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--w")     && i + 1 < argc) args.width      = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--h")     && i + 1 < argc) args.height     = std::stoi(argv[++i]);
+        else if (!strcmp(argv[i], "--threads") && i + 1 < argc) args.threads   = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--wireframe")) args.wireframe = true;
         else if (!strcmp(argv[i], "--stream"))
         {
@@ -294,9 +300,11 @@ int main(int argc, char *argv[])
 
     
     if (args.stream)
+    {
         lctx.phase="SETTING STREAM"; lctx.detail="Starting stream..."; lctx.overall=0.02f;
         DrawLoadingFrame(lctx);
         renderer.EnableStreaming(args.stream_port, args.stream_fps);
+    }
     
 
     // ── 2. Motor registry ─────────────────────────────────────────────────
@@ -319,8 +327,10 @@ int main(int argc, char *argv[])
     lctx.phase="INITIALISING PHYSICS"; lctx.detail="Jolt Physics"; lctx.overall=0.20f;
     DrawLoadingFrame(lctx);
     SimWorld world;
-    world.Init();
+    world.Init(args.threads);
     world.SetPhysicsDt(args.dt);
+    world.SetCollisionSteps(args.substeps);
+    LOG_INFO("main: collision_steps=%d", args.substeps);
 
     // ── 5. Spawn non-robot scene bodies ───────────────────────────────────
     int total_bodies = (int)scene.bodies.size() + (int)args.robots.size();
@@ -424,6 +434,7 @@ int main(int argc, char *argv[])
 
     sim.Start();
 
+    bool reset_just_happened = false;
     auto do_reset = [&]() {
         LOG_INFO("main: reset triggered via NT");
 
@@ -487,6 +498,7 @@ int main(int argc, char *argv[])
         score_tracker.StartMatch();
 
         sim.Start();
+        reset_just_happened = true;
         LOG_INFO("main: reset complete, match auto-started");
     };
 
@@ -509,10 +521,13 @@ int main(int argc, char *argv[])
 
         auto client = std::make_unique<NTClient>();
         client->Init(ra.nt_host, ra.nt_port, world,
-             robot_motor_counts[ri],
-             ri,
-             all_mechanisms[ri].get(),
-             (ri == 0) ? do_reset : std::function<void()>{});
+            robot_motor_counts[ri],
+            ri,
+            all_mechanisms[ri].get(),
+            scene.has_field_bounds,
+            scene.field_half_x,
+            scene.field_half_z,
+            (ri == 0) ? do_reset : std::function<void()>{});
         ++spawn_slot;
         nt_clients.push_back(std::move(client));
         LOG_INFO("main: NT client[%d] -> %s:%d", ri, ra.nt_host.c_str(), ra.nt_port);
@@ -541,6 +556,14 @@ int main(int argc, char *argv[])
                 any_connected = true;
                 float p = nt->Ping();
                 if (p >= 0) best_ping = p;
+            }
+        }
+
+        if (reset_just_happened) {
+            reset_just_happened = false;
+            snapshot = sim.GetSnapshot();
+            for (auto &nt : nt_clients) {
+                nt->Tick(snapshot, frame_dt);
             }
         }
 

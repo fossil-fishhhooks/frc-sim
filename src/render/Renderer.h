@@ -3,6 +3,7 @@
 #include "render/StreamEncoder.h"
 #include <raylib.h>
 #include <rlgl.h>
+#include <memory>
 
 struct LightUniform
 {
@@ -73,9 +74,9 @@ private:
     void DrawForceVectors(const WorldSnapshot &);
     void DrawArrow3D(Vector3, Vector3, Color, float);
 
-    StreamEncoder m_stream;
-    int           m_stream_fps = 30;
-    float m_stream_accum = 0.0f;
+    std::unique_ptr<StreamEncoder> m_stream;
+    int                            m_stream_fps = 30;
+    float                          m_stream_accum = 0.0f;
 
     RenderTexture2D m_stream_rt = {0};
 };

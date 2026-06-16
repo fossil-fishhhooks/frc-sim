@@ -183,7 +183,7 @@ void ForceApplicator::Apply(float dt)
             if (slipping)
                 force_mag = std::copysign(cap_dynamic, force_mag);
 
-            bi.AddForce(jph_id, world_dir * force_mag, world_att);
+            bi.AddImpulse(jph_id, world_dir* force_mag* dt, world_att);
 
             m_world.SetMotorNormalForce  (body_idx, m, normal_per_wheel);
             m_world.SetMotorTractiveForce(body_idx, m, force_mag);
@@ -200,15 +200,19 @@ void ForceApplicator::Apply(float dt)
 
             if (lat_speed > 1e-4f)
             {
-                JPH::Vec3 lat_dir   = v_lat / lat_speed;
-                JPH::Vec3 r         = world_att - body_com;
-                JPH::Vec3 r_cross   = r.Cross(lat_dir);
+                JPH::Vec3 lat_dir = v_lat / lat_speed;
+                JPH::Vec3 r = world_att - body_com;
+                JPH::Vec3 r_cross = r.Cross(lat_dir);
                 JPH::Vec3 i_r_cross = inv_inertia.Multiply3x3(r_cross);
-                float     rot_term  = r_cross.Dot(i_r_cross);
-                float     m_eff     = 1.0f / (inv_mass + rot_term);
+                float     rot_term = r_cross.Dot(i_r_cross);
+                float     m_eff = 1.0f / (inv_mass + rot_term);
 
-                float f_lat = std::min(lat_cap, m_eff * lat_speed / dt);
-                bi.AddForce(jph_id, -lat_dir * f_lat, world_att);
+                // Impulse to fully cancel lateral velocity this tick, capped by friction.
+                // Using AddImpulse (kg⋅m/s) instead of AddForce (N) means the correction
+                // is applied instantly and doesn't depend on the integrator doing multiple
+                // passes — so substeps=1 works correctly.
+                float j_lat = std::min(lat_cap * dt, m_eff * lat_speed);
+                bi.AddImpulse(jph_id, -lat_dir * j_lat, world_att);
             }
 
             static int tick_count = 0;
