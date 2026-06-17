@@ -1,6 +1,7 @@
 #pragma once
 #include "core/Snapshot.h"
 #include "render/StreamEncoder.h"
+#include "io/Raycaster.h"
 #include <raylib.h>
 #include <rlgl.h>
 #include <memory>
@@ -32,6 +33,8 @@ public:
     void SetWallTimeOffset(float ms) { m_wall_time_offset_ms = ms; }
 
     void EnableStreaming(int port, int fps);
+
+    void SetRaycasters(std::vector<Raycaster*> raycasters) { m_raycasters = std::move(raycasters); }
 
 private:
     Camera3D m_camera{};
@@ -79,4 +82,7 @@ private:
     float                          m_stream_accum = 0.0f;
 
     RenderTexture2D m_stream_rt = {0};
+
+    std::vector<Raycaster*> m_raycasters;
+    void DrawRaycasts(const std::vector<Raycaster*> &raycasters);
 };

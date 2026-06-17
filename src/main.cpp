@@ -12,6 +12,8 @@
 #include "render/Renderer.h"
 #include "render/BodyDraw.h"
 #include "io/NTClient.h"
+#include "io/RaycastDef.h"
+#include "io/Raycaster.h"
 
 #include <string>
 #include <cstring>
@@ -20,6 +22,7 @@
 #include <memory>
 #include <vector>
 #include <cmath>
+#include <random>
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CLI
@@ -50,7 +53,39 @@ struct Args
     std::string stream_host = "127.0.0.1";
     int         stream_port = 5000;
     int         stream_fps  = 30;
+
+    std::string raycast_path;
 };
+
+// Apply per-reset spawn randomization from the RobotSpawn's tags.
+// Modifies pos[3] (x,z only; y untouched) and rot[4] in-place.
+static void ApplySpawnRandomization(const RobotSpawn &spawn,
+                                     float pos[3], float rot[4])
+{
+    float hx = spawn.randomize_half_extents[0];
+    float hz = spawn.randomize_half_extents[2];
+    if (hx > 0.f || hz > 0.f)
+    {
+        thread_local std::mt19937 rng(std::random_device{}());
+        std::uniform_real_distribution<float> dx(-hx, hx);
+        std::uniform_real_distribution<float> dz(-hz, hz);
+        pos[0] = spawn.position[0] + dx(rng);
+        pos[2] = spawn.position[2] + dz(rng);
+        // pos[1] (y) unchanged — keep the designer-specified height
+    }
+
+    if (spawn.randomize_rotation)
+    {
+        thread_local std::mt19937 rng_rot(std::random_device{}());
+        std::uniform_real_distribution<float> da(0.f, 2.f * 3.14159265f);
+        float angle = da(rng_rot);
+        JPH::Quat base_q(rot[0], rot[1], rot[2], rot[3]);
+        JPH::Quat yaw_q  = JPH::Quat::sRotation(JPH::Vec3::sAxisY(), angle);
+        JPH::Quat result = yaw_q * base_q;
+        rot[0] = result.GetX(); rot[1] = result.GetY();
+        rot[2] = result.GetZ(); rot[3] = result.GetW();
+    }
+}
 
 static void PrintUsage(const char *argv0)
 {
@@ -68,7 +103,8 @@ static void PrintUsage(const char *argv0)
                                         "  --threads <n>                Jolt worker threads   (default: auto)\n"
                                         "  --wireframe                  Enable wireframe overlay\n"
                                        "  --stream <port>              Stream H.264 over UDP (default: 127.0.0.1:5000)\n"
-                                       "  --stream-fps <fps>           Stream frame rate     (default: 30)\n"       
+                                       "  --stream-fps <fps>           Stream frame rate     (default: 30)\n" 
+                                       "  --raycast <path.json>        Optional raycast sensor definitions\n"      
                                        "\n";
 }
 
@@ -112,6 +148,8 @@ static Args ParseArgs(int argc, char *argv[])
         else if (!strcmp(argv[i], "--h")     && i + 1 < argc) args.height     = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--threads") && i + 1 < argc) args.threads   = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--wireframe")) args.wireframe = true;
+        else if (!strcmp(argv[i], "--raycast") && i + 1 < argc)
+                args.raycast_path = argv[++i];
         else if (!strcmp(argv[i], "--stream"))
         {
             args.stream = true;
@@ -387,6 +425,8 @@ int main(int argc, char *argv[])
             rot[0]=rs.orientation[0]; rot[1]=rs.orientation[1];
             rot[2]=rs.orientation[2]; rot[3]=rs.orientation[3];
         }
+        if (ri < (int)scene.robot_spawns.size())
+            ApplySpawnRandomization(scene.robot_spawns[ri], pos, rot);
 
         PreloadMesh(&def);
         auto id = world.SpawnBody(def, pos, rot);
@@ -474,17 +514,18 @@ int main(int argc, char *argv[])
             JPH::BodyID bid = world.GetBodyID(body_idx);
             if (bid.IsInvalid()) continue;
 
-            float px=0,py=0.3f,pz=0;
-            float rx=0,ry=0,rz=0,rw=1;
+            float pos[3] = {0.f, 0.3f, 0.f};
+            float rot[4] = {0.f, 0.f, 0.f, 1.f};
             if (ri < (int)scene.robot_spawns.size()) {
                 auto &rs = scene.robot_spawns[ri];
-                px=rs.position[0]; py=rs.position[1]; pz=rs.position[2];
-                rx=rs.orientation[0]; ry=rs.orientation[1];
-                rz=rs.orientation[2]; rw=rs.orientation[3];
+                pos[0]=rs.position[0]; pos[1]=rs.position[1]; pos[2]=rs.position[2];
+                rot[0]=rs.orientation[0]; rot[1]=rs.orientation[1];
+                rot[2]=rs.orientation[2]; rot[3]=rs.orientation[3];
+                ApplySpawnRandomization(rs, pos, rot);
             }
             bi.SetPositionAndRotation(bid,
-                JPH::RVec3(px,py,pz),
-                JPH::Quat(rx,ry,rz,rw),
+                JPH::RVec3(pos[0], pos[1], pos[2]),
+                JPH::Quat(rot[0], rot[1], rot[2], rot[3]),
                 JPH::EActivation::Activate);
             bi.SetLinearVelocity(bid,  JPH::Vec3::sZero());
             bi.SetAngularVelocity(bid, JPH::Vec3::sZero());
@@ -533,6 +574,31 @@ int main(int argc, char *argv[])
         LOG_INFO("main: NT client[%d] -> %s:%d", ri, ra.nt_host.c_str(), ra.nt_port);
     }
 
+    lctx.phase="Building Raycasts"; lctx.detail=""; lctx.cur=1; lctx.total=1; lctx.overall=0.99f;
+    DrawLoadingFrame(lctx);
+
+    // ── Raycasters ────────────────────────────────────────────────────────────
+    std::vector<std::unique_ptr<Raycaster>> raycasters;
+    std::optional<RaycastConfig> raycast_cfg;
+
+    if (!args.raycast_path.empty()) {
+        raycast_cfg = LoadRaycastConfig(args.raycast_path);
+        if (raycast_cfg) {
+            for (int ri = 0; ri < (int)nt_clients.size(); ++ri) {
+                auto rc = std::make_unique<Raycaster>();
+                rc->Init(*raycast_cfg, nt_clients[ri]->GetInst(), ri);
+                raycasters.push_back(std::move(rc));
+            }
+        }
+    }
+
+    // Pass raw pointers to renderer for debug draw
+    {
+        std::vector<Raycaster*> rc_ptrs;
+        for (auto &rc : raycasters) rc_ptrs.push_back(rc.get());
+        renderer.SetRaycasters(std::move(rc_ptrs));
+    }
+
     lctx.phase="READY"; lctx.detail=""; lctx.cur=1; lctx.total=1; lctx.overall=1.0f;
     DrawLoadingFrame(lctx);
 
@@ -557,6 +623,8 @@ int main(int argc, char *argv[])
                 float p = nt->Ping();
                 if (p >= 0) best_ping = p;
             }
+             for (auto &rc : raycasters)
+                 rc->CastAndPublish(snapshot, world);
         }
 
         if (reset_just_happened) {
@@ -565,6 +633,7 @@ int main(int argc, char *argv[])
             for (auto &nt : nt_clients) {
                 nt->Tick(snapshot, frame_dt);
             }
+           
         }
 
         renderer.DrawFrame(snapshot, any_connected,

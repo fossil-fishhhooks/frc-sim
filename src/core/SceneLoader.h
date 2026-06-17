@@ -22,6 +22,10 @@ struct RobotSpawn
     std::array<float, 3> position    = {0.f, 0.051f, 0.f};
     std::array<float, 4> orientation = {0.f, 0.f, 0.f, 1.f};
 
+    // Spawn randomization (re-applied each reset)
+    std::array<float, 3> randomize_half_extents = {0.f, 0.f, 0.f};  // [x, y, z]; y ignored
+    bool                 randomize_rotation     = false;
+
     // Optional per-robot mechanisms — each robot may have its own or none
     bool       has_mechanisms = false;
     IntakeDef  intake;

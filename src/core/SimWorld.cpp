@@ -513,3 +513,7 @@ int SimWorld::AddRobotIndex(int body_idx)
     LOG_INFO("SimWorld: robot slot %d = body_idx %d", slot, body_idx);
     return slot;
 }
+
+const JPH::NarrowPhaseQuery &SimWorld::GetNarrowPhaseQuery() const {
+    return m_physics->GetNarrowPhaseQuery();
+}

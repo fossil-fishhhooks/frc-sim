@@ -353,3 +353,8 @@ void NTClient::Tick(const WorldSnapshot &snapshot, float dt)
 
 
 }
+
+nt::NetworkTableInstance &NTClient::GetInst()
+{
+    return m_impl->inst;
+}

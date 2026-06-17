@@ -83,6 +83,7 @@ add_executable(frc_sim
     src/render/StreamEncoder.cpp
 
     src/io/NTClient.cpp
+    src/io/Raycaster.cpp
 )
 
 target_include_directories(frc_sim PRIVATE src)
