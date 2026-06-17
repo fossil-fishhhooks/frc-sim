@@ -31,91 +31,99 @@ class RewardNormalizer:
         self._ret   = 0.0
 
     def update_and_normalize(self, reward: float, done: bool) -> float:
-        FIXED_SCALE = 20.0
+        FIXED_SCALE = 5.0
         return float(np.clip(reward / FIXED_SCALE, -self.clip, self.clip))
 
 
 # ── Rollout buffer ────────────────────────────────────────────────────────────
 
 class RolloutBuffer:
-    """Stores one rollout, computes GAE advantages, yields minibatches."""
+    """2-D rollout buffer (steps_per_env × num_envs) for vectorised training."""
 
-    def __init__(self, capacity: int, obs_dim: int, act_dim: int):
-        self.capacity = capacity
-        self.obs      = np.zeros((capacity, obs_dim),  dtype=np.float32)
-        self.actions  = np.zeros((capacity, act_dim),  dtype=np.float32)
-        self.log_probs= np.zeros(capacity,              dtype=np.float32)
-        self.rewards  = np.zeros(capacity,              dtype=np.float32)
-        self.dones    = np.zeros(capacity,              dtype=np.float32)
-        self.values   = np.zeros(capacity,              dtype=np.float32)
-        # Filled by compute_returns_and_advantages:
-        self.returns    = np.zeros(capacity,            dtype=np.float32)
-        self.advantages = np.zeros(capacity,            dtype=np.float32)
+    def __init__(self, steps_per_env: int, num_envs: int, obs_dim: int, act_dim: int):
+        self.steps_per_env = steps_per_env
+        self.num_envs      = num_envs
+        self.obs      = np.zeros((steps_per_env, num_envs, obs_dim),  dtype=np.float32)
+        self.actions  = np.zeros((steps_per_env, num_envs, act_dim),  dtype=np.float32)
+        self.log_probs= np.zeros((steps_per_env, num_envs),           dtype=np.float32)
+        self.rewards  = np.zeros((steps_per_env, num_envs),           dtype=np.float32)
+        self.dones    = np.zeros((steps_per_env, num_envs),           dtype=np.float32)
+        self.values   = np.zeros((steps_per_env, num_envs),           dtype=np.float32)
+        self.returns    = np.zeros((steps_per_env, num_envs),         dtype=np.float32)
+        self.advantages = np.zeros((steps_per_env, num_envs),         dtype=np.float32)
         self._ptr = 0
 
-    def add(self, obs, action, log_prob: float, reward: float,
-            done: bool, value: float):
+    def add(self, obs_batch, action_batch, log_prob_batch, reward_batch,
+            done_batch, value_batch):
         i = self._ptr
-        self.obs[i]       = obs
-        self.actions[i]   = action
-        self.log_probs[i] = log_prob
-        self.rewards[i]   = reward
-        self.dones[i]     = float(done)
-        self.values[i]    = value
+        self.obs[i]       = obs_batch
+        self.actions[i]   = action_batch
+        self.log_probs[i] = log_prob_batch
+        self.rewards[i]   = reward_batch
+        self.dones[i]     = done_batch.astype(np.float32)
+        self.values[i]    = value_batch
         self._ptr += 1
 
     def full(self) -> bool:
-        return self._ptr >= self.capacity
+        return self._ptr >= self.steps_per_env
 
     def reset(self):
         self._ptr = 0
 
-    def compute_returns_and_advantages(self, last_value: float,
-                                       gamma: float, gae_lambda: float):
-        """
-        GAE-Lambda advantage estimation.
-        last_value: V(s_{T+1}) bootstrapped from the model if episode not done.
-        """
-        adv   = 0.0
-        next_v = last_value
-        for t in reversed(range(self._ptr)):
-            mask   = 1.0 - self.dones[t]
-            delta  = self.rewards[t] + gamma * next_v * mask - self.values[t]
-            adv    = delta + gamma * gae_lambda * mask * adv
-            self.advantages[t] = adv
-            self.returns[t]    = adv + self.values[t]
-            next_v             = self.values[t]
+    def compute_returns_and_advantages(self, last_values, gamma: float,
+                                       gae_lambda: float):
+        """Per-env GAE-Lambda.  last_values: shape (num_envs,)."""
+        for e in range(self.num_envs):
+            adv    = 0.0
+            next_v = last_values[e]
+            for t in reversed(range(self._ptr)):
+                mask      = 1.0 - self.dones[t, e]
+                delta     = self.rewards[t, e] + gamma * next_v * mask - self.values[t, e]
+                adv       = delta + gamma * gae_lambda * mask * adv
+                self.advantages[t, e] = adv
+                self.returns[t, e]    = adv + self.values[t, e]
+                next_v                 = self.values[t, e]
 
-        # Normalize advantages over the rollout — stabilizes updates
         valid = self.advantages[:self._ptr]
         self.advantages[:self._ptr] = (valid - valid.mean()) / (valid.std() + 1e-8)
 
     def iterate_minibatches(self, minibatch_size: int, device: torch.device):
-        """Yields random minibatches as dicts of tensors."""
-        n       = self._ptr
+        """Flatten then yield random minibatches."""
+        n       = self._ptr * self.num_envs
         indices = np.random.permutation(n)
         for start in range(0, n, minibatch_size):
-            idx = indices[start : start + minibatch_size]
+            idx  = indices[start : start + minibatch_size]
+            sidx = idx // self.num_envs
+            eidx = idx % self.num_envs
             yield {
-                "obs":        torch.FloatTensor(self.obs[idx]).to(device),
-                "actions":    torch.FloatTensor(self.actions[idx]).to(device),
-                "log_probs":  torch.FloatTensor(self.log_probs[idx]).to(device),
-                "returns":    torch.FloatTensor(self.returns[idx]).to(device),
-                "advantages": torch.FloatTensor(self.advantages[idx]).to(device),
+                "obs":        torch.FloatTensor(self.obs[sidx, eidx]).to(device),
+                "actions":    torch.FloatTensor(self.actions[sidx, eidx]).to(device),
+                "log_probs":  torch.FloatTensor(self.log_probs[sidx, eidx]).to(device),
+                "returns":    torch.FloatTensor(self.returns[sidx, eidx]).to(device),
+                "advantages": torch.FloatTensor(self.advantages[sidx, eidx]).to(device),
             }
 
 
 # ── PPO update ────────────────────────────────────────────────────────────────
 
-def ppo_update(model:     ActorCritic,
-               optimizer: torch.optim.Optimizer,
-               buffer:    RolloutBuffer,
-               cfg:       Config,
-               device:    torch.device) -> dict:
+def ppo_update(model:        ActorCritic,
+               optimizer:    torch.optim.Optimizer,
+               buffer:       RolloutBuffer,
+               cfg:          Config,
+               device:       torch.device,
+               entropy_coef: float | None = None) -> dict:
     """
     Run cfg.n_epochs passes of PPO over the rollout buffer.
     Returns dict of mean losses for logging.
+
+    entropy_coef overrides cfg.entropy_coef when given, so callers can decay
+    it over training. Without decay, even a tiny constant entropy bonus
+    accumulates over millions of steps and pushes policy_logstd toward its
+    clamp ceiling — entropy rises instead of falling, and the policy never
+    sharpens (observed: entropy climbed 2.8 -> 5.0 over a 5M-step run while
+    mean intakes plateaued well below target).
     """
+    coef = cfg.entropy_coef if entropy_coef is None else entropy_coef
     policy_losses, value_losses, entropy_vals = [], [], []
 
     for _ in range(cfg.n_epochs):
@@ -135,7 +143,7 @@ def ppo_update(model:     ActorCritic,
             v_loss = F.mse_loss(value, batch["returns"])
 
             # ── Combined loss ─────────────────────────────────────────────
-            loss = pg_loss + cfg.value_coef * v_loss - cfg.entropy_coef * entropy.mean()
+            loss = pg_loss + cfg.value_coef * v_loss - coef * entropy.mean()
 
             optimizer.zero_grad()
             loss.backward()
