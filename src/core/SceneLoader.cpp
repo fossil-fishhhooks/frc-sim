@@ -149,8 +149,16 @@ SceneData LoadScene(const std::string &scene_path, const MotorRegistry &motors)
     for (const auto &rs : j.value("robots", json::array()))
     {
         RobotSpawn spawn;
-        spawn.position    = readVec3(rs, "position",    {0.f, 0.051f, 0.f});
-        spawn.orientation = readVec4(rs, "orientation");
+        spawn.position               = readVec3(rs, "position",    {0.f, 0.051f, 0.f});
+        spawn.orientation            = readVec4(rs, "orientation");
+        spawn.randomize_half_extents = readVec3(rs, "randomize", {0.f, 0.f, 0.f});
+        spawn.randomize_rotation     = rs.value("randomize-rotation", false);
+        if (spawn.randomize_half_extents[0] > 0.f || spawn.randomize_half_extents[2] > 0.f)
+            LOG_INFO("SceneLoader: robot[%zu] randomize x=%.2f z=%.2f%s",
+                     result.robot_spawns.size(),
+                     spawn.randomize_half_extents[0],
+                     spawn.randomize_half_extents[2],
+                     spawn.randomize_rotation ? " +rotation" : "");
         ParseMechanisms(rs, scene_dir, motors, spawn);
         result.robot_spawns.push_back(std::move(spawn));
     }
