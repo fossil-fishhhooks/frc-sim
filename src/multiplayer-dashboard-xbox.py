@@ -60,8 +60,8 @@ def _pump_gamepad():
         print(f"gamepad poll failed: {e}")
 
 NT_PORT     = 5810
-DRIVE_V     = 0.7
-ROTATE_V    = 0.5
+DRIVE_V     = 1.0
+ROTATE_V    = 0.8
 AIM_SPEED   = 1.5
 SHOOT_SPEED = 12.0
 SPEED_STEP  = 1.0
@@ -216,9 +216,10 @@ class ControlThread(threading.Thread):
                 a = b = x = y = lb = rb = False
                 raw = []
 
-            fwd    = -ly * DRIVE_V
-            strafe =  lx * DRIVE_V
-            rot    = -rx * ROTATE_V
+            sens = self.state.get('sensitivity', 1.0)
+            fwd    = -ly * DRIVE_V * sens
+            strafe =  lx * DRIVE_V * sens
+            rot    = -rx * ROTATE_V * sens
             stop   = b
 
             for i, (speed, angle) in enumerate(swerve(fwd, strafe, rot)):
@@ -403,6 +404,25 @@ class Dashboard:
             label(r, f"{k:<10}", fg=ACCENT, size=8, bold=True).pack(side="left")
             label(r, desc, fg=DIM, size=8).pack(side="left")
         divider(f)
+        sens_f = tk.Frame(f, bg=PANEL)
+        sens_f.pack(fill="x", padx=12, pady=4)
+        label(sens_f, "SENSITIVITY", fg=DIM, size=7).pack(anchor="w")
+        sens_row = tk.Frame(sens_f, bg=PANEL)
+        sens_row.pack(fill="x")
+        label(sens_row, "0%", fg=DIM, size=7).pack(side="left")
+        self.sens_var = tk.DoubleVar(value=1.0)
+        tk.Scale(sens_row, from_=0.0, to=2.0, resolution=0.05,
+                 orient="horizontal", variable=self.sens_var,
+                 showvalue=False, bg=PANEL, fg=ACCENT, bd=0,
+                 highlightthickness=0, troughcolor=BORDER,
+                 activebackground=ACCENT, sliderlength=14,
+                 length=120).pack(side="left", fill="x", expand=True, padx=4)
+        self.sens_pct = label(sens_row, "100%", fg=ACCENT, size=8, bold=True)
+        self.sens_pct.pack(side="left")
+        self.sens_var.trace_add("write",
+            lambda *_: self.sens_pct.config(text=f"{int(self.sens_var.get()*100)}%"))
+        self.sens_pct.config(text="100%")
+        divider(f)
         status_f = tk.Frame(f, bg=PANEL)
         status_f.pack(fill="x", padx=12, pady=(4,12))
         label(status_f, "GAMEPAD", fg=DIM, size=7).pack(anchor="w")
@@ -465,6 +485,7 @@ class Dashboard:
         fg_col = GREEN if HAS_GAMEPAD else RED
         txt = f"● {_gp.get_name()}" if HAS_GAMEPAD and _gp else "NOT FOUND"
         self.gp_lbl.config(text=txt, fg=fg_col)
+        self.state['sensitivity'] = self.sens_var.get()
         ax = s.get('raw_axes', '')
         self.axes_lbl.config(text=ax)
         self.root.after(80, self._tick_status)
