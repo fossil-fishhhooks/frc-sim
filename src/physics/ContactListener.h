@@ -44,7 +44,7 @@ public:
     void SetDt(float dt) {m_dt = dt;};
 
 private:
-    float m_dt = 1/500.0f;
+    float m_dt = 1.0f/500.0f;
     // Recompute m_body_forces by summing over all live m_contacts entries.
     // Must be called with m_mutex held. Replaces all delta-accumulation logic.
     void RecomputeBodyForce(JPH::BodyID id);

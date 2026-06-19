@@ -39,24 +39,18 @@ static float ComputeNormalForce(const JPH::Body &body1,
                                 const JPH::ContactManifold &manifold,
                                 float dt)
 {
-    // Use Jolt's impulse estimator — accounts for actual velocity, mass,
-    // inertia, and contact geometry rather than just mass * g * cos(theta).
-    // Accurate for two-body contacts (robot vs floor, piece vs floor).
     JPH::CollisionEstimationResult result;
     EstimateCollisionResponse(
         body1, body2, manifold, result,
-        0.0f,   // combined friction — 0 so friction impulses don't contaminate normal
-        0.0f,   // combined restitution — 0 for static contact normal force estimate
+        0.0f,   // combined friction
+        0.0f,   // combined restitution
         1.0f,   // min velocity for restitution
-        1);     // 1 iteration — fast, friction skipped, normal impulse is accurate
+        1);
 
-    // Sum contact impulses across all contact points
     float total_impulse = 0.0f;
     for (const auto &imp : result.mImpulses)
         total_impulse += imp.mContactImpulse;
 
-    // Convert impulse (kg⋅m/s) → force (N) by dividing by dt
-    // Clamp to zero — estimator can return tiny negatives on separation
     return std::max(0.0f, total_impulse / dt);
 }
 // ── Sub-shape key ─────────────────────────────────────────────────────────────
