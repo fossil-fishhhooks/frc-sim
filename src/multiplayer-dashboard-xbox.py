@@ -29,14 +29,35 @@ except ImportError:
 try:
     os.environ["SDL_VIDEODRIVER"] = "dummy"
     import pygame
-    pygame.init()
+    pygame.display.init()
     pygame.joystick.init()
-    HAS_GAMEPAD = pygame.joystick.get_count() > 0
-    if HAS_GAMEPAD:
-        _gp = pygame.joystick.Joystick(0)
-        _gp.init()
-except Exception:
-    HAS_GAMEPAD = False
+    _pygame_ok = True
+except Exception as e:
+    print(f"pygame init failed: {e}")
+    _pygame_ok = False
+
+_gp        = None
+HAS_GAMEPAD = False
+
+def _pump_gamepad():
+    global _gp, HAS_GAMEPAD
+    if not _pygame_ok:
+        return
+    try:
+        pygame.event.pump()
+        c = pygame.joystick.get_count()
+        if c > 0 and _gp is None:
+            _gp = pygame.joystick.Joystick(0)
+            _gp.init()
+            HAS_GAMEPAD = True
+            print(f"Gamepad connected: {_gp.get_name()}")
+        elif c == 0 and _gp is not None:
+            _gp.quit()
+            _gp = None
+            HAS_GAMEPAD = False
+            print("Gamepad disconnected")
+    except Exception as e:
+        print(f"gamepad poll failed: {e}")
 
 NT_PORT     = 5810
 DRIVE_V     = 0.7
@@ -118,6 +139,42 @@ class VideoThread(threading.Thread):
     def stop(self):
         self.running = False
 
+_calibrated = False
+_lx_axis = 0
+_ly_axis = 1
+_rx_axis = 2
+_ry_axis = 3
+
+def _calibrate_axes():
+    global _lx_axis, _ly_axis, _rx_axis, _ry_axis, _calibrated
+    n = _gp.get_numaxes()
+    print(f"Gamepad has {n} axes")
+    for i in range(n):
+        print(f"  axis {i}: {_gp.get_axis(i):+.3f}")
+    # Common Linux xpad mappings:
+    #   4 axes: LX=0, LY=1, RX=2, RY=3
+    #   6 axes (triggers on 2/5): LX=0, LY=1, LT=2, RX=3, RY=4, RT=5
+    #   6 axes (triggers on 4/5): LX=0, LY=1, RX=2, RY=3, LT=4, RT=5
+    if n < 4:
+        print("  WARNING: fewer than 4 axes — drive won't work")
+        _calibrated = True
+        return
+    if n >= 6:
+        mid = _gp.get_axis(2)
+        if abs(mid) < 0.3:
+            _lx_axis = 0; _ly_axis = 1
+            _rx_axis = 2; _ry_axis = 3
+            print("  → 6-axis map A: LX=0 LY=1 RX=2 RY=3 LT=4 RT=5")
+        else:
+            _lx_axis = 0; _ly_axis = 1
+            _rx_axis = 3; _ry_axis = 4
+            print("  → 6-axis map B: LX=0 LY=1 LT=2 RX=3 RY=4 RT=5")
+    else:
+        _lx_axis = 0; _ly_axis = 1
+        _rx_axis = 2; _ry_axis = 3
+        print("  → 4-axis map: LX=0 LY=1 RX=2 RY=3")
+    _calibrated = True
+
 class ControlThread(threading.Thread):
     def __init__(self, state):
         super().__init__(daemon=True)
@@ -130,17 +187,21 @@ class ControlThread(threading.Thread):
         shoot_pan   = 0.0
         prev_lb     = False
         prev_rb     = False
+        cal_timer   = 0
 
         pose_sub = inst.getFloatTopic("/sim/robot/x").subscribe(0.0)
 
         while self.running:
             t0 = time.monotonic()
 
+            if _pygame_ok:
+                _pump_gamepad()
             if HAS_GAMEPAD:
-                pygame.event.pump()
-                lx = dz(_gp.get_axis(0))
-                ly = dz(_gp.get_axis(1))
-                rx = dz(_gp.get_axis(2))
+                if not _calibrated:
+                    _calibrate_axes()
+                lx = dz(_gp.get_axis(_lx_axis))
+                ly = dz(_gp.get_axis(_ly_axis))
+                rx = dz(_gp.get_axis(_rx_axis))
                 hat = _gp.get_hat(0)
                 a  = _gp.get_button(0)
                 b  = _gp.get_button(1)
@@ -148,14 +209,16 @@ class ControlThread(threading.Thread):
                 y  = _gp.get_button(3)
                 lb = _gp.get_button(4)
                 rb = _gp.get_button(5)
+                raw = [_gp.get_axis(i) for i in range(min(_gp.get_numaxes(), 6))]
             else:
                 lx = ly = rx = 0.0
                 hat = (0, 0)
                 a = b = x = y = lb = rb = False
+                raw = []
 
             fwd    = -ly * DRIVE_V
             strafe =  lx * DRIVE_V
-            rot    =  rx * ROTATE_V
+            rot    = -rx * ROTATE_V
             stop   = b
 
             for i, (speed, angle) in enumerate(swerve(fwd, strafe, rot)):
@@ -164,7 +227,7 @@ class ControlThread(threading.Thread):
 
             shoot_tilt = clamp(shoot_tilt + hat[1] * AIM_SPEED * dt,
                                -math.pi/2, math.pi/2)
-            shoot_pan  = clamp(shoot_pan  - hat[0] * AIM_SPEED * dt,
+            shoot_pan  = clamp(shoot_pan  + hat[0] * AIM_SPEED * dt,
                                -math.pi, math.pi)
 
             shoot_speed = self.state.get('shoot_speed', SHOOT_SPEED)
@@ -179,6 +242,14 @@ class ControlThread(threading.Thread):
             fire_pub.set(firing)
             speed_pub.set(shoot_speed)
             dir_pub.set(aim_dir(shoot_tilt, shoot_pan))
+
+            if raw:
+                cal_timer += 1
+                if cal_timer < 150:
+                    axes_str = " ".join(f"{v:+.2f}" for v in raw)
+                    self.state['raw_axes'] = axes_str
+                else:
+                    self.state['raw_axes'] = ""
 
             self.state.update({
                 'fwd': fwd, 'strafe': strafe, 'rot': rot,
@@ -341,6 +412,9 @@ class Dashboard:
                                bg=PANEL, fg=fg_col,
                                font=(MONO, 11, "bold"), anchor="w")
         self.gp_lbl.pack(anchor="w")
+        self.axes_lbl = tk.Label(status_f, text="", bg=PANEL, fg=DIM,
+                                 font=(MONO, 7), anchor="w")
+        self.axes_lbl.pack(anchor="w")
 
     def _connect(self):
         self.root.focus_set()
@@ -388,6 +462,11 @@ class Dashboard:
             try:    var.set(fmt.format(s.get(key, 0.0)))
             except: var.set("—")
         self.fire_lbl.config(fg=RED if s.get('firing') else BORDER)
+        fg_col = GREEN if HAS_GAMEPAD else RED
+        txt = f"● {_gp.get_name()}" if HAS_GAMEPAD and _gp else "NOT FOUND"
+        self.gp_lbl.config(text=txt, fg=fg_col)
+        ax = s.get('raw_axes', '')
+        self.axes_lbl.config(text=ax)
         self.root.after(80, self._tick_status)
 
     def _shutdown(self):
