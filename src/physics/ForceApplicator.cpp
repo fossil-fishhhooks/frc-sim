@@ -94,6 +94,11 @@ void ForceApplicator::Apply(float dt)
         // ── Groundedness & per-wheel normal force ─────────────────────────
         float total_normal  = m_contacts.GetNormalForce(jph_id);
         bool  body_grounded = (total_normal >= MIN_NORMAL_FORCE);
+        if (!body_grounded && !body_def->motors.empty())
+        {
+            total_normal = body_mass * 9.81f;
+            body_grounded = true;
+        }
 
         struct WheelData { int idx; JPH::Vec3 world_att; float normal; };
         WheelData wheel_data[SimWorld::MAX_MOTORS_PER_BODY];
@@ -197,6 +202,7 @@ void ForceApplicator::Apply(float dt)
 
             float lat_cap = std::sqrt(std::max(0.0f,
                                 friction_cap * friction_cap - force_mag * force_mag));
+            lat_cap = std::max(lat_cap, cap_dynamic * 0.15f);
 
             if (lat_speed > 1e-4f)
             {
