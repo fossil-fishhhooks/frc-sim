@@ -11,7 +11,7 @@ out vec4 v_color;
 void main() {
     vec4 world_pos = model * vec4(position, 1.0);
     gl_Position = projection * view * world_pos;
-    v_normal = mat3(model) * normal;
+    v_normal = -mat3(model) * normal;
     v_pos = world_pos.xyz;
     v_color = color;
 }

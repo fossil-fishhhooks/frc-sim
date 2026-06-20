@@ -128,7 +128,7 @@ struct VsUniforms {
 struct FsUniforms {
     float model_color[4];
     float ambient[4];
-    float light_pos[4];
+    float light_pos[4];       // (x,y,z,w) = (0, 10, 0, bar_half_extent)
     float view_pos[4];
     float light_power;
     float light_vp[16];
@@ -138,6 +138,11 @@ struct ShadowVsUniforms {
     float light_vp[16];
     float model[16];
 };
+
+// Verify uniform struct sizes match GLSL layout
+static_assert(sizeof(VsUniforms) == 192, "VsUniforms size mismatch (3 mat4)");
+static_assert(sizeof(FsUniforms) == 132, "FsUniforms size mismatch (4 vec4 + float + mat4)");
+static_assert(sizeof(ShadowVsUniforms) == 128, "ShadowVsUniforms size mismatch (2 mat4)");
 
 // ── GLSL shader sources (fallback inline) ────────────────────────────────────
 
@@ -155,7 +160,7 @@ static const char* vs_src_main_fallback =
 "void main() {\n"
 "    vec4 world_pos = model * vec4(position, 1.0);\n"
 "    gl_Position = projection * view * world_pos;\n"
-"    v_normal = mat3(model) * normal;\n"
+"    v_normal = -mat3(model) * normal;\n"
 "    v_pos = world_pos.xyz;\n"
 "    v_color = color;\n"
 "}\n";
@@ -179,7 +184,7 @@ static const char* fs_src_main_fallback =
 "    float current = proj.z * 0.5 + 0.5;\n"
 "    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)\n"
 "        return 1.0;\n"
-"    float bias = 0.005;\n"
+"    float bias = 0.003;\n"
 "    vec2 texel = 1.0 / textureSize(shadow_map, 0);\n"
 "    float sum = 0.0;\n"
 "    for (int x = -1; x <= 1; x++) {\n"
@@ -193,13 +198,21 @@ static const char* fs_src_main_fallback =
 "}\n"
 "void main() {\n"
 "    vec3 N = normalize(v_normal);\n"
-"    vec3 L = normalize(light_pos.xyz - v_pos);\n"
+"    vec3 Lv = light_pos.xyz - v_pos;\n"
+"    float dist = length(Lv);\n"
+"    vec3 L = Lv / dist;\n"
+"    float atten = 1.0 / (1.0 + 0.007 * dist * dist);\n"
 "    float diff = max(dot(N, L), 0.0);\n"
-"    float shadow = shadow_factor(light_vp * vec4(v_pos, 1.0));\n"
+"    float shadow = 1.0;\n"
+"    //if (diff > 0.0) shadow = shadow_factor(light_vp * vec4(v_pos, 1.0));\n"
+"    vec3 V = normalize(view_pos.xyz - v_pos);\n"
+"    vec3 H = normalize(L + V);\n"
+"    float spec = pow(max(dot(N, H), 0.0), 32.0);\n"
 "    vec3 base = v_color.xyz * model_color.xyz;\n"
 "    vec3 amb = ambient.xyz * base;\n"
-"    vec3 dif = diff * base * light_power * shadow;\n"
-"    frag_color = vec4(amb + dif, v_color.a * model_color.a);\n"
+"    vec3 dif = diff * base * light_power * atten * shadow;\n"
+"    vec3 spe = spec * vec3(light_power * 0.2) * shadow;\n"
+"    frag_color = vec4(amb + dif + spe, v_color.a * model_color.a);\n"
 "}\n";
 
 static const char* vs_src_shadow_fallback =
@@ -436,9 +449,9 @@ void Renderer::BuildViewMatrix(float out[16]) const {
 }
 
 void Renderer::BuildLightVPMatrix(float out[16]) const {
-    float eye[3] = {-2.0f, 8.0f, 3.0f};
+    float eye[3] = {0.0f, 10.0f, 0.0f};
     float center[3] = {0.0f, 0.0f, 0.0f};
-    float up[3] = {0.0f, 1.0f, 0.0f};
+    float up[3] = {0.0f, 0.0f, -1.0f};
     float view[16], proj[16];
     mat4_look_at(eye, center, up, view);
     mat4_ortho(-10.0f, 10.0f, -8.0f, 8.0f, 0.5f, 20.0f, proj);
@@ -556,19 +569,19 @@ void Renderer::DrawFrame(const WorldSnapshot& snapshot,
 
     // Per-frame FS uniforms
     FsUniforms fs_ub = {};
-    fs_ub.light_pos[0] = -2.0f;
-    fs_ub.light_pos[1] = 8.0f;
-    fs_ub.light_pos[2] = 3.0f;
+    fs_ub.light_pos[0] = 0.0f;
+    fs_ub.light_pos[1] = 10.0f;
+    fs_ub.light_pos[2] = 0.0f;
     fs_ub.light_pos[3] = 1.0f;
-    fs_ub.ambient[0] = 0.30f;
-    fs_ub.ambient[1] = 0.30f;
-    fs_ub.ambient[2] = 0.35f;
+    fs_ub.ambient[0] = 0.50f;
+    fs_ub.ambient[1] = 0.50f;
+    fs_ub.ambient[2] = 0.50f;
     fs_ub.ambient[3] = 1.0f;
     fs_ub.view_pos[0] = m_cam.pos[0];
     fs_ub.view_pos[1] = m_cam.pos[1];
     fs_ub.view_pos[2] = m_cam.pos[2];
     fs_ub.view_pos[3] = 1.0f;
-    fs_ub.light_power = 1.2f;
+    fs_ub.light_power = 2.5f;
     memcpy(fs_ub.light_vp, light_vp, sizeof(light_vp));
 
     // ── Shadow pass ───────────────────────────────────────────────────────
