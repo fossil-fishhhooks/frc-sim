@@ -114,11 +114,9 @@ struct FsUniforms {
 
 static const char* vs_src = R"(
     #version 330
-    layout(std140) uniform vs_params {
-        mat4 model;
-        mat4 view;
-        mat4 projection;
-    };
+    uniform mat4 model;
+    uniform mat4 view;
+    uniform mat4 projection;
     layout(location = 0) in vec3 position;
     layout(location = 1) in vec3 normal;
     out vec3 v_normal;
@@ -133,12 +131,10 @@ static const char* vs_src = R"(
 
 static const char* fs_src = R"(
     #version 330
-    layout(std140) uniform fs_params {
-        vec4 color;
-        vec4 light_pos;
-        vec4 ambient;
-        vec4 view_pos;
-    };
+    uniform vec4 color;
+    uniform vec4 light_pos;
+    uniform vec4 ambient;
+    uniform vec4 view_pos;
     in vec3 v_normal;
     in vec3 v_pos;
     out vec4 frag_color;
@@ -173,14 +169,14 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
 
     shd.uniform_blocks[0].stage = SG_SHADERSTAGE_VERTEX;
     shd.uniform_blocks[0].size = sizeof(VsUniforms);
-    shd.uniform_blocks[0].layout = SG_UNIFORMLAYOUT_STD140;
+    shd.uniform_blocks[0].layout = SG_UNIFORMLAYOUT_NATIVE;
     shd.uniform_blocks[0].glsl_uniforms[0] = {SG_UNIFORMTYPE_MAT4, 1, "model"};
     shd.uniform_blocks[0].glsl_uniforms[1] = {SG_UNIFORMTYPE_MAT4, 1, "view"};
     shd.uniform_blocks[0].glsl_uniforms[2] = {SG_UNIFORMTYPE_MAT4, 1, "projection"};
 
     shd.uniform_blocks[1].stage = SG_SHADERSTAGE_FRAGMENT;
     shd.uniform_blocks[1].size = sizeof(FsUniforms);
-    shd.uniform_blocks[1].layout = SG_UNIFORMLAYOUT_STD140;
+    shd.uniform_blocks[1].layout = SG_UNIFORMLAYOUT_NATIVE;
     shd.uniform_blocks[1].glsl_uniforms[0] = {SG_UNIFORMTYPE_FLOAT4, 1, "color"};
     shd.uniform_blocks[1].glsl_uniforms[1] = {SG_UNIFORMTYPE_FLOAT4, 1, "light_pos"};
     shd.uniform_blocks[1].glsl_uniforms[2] = {SG_UNIFORMTYPE_FLOAT4, 1, "ambient"};

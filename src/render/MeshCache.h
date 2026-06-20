@@ -20,6 +20,6 @@ public:
     const CachedMesh* Get(const BodyDef* def) const;
 
 private:
-    std::unordered_map<const BodyDef*, CachedMesh> m_cache;
+    std::unordered_map<std::string, CachedMesh> m_cache;
     bool LoadGLB(const std::string& path, CachedMesh& out);
 };

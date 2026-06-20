@@ -20,6 +20,7 @@
 #include <sokol_gfx.h>
 #include <sokol_glue.h>
 #include <sokol_time.h>
+#include <sokol_log.h>
 #include <sokol_debugtext.h>
 
 #include <string>
@@ -134,6 +135,7 @@ struct App {
     SceneData scene;
     ScoreTracker score_tracker;
     MotorRegistry motors;
+    std::vector<BodyDef> robot_defs;
     float wall_time_offset = 0;
     bool reset_just_happened = false;
     uint64_t frame_stamp = 0;
@@ -171,12 +173,19 @@ static void init_cb() {
 
     sg_desc sgdesc = {};
     sgdesc.environment = sglue_environment();
+    sgdesc.logger.func = slog_func;
+    sgdesc.buffer_pool_size = 1024;
+    sgdesc.image_pool_size = 256;
+    sgdesc.shader_pool_size = 32;
+    sgdesc.pipeline_pool_size = 256;
+    sgdesc.view_pool_size = 256;
     sg_setup(&sgdesc);
     if (!sg_isvalid()) {
         LOG_ERROR("sokol_gfx: failed to initialize");
         return;
     }
     sdtx_desc_t sdtx_desc = {};
+    sdtx_desc.logger.func = slog_func;
     sdtx_setup(&sdtx_desc);
 
     g_app = new App();
@@ -205,8 +214,8 @@ static void init_cb() {
             LOG_WARN("main: body '%s' failed to spawn", req.def.name.c_str());
     }
 
-    std::vector<BodyDef> robot_defs;
-    robot_defs.reserve(g_args.robots.size());
+    app.robot_defs.clear();
+    app.robot_defs.reserve(g_args.robots.size());
 
     for (int ri = 0; ri < (int)g_args.robots.size(); ++ri) {
         auto& ra = g_args.robots[ri];
@@ -217,8 +226,8 @@ static void init_cb() {
             app.all_mechanisms.push_back(nullptr);
             continue;
         }
-        robot_defs.push_back(std::move(*maybe));
-        BodyDef& def = robot_defs.back();
+        app.robot_defs.push_back(std::move(*maybe));
+        BodyDef& def = app.robot_defs.back();
 
         float pos[3] = {0.0f, 0.051f, (float)ri * 1.5f};
         float rot[4] = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -441,6 +450,7 @@ sapp_desc sokol_main(int argc, char* argv[]) {
     desc.window_title = "FRC Sim 3D";
     desc.sample_count = 4; // MSAA 4x
     desc.swap_interval = (g_args.target_fps > 0) ? 1 : 0;
+    desc.logger.func = slog_func;
 
     return desc;
 }

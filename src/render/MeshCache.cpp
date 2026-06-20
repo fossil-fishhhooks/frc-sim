@@ -7,17 +7,18 @@
 
 void MeshCache::Preload(const BodyDef* def) {
     if (!def || def->mesh_path.empty()) return;
-    if (m_cache.count(def)) return;
+    if (m_cache.count(def->mesh_path)) return;
 
     CachedMesh cm;
     if (LoadGLB(def->mesh_path, cm)) {
-        m_cache[def] = cm;
+        m_cache[def->mesh_path] = cm;
         LOG_DEBUG("MeshCache: cached '%s' (%d indices)", def->name.c_str(), cm.num_indices);
     }
 }
 
 const CachedMesh* MeshCache::Get(const BodyDef* def) const {
-    auto it = m_cache.find(def);
+    if (!def) return nullptr;
+    auto it = m_cache.find(def->mesh_path);
     return it != m_cache.end() ? &it->second : nullptr;
 }
 
