@@ -3,29 +3,21 @@ project(frc_sim LANGUAGES CXX)
 
 cmake_policy(SET CMP0091 NEW)
 
-# Default to Release if no build type specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
-# Force release CRT (/MD) globally — including all FetchContent subprojects.
-# CMAKE_MSVC_RUNTIME_LIBRARY alone is insufficient because subprojects (Jolt)
-# call cmake_policy(CMP0091 NEW) themselves and set their own value.
-# CMAKE_USER_MAKE_RULES_OVERRIDE runs last and rewrites the flags directly.
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ── vcpkg deps ─────────────────────────────────────────────────────────────────
-find_package(raylib        CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
-find_package(glfw3 CONFIG REQUIRED)
 
 # ── FetchContent ───────────────────────────────────────────────────────────────
 include(FetchContent)
 
-# Jolt Physics
 set(TARGET_UNIT_TESTS  OFF CACHE BOOL "" FORCE)
 set(TARGET_HELLO_WORLD OFF CACHE BOOL "" FORCE)
 set(TARGET_SAMPLES     OFF CACHE BOOL "" FORCE)
@@ -42,10 +34,6 @@ FetchContent_Declare(JoltPhysics
 )
 FetchContent_MakeAvailable(JoltPhysics)
 
-
-
-
-# ntcore (cherry-picked from allwpilib — just ntcore + wpiutil)
 FetchContent_Declare(allwpilib
     GIT_REPOSITORY https://github.com/wpilibsuite/allwpilib.git
     GIT_TAG        v2025.3.2
@@ -81,79 +69,41 @@ add_executable(frc_sim
     src/render/BodyDraw.cpp
     src/render/DebugOverlay.cpp
     src/render/StreamEncoder.cpp
+    src/render/MeshCache.cpp
+
+    src/external/sokol/sokol_impl.cpp
+    src/external/cgltf_impl.cpp
 
     src/io/NTClient.cpp
     src/io/Raycaster.cpp
 )
 
 target_include_directories(frc_sim PRIVATE src)
+target_include_directories(frc_sim PRIVATE src/external/sokol)
+target_include_directories(frc_sim PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/build/vcpkg_installed/x64-linux/include)
 
 target_link_libraries(frc_sim PRIVATE
     Jolt
     ntcore
     wpiutil
-    raylib
     nlohmann_json::nlohmann_json
+    dl
+    pthread
+    m
+    X11
+    GL
 )
 
-
-
-# Jolt must be compiled without its debug renderer to match our config
 target_compile_definitions(frc_sim PRIVATE
     JPH_DEBUG_RENDERER_DISABLED
 )
 
-# Force release CRT at the linker level regardless of build type.
-# Explicitly ignore all debug CRT libs and replace with release equivalents.
-# This is the only reliable fix when FetchContent deps ignore CMAKE_MSVC_RUNTIME_LIBRARY.
-if(MSVC)
-    target_compile_options(frc_sim PRIVATE /MT)
-    target_link_options(frc_sim PRIVATE
-        /NODEFAULTLIB:libcmtd.lib
-        /NODEFAULTLIB:libcpmtd.lib
-        /NODEFAULTLIB:msvcrtd.lib
-        /NODEFAULTLIB:msvcprtd.lib
-        /NODEFAULTLIB:vcruntimed.lib
-        /NODEFAULTLIB:ucrtd.lib
-        /NODEFAULTLIB:msvcrt.lib
-        /NODEFAULTLIB:msvcprt.lib
-        /NODEFAULTLIB:vcruntime.lib
-        /NODEFAULTLIB:ucrt.lib
-        /DEFAULTLIB:libcmt.lib
-        /DEFAULTLIB:libcpmt.lib
-        /DEFAULTLIB:libucrt.lib
-    )
-
-    # ── raylib / Windows SDK name collision fix ───────────────────────────────
-    # wingdi.h declares Rectangle() as a C function; winuser.h declares
-    # CloseWindow(), ShowCursor(), DrawText(), LoadImage(), PlaySound().
-    # raylib uses the same names for its own API.  These are real function
-    # declarations, not macros, so #undef cannot remove them.
-    #
-    # The only reliable fix: make raylib.h parse BEFORE windows.h in every
-    # translation unit.  MSVC's /FI (force-include) injects a header at the
-    # very start of every .cpp before any #include the file itself contains,
-    # including headers pulled in transitively through wpilib/ntcore.
-    #
-    # win_raylib_compat.h:
-    #   1. #includes raylib.h   ← compiler sees raylib's Rectangle struct first
-    #   2. #includes winsock2.h / windows.h
-    #   3. #undefs the handful of names that Windows also defines as macros
-    #      (DrawText→DrawTextA, LoadImage→LoadImageA, etc.)
-    target_compile_options(frc_sim PRIVATE
-        /FI "${CMAKE_SOURCE_DIR}/src/render/win_raylib_compat.h"
-    )
-endif()
-
-# Platform linker extras
 if(APPLE)
     target_link_libraries(frc_sim PRIVATE
         "-framework Cocoa"
         "-framework IOKit"
         "-framework OpenGL"
     )
-elseif(UNIX)
-    target_link_libraries(frc_sim PRIVATE GL dl pthread m ${CMAKE_CURRENT_SOURCE_DIR}/build/vcpkg_installed/x64-linux/lib/libglfw3.a)
 endif()
 
 # Copy assets next to the binary on every build
