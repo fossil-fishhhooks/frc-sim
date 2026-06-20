@@ -8,6 +8,8 @@
 #include <cstdio>
 #include <cmath>
 #include <cstring>
+#include <chrono>
+#include <thread>
 
 // ── File loader ──────────────────────────────────────────────────────────────
 
@@ -212,7 +214,8 @@ static const char* fs_src_shadow_fallback =
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 void Renderer::Init(int width, int height, const char* title, int target_fps) {
-    (void)width; (void)height; (void)title; (void)target_fps;
+    (void)width; (void)height; (void)title;
+    m_target_fps = target_fps;
 
     m_pass_action = {};
     m_pass_action.colors[0].load_action = SG_LOADACTION_CLEAR;
@@ -326,7 +329,7 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     // ── Shadow pipeline ───────────────────────────────────────────────────
     sg_pipeline_desc spip = {};
     spip.color_count = 1;
-    spip.colors[0].pixel_format = SG_PIXELFORMAT_R32F;
+    spip.colors[0].pixel_format = SG_PIXELFORMAT_RGBA8;
     spip.depth.pixel_format = SG_PIXELFORMAT_DEPTH_STENCIL;
     spip.layout.attrs[0].format = SG_VERTEXFORMAT_FLOAT3;
     spip.layout.attrs[0].buffer_index = 0;
@@ -351,7 +354,7 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     sg_image_desc color_desc = {};
     color_desc.width = SHADOW_MAP_SIZE;
     color_desc.height = SHADOW_MAP_SIZE;
-    color_desc.pixel_format = SG_PIXELFORMAT_R32F;
+    color_desc.pixel_format = SG_PIXELFORMAT_RGBA8;
     color_desc.usage.color_attachment = true;
     color_desc.usage.immutable = true;
     m_shadow_color = sg_make_image(&color_desc);
@@ -385,6 +388,7 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     // ── Camera ───────────────────────────────────────────────────────────
     SetupCamera();
     m_stamp = stm_now();
+    m_pace_stamp = stm_now();
 
     LOG_INFO("Renderer: sokol_gfx initialized");
 }
@@ -416,14 +420,6 @@ void Renderer::EnableStreaming(int port, int fps) {
     m_stream->Init(port, sapp_width(), sapp_height(), fps);
 }
 
-void Renderer::SetFieldBounds(bool has_bounds, float half_x, float half_z) {
-    m_has_field_bounds = has_bounds;
-    if (has_bounds && half_x > 0.0f && half_z > 0.0f) {
-        m_field_half_x = half_x;
-        m_field_half_z = half_z;
-    }
-}
-
 // ── Camera ────────────────────────────────────────────────────────────────────
 
 void Renderer::SetupCamera() {
@@ -449,12 +445,7 @@ void Renderer::BuildLightVPMatrix(float out[16]) const {
     float up[3] = {0.0f, 0.0f, -1.0f};
     float view[16], proj[16];
     mat4_look_at(eye, center, up, view);
-    // Margin accounts for robots/game pieces extending past the nominal field
-    // bounds, and avoids clipping geometry right at the playing surface edge.
-    const float margin = 2.0f;
-    float half_x = m_field_half_x + margin;
-    float half_z = m_field_half_z + margin;
-    mat4_ortho(-half_x, half_x, -half_z, half_z, 0.5f, 20.0f, proj);
+    mat4_ortho(-0.001f, 0.001f, -8.0f, 8.0f, 0.5f, 20.0f, proj); // SUPER JANKY NUMBERS. render only works in the region outside the rectange bounded by first 2 numbers. IDK why but dont touch it
     mat4_mul(proj, view, out);
 }
 
@@ -551,6 +542,20 @@ void Renderer::DrawRaycasts(const std::vector<Raycaster*>& rcs) {
 void Renderer::DrawFrame(const WorldSnapshot& snapshot,
                           bool nt_connected,
                           float sim_hz, float target_hz, float nt_ping_ms) {
+    // ── Frame pacing (--fps) ────────────────────────────────────────────
+    // sokol's frame_cb runs as fast as the swap chain allows; when a target
+    // FPS is set we sleep off whatever time is left in the frame budget so
+    // we don't render (and re-publish NT/raycast data) faster than asked.
+    if (m_target_fps > 0) {
+        double frame_budget = 1.0 / (double)m_target_fps;
+        double elapsed = stm_sec(stm_now() - m_pace_stamp);
+        if (elapsed < frame_budget) {
+            double remaining = frame_budget - elapsed;
+            std::this_thread::sleep_for(std::chrono::duration<double>(remaining));
+        }
+    }
+    m_pace_stamp = stm_now();
+
     float dt = stm_sec(stm_laptime(&m_stamp));
     if (dt > 0.1f) dt = 0.1f;
 

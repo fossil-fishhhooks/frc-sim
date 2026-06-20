@@ -21,10 +21,8 @@ public:
                    float sim_hz, float target_hz, float nt_staleness_ms);
 
     bool m_cameraLocked = false;
-    void SetWireframe(bool enabled) { m_wireframe = enabled; }
     void SetWallTimeOffset(float ms) { m_wall_time_offset_ms = ms; }
     void EnableStreaming(int port, int fps);
-    void SetFieldBounds(bool has_bounds, float half_x, float half_z);
 
     MeshCache& GetMeshCache() { return m_mesh_cache; }
     void SetRaycasters(std::vector<Raycaster*> rc) { m_raycasters = std::move(rc); }
@@ -41,13 +39,10 @@ private:
         float dist = 7.5f;
     } m_cam;
 
-    bool m_wireframe = false;
+    int m_target_fps = 0;
+    uint64_t m_pace_stamp = 0;
     float m_wall_time_offset_ms = 0.0f;
     bool m_alt_pressed = false;
-
-    bool m_has_field_bounds = false;
-    float m_field_half_x = 8.27f;
-    float m_field_half_z = 4.1f;
 
     bool m_mouse_down = false;
     float m_mouse_last_x = 0, m_mouse_last_y = 0;
@@ -83,7 +78,6 @@ private:
     void BuildViewMatrix(float out[16]) const;
     void UpdateCamera(float dt);
 
-    void DrawBody(const BodySnapshot& body, bool wireframe);
     void DrawForceVectors(const WorldSnapshot& snapshot);
     void DrawLightGizmos();
     void DrawRaycasts(const std::vector<Raycaster*>& rcs);

@@ -49,7 +49,7 @@ struct Args {
     int target_fps = 60;
     int width = 1280;
     int height = 720;
-    bool wireframe = false;
+    bool vsync = true;
     bool stream = false;
     std::string stream_host = "127.0.0.1";
     int stream_port = 5000;
@@ -68,11 +68,13 @@ static void PrintUsage(const char* argv0) {
                  "  --dt     <seconds>           Physics timestep    (default: 0.002)\n"
                  "  --substeps <n>               Jolt collision steps per tick (default: 2)\n"
                  "  --speed  <factor>            Sim speed multiplier(default: 1.0)\n"
-                 "  --fps    <target>            Target render FPS   (default: 60)\n"
+                 "  --fps    <target>            Target render FPS, 0=uncapped (default: 60)\n"
+                 "                                  note: vsync caps frames too; use --vsync 0\n"
+                 "                                  with --fps 0 for a true uncapped/perf-test run\n"
                  "  --w      <width>             Window width        (default: 1280)\n"
                  "  --h      <height>            Window height       (default: 720)\n"
                  "  --threads <n>                Jolt worker threads (default: auto)\n"
-                 "  --wireframe                  Enable wireframe overlay\n"
+                 "  --vsync  <0|1>               Enable/disable vsync (default: 1)\n"
                  "  --backend <gl|vulkan>        Graphics backend    (default: gl)\n"
                  "  --stream <port>              Streaming port      (default: 5000)\n"
                  "  --stream-fps <fps>           Stream frame rate   (default: 30)\n"
@@ -106,7 +108,7 @@ static Args ParseArgs(int argc, char* argv[]) {
         else if (!strcmp(argv[i], "--w") && i+1 < argc) a.width = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--h") && i+1 < argc) a.height = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--threads") && i+1 < argc) a.threads = std::stoi(argv[++i]);
-        else if (!strcmp(argv[i], "--wireframe")) a.wireframe = true;
+        else if (!strcmp(argv[i], "--vsync") && i+1 < argc) a.vsync = std::stoi(argv[++i]) != 0;
         else if (!strcmp(argv[i], "--backend") && i+1 < argc) a.backend = argv[++i];
         else if (!strcmp(argv[i], "--raycast") && i+1 < argc) a.raycast_path = argv[++i];
         else if (!strcmp(argv[i], "--stream")) {
@@ -193,14 +195,11 @@ static void init_cb() {
     App& app = *g_app;
 
     app.renderer.Init(g_args.width, g_args.height, "FRC Sim 3D", g_args.target_fps);
-    app.renderer.SetWireframe(g_args.wireframe);
     app.frame_stamp = stm_now();
 
     app.motors.LoadFromDirectory("assets/motors");
 
     app.scene = LoadScene(g_args.scene, app.motors);
-    app.renderer.SetFieldBounds(app.scene.has_field_bounds,
-        app.scene.field_half_x, app.scene.field_half_z);
     app.score_tracker.LoadZones(app.scene.scoring_zones);
 
     app.world.Init(g_args.threads);
@@ -436,12 +435,36 @@ sapp_desc sokol_main(int argc, char* argv[]) {
     if (g_args.dt <= 0.0f) g_args.dt = 1.0f / 500.0f;
     if (g_args.speed <= 0.0f) g_args.speed = 1.0f;
     if (g_args.target_fps < 0) g_args.target_fps = 60;
+    if (g_args.target_fps == 0 && g_args.vsync) {
+        LOG_WARN("main: --fps 0 requested but vsync is on; frames will still be capped "
+                 "to display refresh rate. Add --vsync 0 for a true uncapped run.");
+    }
     if (g_args.width <= 0 || g_args.height <= 0) {
         LOG_ERROR("main: bad window dimensions"); exit(1);
     }
     if (g_args.scene.empty()) {
         PrintUsage(argv[0]); LOG_ERROR("main: --scene is required"); exit(1);
     }
+
+    if (!g_args.vsync) {
+        // sokol_app's sapp_desc treats swap_interval==0 as "not set" and
+        // silently falls back to 1 (vsync on) -- see _sapp_def() in
+        // sokol_app.h. There's no way to express "0" through that struct,
+        // so force it off at the driver level instead. setenv() only sets
+        // the var if it isn't already present, so an explicit env var the
+        // user set themselves still wins.
+#if !defined(_WIN32)
+        setenv("vblank_mode", "0", 0);           // Mesa (Intel/AMD)
+        setenv("__GL_SYNC_TO_VBLANK", "0", 0);   // NVIDIA proprietary
+#else
+        LOG_WARN("main: --vsync 0 is not yet implemented for the Windows/D3D11 "
+                 "backend; swap_interval will still be forced to 1 by sokol_app.");
+#endif
+    }
+
+    LOG_INFO("main: target_fps=%d vsync=%d (requested swap_interval=%d; "
+             "see vblank_mode/__GL_SYNC_TO_VBLANK env if vsync=0)",
+             g_args.target_fps, g_args.vsync ? 1 : 0, g_args.vsync ? 1 : 0);
 
     sapp_desc desc = {};
     desc.init_cb = init_cb;
@@ -452,7 +475,7 @@ sapp_desc sokol_main(int argc, char* argv[]) {
     desc.height = g_args.height;
     desc.window_title = "FRC Sim 3D";
     desc.sample_count = 4; // MSAA 4x
-    desc.swap_interval = (g_args.target_fps > 0) ? 1 : 0;
+    desc.swap_interval = g_args.vsync ? 1 : 0;
     desc.logger.func = slog_func;
 
     return desc;
