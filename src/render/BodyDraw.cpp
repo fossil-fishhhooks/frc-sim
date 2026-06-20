@@ -74,5 +74,5 @@ void DrawBodySnapshot(const BodySnapshot& body, MeshCache* cache, bool wireframe
     sg_apply_bindings(&bind);
 
     // Draw all triangles
-    sg_draw(0, mesh->num_indices / 3, 1);
+    sg_draw(0, mesh->num_indices, 1);
 }

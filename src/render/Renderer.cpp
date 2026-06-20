@@ -356,9 +356,9 @@ void Renderer::DrawFrame(const WorldSnapshot& snapshot,
     fs_ub.light_pos[1] = LIGHT_Y;
     fs_ub.light_pos[2] = LIGHT_Z;
     fs_ub.light_pos[3] = 1.0f;
-    fs_ub.ambient[0] = 0.08f;
-    fs_ub.ambient[1] = 0.08f;
-    fs_ub.ambient[2] = 0.10f;
+    fs_ub.ambient[0] = 0.35f;
+    fs_ub.ambient[1] = 0.35f;
+    fs_ub.ambient[2] = 0.40f;
     fs_ub.ambient[3] = 1.0f;
     fs_ub.view_pos[0] = m_cam.pos[0];
     fs_ub.view_pos[1] = m_cam.pos[1];

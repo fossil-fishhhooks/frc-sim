@@ -186,6 +186,7 @@ static void init_cb() {
     }
     sdtx_desc_t sdtx_desc = {};
     sdtx_desc.logger.func = slog_func;
+    sdtx_desc.fonts[0] = sdtx_font_kc853();
     sdtx_setup(&sdtx_desc);
 
     g_app = new App();
