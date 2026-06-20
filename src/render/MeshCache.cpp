@@ -4,36 +4,25 @@
 #include "external/cgltf.h"
 #include <vector>
 #include <cmath>
-
-void MeshCache::Preload(const BodyDef* def) {
-    if (!def || def->mesh_path.empty()) return;
-    if (m_cache.count(def->mesh_path)) return;
-
-    CachedMesh cm;
-    if (LoadGLB(def->mesh_path, cm)) {
-        m_cache[def->mesh_path] = cm;
-        LOG_DEBUG("MeshCache: cached '%s' (%d indices)", def->name.c_str(), cm.num_indices);
-    }
-}
-
-const CachedMesh* MeshCache::Get(const BodyDef* def) const {
-    if (!def) return nullptr;
-    auto it = m_cache.find(def->mesh_path);
-    return it != m_cache.end() ? &it->second : nullptr;
-}
-
-void MeshCache::UnloadAll() {
-    for (auto& [key, cm] : m_cache) {
-        if (cm.vertex_buf.id) sg_destroy_buffer(cm.vertex_buf);
-        if (cm.index_buf.id) sg_destroy_buffer(cm.index_buf);
-    }
-    m_cache.clear();
-}
+#include <cstring>
 
 struct Vertex {
     float x, y, z;
     float nx, ny, nz;
+    uint8_t r, g, b, a;
 };
+
+static void mat4_mul_vec3(const float m[16], const float v[3], float out[3]) {
+    out[0] = m[0]*v[0] + m[4]*v[1] + m[8]*v[2] + m[12];
+    out[1] = m[1]*v[0] + m[5]*v[1] + m[9]*v[2] + m[13];
+    out[2] = m[2]*v[0] + m[6]*v[1] + m[10]*v[2] + m[14];
+}
+
+static void mat4_mul_vec3_dir(const float m[16], const float v[3], float out[3]) {
+    out[0] = m[0]*v[0] + m[4]*v[1] + m[8]*v[2];
+    out[1] = m[1]*v[0] + m[5]*v[1] + m[9]*v[2];
+    out[2] = m[2]*v[0] + m[6]*v[1] + m[10]*v[2];
+}
 
 static bool compute_normal(const float a[3], const float b[3], const float c[3],
                            float out[3]) {
@@ -47,6 +36,36 @@ static bool compute_normal(const float a[3], const float b[3], const float c[3],
     out[0]/=len; out[1]/=len; out[2]/=len;
     return true;
 }
+
+// ── Public API ──────────────────────────────────────────────────────────────────
+
+void MeshCache::Preload(const BodyDef* def) {
+    if (!def) return;
+    std::string key = def->mesh_path;
+    if (key.empty()) return;
+    if (m_cache.count(key)) return;
+    CachedMesh mesh;
+    if (LoadGLB(key, mesh))
+        m_cache[key] = std::move(mesh);
+    else
+        LOG_ERROR("MeshCache: failed to load mesh %s", key.c_str());
+}
+
+const CachedMesh* MeshCache::Get(const BodyDef* def) const {
+    if (!def) return nullptr;
+    auto it = m_cache.find(def->mesh_path);
+    return it != m_cache.end() ? &it->second : nullptr;
+}
+
+void MeshCache::UnloadAll() {
+    for (auto& [key, mesh] : m_cache) {
+        if (mesh.vertex_buf.id) sg_destroy_buffer(mesh.vertex_buf);
+        if (mesh.index_buf.id) sg_destroy_buffer(mesh.index_buf);
+    }
+    m_cache.clear();
+}
+
+// ── GLB loading ─────────────────────────────────────────────────────────────────
 
 bool MeshCache::LoadGLB(const std::string& path, CachedMesh& out) {
     cgltf_options opts = {};
@@ -63,68 +82,215 @@ bool MeshCache::LoadGLB(const std::string& path, CachedMesh& out) {
 
     std::vector<Vertex> verts;
     std::vector<uint32_t> indices;
-    size_t base = 0;
+    out.has_vertex_colors = false;
 
-    for (size_t m = 0; m < data->meshes_count; ++m) {
-        const auto& mesh = data->meshes[m];
-        for (size_t p = 0; p < mesh.primitives_count; ++p) {
-            const auto& prim = mesh.primitives[p];
+    struct ProcessNode {
+        cgltf_data* data;
+        std::vector<Vertex>& verts;
+        std::vector<uint32_t>& indices;
+        bool& has_vc;
+        CachedMesh* mesh_out;
+        size_t base = 0;
 
-            const cgltf_accessor* pos = nullptr;
-            const cgltf_accessor* norm = nullptr;
-            for (size_t a = 0; a < prim.attributes_count; ++a) {
-                auto& attr = prim.attributes[a];
-                if (attr.type == cgltf_attribute_type_position) pos = attr.data;
-                if (attr.type == cgltf_attribute_type_normal) norm = attr.data;
-            }
-            if (!pos) continue;
+        void apply(cgltf_node* node) {
+            float world[16];
+            cgltf_node_transform_world(node, world);
 
-            size_t vcnt = verts.size();
-            verts.resize(vcnt + pos->count);
-            for (size_t i = 0; i < pos->count; ++i) {
-                float v[3];
-                cgltf_accessor_read_float(pos, i, v, 3);
-                verts[vcnt + i] = {v[0], v[1], v[2], 0, 0, 0};
-            }
+            if (node->mesh) {
+                for (size_t p = 0; p < node->mesh->primitives_count; ++p) {
+                    auto& prim = node->mesh->primitives[p];
 
-            if (norm) {
-                for (size_t i = 0; i < norm->count && i < pos->count; ++i) {
-                    float n[3];
-                    cgltf_accessor_read_float(norm, i, n, 3);
-                    verts[vcnt + i].nx = n[0];
-                    verts[vcnt + i].ny = n[1];
-                    verts[vcnt + i].nz = n[2];
-                }
-            }
+                    // Compute material color for this primitive
+                    float prim_color[4] = {1, 1, 1, 1};
+                    if (prim.material && prim.material->has_pbr_metallic_roughness) {
+                        auto* pbr = &prim.material->pbr_metallic_roughness;
+                        prim_color[0] = pbr->base_color_factor[0];
+                        prim_color[1] = pbr->base_color_factor[1];
+                        prim_color[2] = pbr->base_color_factor[2];
+                        prim_color[3] = pbr->base_color_factor[3];
+                    }
 
-            if (prim.indices) {
-                size_t icnt = prim.indices->count;
-                size_t idx_off = indices.size();
-                indices.resize(idx_off + icnt);
-                for (size_t i = 0; i < icnt; ++i)
-                    indices[idx_off + i] = (uint32_t)(base + cgltf_accessor_read_index(prim.indices, i));
-            } else {
-                for (size_t i = 0; i < pos->count; i += 3) {
-                    if (i+2 < pos->count) {
-                        indices.push_back((uint32_t)(base + i));
-                        indices.push_back((uint32_t)(base + i+1));
-                        indices.push_back((uint32_t)(base + i+2));
+                    const cgltf_accessor* pos_acc = nullptr;
+                    const cgltf_accessor* norm_acc = nullptr;
+                    const cgltf_accessor* col_acc = nullptr;
+                    for (size_t a = 0; a < prim.attributes_count; ++a) {
+                        auto& attr = prim.attributes[a];
+                        if (attr.type == cgltf_attribute_type_position) pos_acc = attr.data;
+                        if (attr.type == cgltf_attribute_type_normal) norm_acc = attr.data;
+                        if (attr.type == cgltf_attribute_type_color) col_acc = attr.data;
+                    }
+                    if (!pos_acc) continue;
+
+                    size_t v_off = verts.size();
+                    verts.resize(v_off + pos_acc->count);
+                    for (size_t i = 0; i < pos_acc->count; ++i) {
+                        float v[3];
+                        cgltf_accessor_read_float(pos_acc, i, v, 3);
+                        float tv[3];
+                        mat4_mul_vec3(world, v, tv);
+                        verts[v_off + i] = {tv[0], tv[1], tv[2], 0, 0, 0, 255, 255, 255, 255};
+                    }
+
+                    if (col_acc) {
+                        has_vc = true;
+                        if (col_acc->type == cgltf_type_vec4) {
+                            for (size_t i = 0; i < col_acc->count && i < pos_acc->count; ++i) {
+                                float c[4];
+                                cgltf_accessor_read_float(col_acc, i, c, 4);
+                                verts[v_off + i].r = (uint8_t)(c[0] * 255.0f);
+                                verts[v_off + i].g = (uint8_t)(c[1] * 255.0f);
+                                verts[v_off + i].b = (uint8_t)(c[2] * 255.0f);
+                                verts[v_off + i].a = (uint8_t)(c[3] * 255.0f);
+                            }
+                        } else if (col_acc->type == cgltf_type_vec3) {
+                            for (size_t i = 0; i < col_acc->count && i < pos_acc->count; ++i) {
+                                float c[3];
+                                cgltf_accessor_read_float(col_acc, i, c, 3);
+                                verts[v_off + i].r = (uint8_t)(c[0] * 255.0f);
+                                verts[v_off + i].g = (uint8_t)(c[1] * 255.0f);
+                                verts[v_off + i].b = (uint8_t)(c[2] * 255.0f);
+                                verts[v_off + i].a = 255;
+                            }
+                        }
+                    }
+
+                    if (norm_acc) {
+                        for (size_t i = 0; i < norm_acc->count && i < pos_acc->count; ++i) {
+                            float n[3];
+                            cgltf_accessor_read_float(norm_acc, i, n, 3);
+                            float tn[3];
+                            mat4_mul_vec3_dir(world, n, tn);
+                            float len = sqrtf(tn[0]*tn[0] + tn[1]*tn[1] + tn[2]*tn[2]);
+                            if (len > 1e-8f) { tn[0]/=len; tn[1]/=len; tn[2]/=len; }
+                            verts[v_off + i].nx = tn[0];
+                            verts[v_off + i].ny = tn[1];
+                            verts[v_off + i].nz = tn[2];
+                        }
+                    }
+
+                    size_t prim_base = base + v_off;
+                    size_t idx_off = indices.size();
+                    if (prim.indices) {
+                        size_t icnt = prim.indices->count;
+                        indices.resize(idx_off + icnt);
+                        for (size_t i = 0; i < icnt; ++i)
+                            indices[idx_off + i] = (uint32_t)(prim_base + cgltf_accessor_read_index(prim.indices, i));
+                    } else {
+                        for (size_t i = 0; i < pos_acc->count; i += 3) {
+                            if (i+2 < pos_acc->count) {
+                                indices.push_back((uint32_t)(prim_base + i));
+                                indices.push_back((uint32_t)(prim_base + i+1));
+                                indices.push_back((uint32_t)(prim_base + i+2));
+                            }
+                        }
+                    }
+
+                    // Record primitive range with material color
+                    PrimitiveRange range = {};
+                    range.index_offset = (int)idx_off;
+                    range.index_count = (int)(indices.size() - idx_off);
+                    memcpy(range.color, prim_color, sizeof(float[4]));
+                    mesh_out->ranges.push_back(range);
+
+                    if (!norm_acc) {
+                        for (size_t i = 0; i + 2 < pos_acc->count; i += 3) {
+                            float nrm[3];
+                            if (compute_normal(&verts[v_off+i].x, &verts[v_off+i+1].x, &verts[v_off+i+2].x, nrm)) {
+                                verts[v_off+i].nx = nrm[0]; verts[v_off+i].ny = nrm[1]; verts[v_off+i].nz = nrm[2];
+                                verts[v_off+i+1].nx = nrm[0]; verts[v_off+i+1].ny = nrm[1]; verts[v_off+i+1].nz = nrm[2];
+                                verts[v_off+i+2].nx = nrm[0]; verts[v_off+i+2].ny = nrm[1]; verts[v_off+i+2].nz = nrm[2];
+                            }
+                        }
                     }
                 }
             }
 
-            if (!norm) {
-                for (size_t i = 0; i + 2 < pos->count; i += 3) {
-                    float nrm[3];
-                    if (compute_normal(&verts[base+i].x, &verts[base+i+1].x, &verts[base+i+2].x, nrm)) {
-                        verts[base+i].nx = nrm[0]; verts[base+i].ny = nrm[1]; verts[base+i].nz = nrm[2];
-                        verts[base+i+1].nx = nrm[0]; verts[base+i+1].ny = nrm[1]; verts[base+i+1].nz = nrm[2];
-                        verts[base+i+2].nx = nrm[0]; verts[base+i+2].ny = nrm[1]; verts[base+i+2].nz = nrm[2];
+            for (int i = 0; i < node->children_count; ++i)
+                apply(node->children[i]);
+        }
+    };
+
+    ProcessNode pn = {data, verts, indices, out.has_vertex_colors, &out};
+
+    if (data->scene) {
+        for (int i = 0; i < data->scene->nodes_count; ++i)
+            pn.apply(data->scene->nodes[i]);
+    } else {
+        // No scene graph — iterate meshes directly
+        for (size_t m = 0; m < data->meshes_count; ++m) {
+            for (size_t p = 0; p < data->meshes[m].primitives_count; ++p) {
+                auto& prim = data->meshes[m].primitives[p];
+
+                float prim_color[4] = {1, 1, 1, 1};
+                if (prim.material && prim.material->has_pbr_metallic_roughness) {
+                    auto* pbr = &prim.material->pbr_metallic_roughness;
+                    prim_color[0] = pbr->base_color_factor[0];
+                    prim_color[1] = pbr->base_color_factor[1];
+                    prim_color[2] = pbr->base_color_factor[2];
+                    prim_color[3] = pbr->base_color_factor[3];
+                }
+
+                const cgltf_accessor* pos = nullptr;
+                const cgltf_accessor* norm = nullptr;
+                for (size_t a = 0; a < prim.attributes_count; ++a) {
+                    auto& attr = prim.attributes[a];
+                    if (attr.type == cgltf_attribute_type_position) pos = attr.data;
+                    if (attr.type == cgltf_attribute_type_normal) norm = attr.data;
+                }
+                if (!pos) continue;
+
+                size_t vcnt = verts.size();
+                verts.resize(vcnt + pos->count);
+                for (size_t i = 0; i < pos->count; ++i) {
+                    float v[3];
+                    cgltf_accessor_read_float(pos, i, v, 3);
+                    verts[vcnt + i] = {v[0], v[1], v[2], 0, 0, 0, 255, 255, 255, 255};
+                }
+
+                if (norm) {
+                    for (size_t i = 0; i < norm->count && i < pos->count; ++i) {
+                        float n[3];
+                        cgltf_accessor_read_float(norm, i, n, 3);
+                        verts[vcnt + i].nx = n[0];
+                        verts[vcnt + i].ny = n[1];
+                        verts[vcnt + i].nz = n[2];
+                    }
+                }
+
+                size_t idx_off_fb = indices.size();
+                if (prim.indices) {
+                    size_t icnt = prim.indices->count;
+                    indices.resize(idx_off_fb + icnt);
+                    for (size_t i = 0; i < icnt; ++i)
+                        indices[idx_off_fb + i] = (uint32_t)(vcnt + cgltf_accessor_read_index(prim.indices, i));
+                } else {
+                    for (size_t i = 0; i < pos->count; i += 3) {
+                        if (i+2 < pos->count) {
+                            indices.push_back((uint32_t)(vcnt + i));
+                            indices.push_back((uint32_t)(vcnt + i+1));
+                            indices.push_back((uint32_t)(vcnt + i+2));
+                        }
+                    }
+                }
+
+                // Record primitive range with material color
+                PrimitiveRange range = {};
+                range.index_offset = (int)idx_off_fb;
+                range.index_count = (int)(indices.size() - idx_off_fb);
+                memcpy(range.color, prim_color, sizeof(float[4]));
+                out.ranges.push_back(range);
+
+                if (!norm) {
+                    for (size_t i = 0; i + 2 < pos->count; i += 3) {
+                        float nrm[3];
+                        if (compute_normal(&verts[vcnt+i].x, &verts[vcnt+i+1].x, &verts[vcnt+i+2].x, nrm)) {
+                            verts[vcnt+i].nx = nrm[0]; verts[vcnt+i].ny = nrm[1]; verts[vcnt+i].nz = nrm[2];
+                            verts[vcnt+i+1].nx = nrm[0]; verts[vcnt+i+1].ny = nrm[1]; verts[vcnt+i+1].nz = nrm[2];
+                            verts[vcnt+i+2].nx = nrm[0]; verts[vcnt+i+2].ny = nrm[1]; verts[vcnt+i+2].nz = nrm[2];
+                        }
                     }
                 }
             }
-
-            base += pos->count;
         }
     }
 

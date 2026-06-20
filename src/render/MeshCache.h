@@ -6,11 +6,19 @@
 #include <unordered_map>
 #include <vector>
 
+struct PrimitiveRange {
+    int index_offset;
+    int index_count;
+    float color[4];
+};
+
 struct CachedMesh {
     sg_buffer vertex_buf = {};
     sg_buffer index_buf = {};
     int num_indices = 0;
     bool valid = false;
+    bool has_vertex_colors = false;
+    std::vector<PrimitiveRange> ranges;
 };
 
 class MeshCache {

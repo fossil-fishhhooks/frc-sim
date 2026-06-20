@@ -54,25 +54,17 @@ void PreloadMesh(const BodyDef* def, MeshCache* cache) {
     if (cache) cache->Preload(def);
 }
 
-void UnloadAllMeshes() {
-    // handled by MeshCache::UnloadAll
-}
-
-void DrawBodySnapshot(const BodySnapshot& body, MeshCache* cache, bool wireframe) {
+void DrawBodyRange(const BodySnapshot& body, MeshCache* cache,
+                   int idx_offset, int idx_count) {
     if (!cache) return;
 
     const CachedMesh* mesh = cache->Get(body.def);
-    if (!mesh || !mesh->valid) {
-        // No mesh loaded — draw nothing visible
-        // In the future: draw a fallback placeholder
-        return;
-    }
+    if (!mesh || !mesh->valid) return;
 
     sg_bindings bind = {};
     bind.vertex_buffers[0] = mesh->vertex_buf;
     bind.index_buffer = mesh->index_buf;
     sg_apply_bindings(&bind);
 
-    // Draw all triangles
-    sg_draw(0, mesh->num_indices, 1);
+    sg_draw(idx_offset, idx_count, 1);
 }

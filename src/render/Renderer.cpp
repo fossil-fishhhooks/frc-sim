@@ -95,6 +95,7 @@ static void vec3_normalize(const float a[3], float out[3]) {
 struct Vertex {
     float x, y, z;
     float nx, ny, nz;
+    uint8_t r, g, b, a;
 };
 
 struct VsUniforms {
@@ -104,9 +105,9 @@ struct VsUniforms {
 };
 
 struct FsUniforms {
-    float color[4];
-    float light_pos[4];
+    float model_color[4];
     float ambient[4];
+    float light_pos[4];
     float view_pos[4];
 };
 
@@ -119,32 +120,37 @@ static const char* vs_src = R"(
     uniform mat4 projection;
     layout(location = 0) in vec3 position;
     layout(location = 1) in vec3 normal;
+    layout(location = 2) in vec4 color;
     out vec3 v_normal;
     out vec3 v_pos;
+    out vec4 v_color;
     void main() {
         vec4 world_pos = model * vec4(position, 1.0);
         gl_Position = projection * view * world_pos;
         v_normal = mat3(model) * normal;
         v_pos = world_pos.xyz;
+        v_color = color;
     }
 )";
 
 static const char* fs_src = R"(
     #version 330
-    uniform vec4 color;
-    uniform vec4 light_pos;
+    uniform vec4 model_color;
     uniform vec4 ambient;
+    uniform vec4 light_pos;
     uniform vec4 view_pos;
     in vec3 v_normal;
     in vec3 v_pos;
+    in vec4 v_color;
     out vec4 frag_color;
     void main() {
         vec3 N = normalize(v_normal);
         vec3 L = normalize(light_pos.xyz - v_pos);
-        float diff = max(dot(N, L), 0.0);
-        vec3 amb = ambient.xyz * color.xyz;
-        vec3 dif = diff * color.xyz;
-        frag_color = vec4(amb + dif, color.a);
+        float diff = max(dot(N, L), 0.15);
+        vec3 base = v_color.xyz * model_color.xyz;
+        vec3 amb = ambient.xyz * base;
+        vec3 dif = diff * base;
+        frag_color = vec4(amb + dif, v_color.a * model_color.a);
     }
 )";
 
@@ -177,9 +183,9 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     shd.uniform_blocks[1].stage = SG_SHADERSTAGE_FRAGMENT;
     shd.uniform_blocks[1].size = sizeof(FsUniforms);
     shd.uniform_blocks[1].layout = SG_UNIFORMLAYOUT_NATIVE;
-    shd.uniform_blocks[1].glsl_uniforms[0] = {SG_UNIFORMTYPE_FLOAT4, 1, "color"};
-    shd.uniform_blocks[1].glsl_uniforms[1] = {SG_UNIFORMTYPE_FLOAT4, 1, "light_pos"};
-    shd.uniform_blocks[1].glsl_uniforms[2] = {SG_UNIFORMTYPE_FLOAT4, 1, "ambient"};
+    shd.uniform_blocks[1].glsl_uniforms[0] = {SG_UNIFORMTYPE_FLOAT4, 1, "model_color"};
+    shd.uniform_blocks[1].glsl_uniforms[1] = {SG_UNIFORMTYPE_FLOAT4, 1, "ambient"};
+    shd.uniform_blocks[1].glsl_uniforms[2] = {SG_UNIFORMTYPE_FLOAT4, 1, "light_pos"};
     shd.uniform_blocks[1].glsl_uniforms[3] = {SG_UNIFORMTYPE_FLOAT4, 1, "view_pos"};
 
     m_shader = sg_make_shader(&shd);
@@ -191,8 +197,13 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     sg_pipeline_desc pip = {};
     pip.layout.attrs[0].format = SG_VERTEXFORMAT_FLOAT3;
     pip.layout.attrs[0].buffer_index = 0;
+    pip.layout.attrs[0].offset = 0;
     pip.layout.attrs[1].format = SG_VERTEXFORMAT_FLOAT3;
     pip.layout.attrs[1].buffer_index = 0;
+    pip.layout.attrs[1].offset = 12;
+    pip.layout.attrs[2].format = SG_VERTEXFORMAT_UBYTE4N;
+    pip.layout.attrs[2].buffer_index = 0;
+    pip.layout.attrs[2].offset = 24;
     pip.layout.buffers[0].stride = sizeof(Vertex);
     pip.shader = m_shader;
     pip.index_type = SG_INDEXTYPE_UINT32;
@@ -380,12 +391,25 @@ void Renderer::DrawFrame(const WorldSnapshot& snapshot,
         memcpy(vs_ub.projection, proj, sizeof(proj));
         sg_apply_uniforms(0, SG_RANGE(vs_ub));
 
-        float col[4];
-        BodyColor(body.def, col);
-        memcpy(fs_ub.color, col, sizeof(col));
-        sg_apply_uniforms(1, SG_RANGE(fs_ub));
-
-        DrawBodySnapshot(body, &m_mesh_cache, false);
+        const CachedMesh* mesh = m_mesh_cache.Get(body.def);
+        if (mesh && mesh->valid) {
+            if (!mesh->ranges.empty()) {
+                for (const auto& range : mesh->ranges) {
+                    memcpy(fs_ub.model_color, range.color, sizeof(float[4]));
+                    sg_apply_uniforms(1, SG_RANGE(fs_ub));
+                    DrawBodyRange(body, &m_mesh_cache, range.index_offset, range.index_count);
+                }
+            } else {
+                float col[4];
+                BodyColor(body.def, col);
+                if (mesh->has_vertex_colors) {
+                    col[0] = 1.0f; col[1] = 1.0f; col[2] = 1.0f; col[3] = 1.0f;
+                }
+                memcpy(fs_ub.model_color, col, sizeof(col));
+                sg_apply_uniforms(1, SG_RANGE(fs_ub));
+                DrawBodyRange(body, &m_mesh_cache, 0, mesh->num_indices);
+            }
+        }
     }
 
     // ── Debug overlay ─────────────────────────────────────────────────────

@@ -8,9 +8,8 @@
 void PreloadMesh(const BodyDef* def, MeshCache* cache);
 void UnloadAllMeshes();
 
-void DrawBodySnapshot(const BodySnapshot& body, MeshCache* cache, bool wireframe);
-void DrawBodyMesh(const BodySnapshot& body, MeshCache* cache);
-void DrawWireframeMesh(const BodySnapshot& body, MeshCache* cache);
+void DrawBodyRange(const BodySnapshot& body, MeshCache* cache,
+                   int idx_offset, int idx_count);
 
 // shared matrix helpers
 void QuatToMatrix(const float q[4], float out[16]);
