@@ -91,6 +91,8 @@ target_link_libraries(frc_sim PRIVATE
     pthread
     m
     X11
+    Xi
+    Xcursor
     GL
 )
 

@@ -5,7 +5,7 @@
 #include <Jolt/Physics/Collision/Shape/MeshShape.h>
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
 
-#include <cgltf.h>
+#include "external/cgltf.h"
 
 #include <vector>
 

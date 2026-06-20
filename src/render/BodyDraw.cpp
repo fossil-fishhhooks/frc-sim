@@ -1,128 +1,78 @@
 #include "render/BodyDraw.h"
 #include "io/EasyLog.h"
 
-#include <raylib.h>
-#include <raymath.h>
-#include <rlgl.h>
-#include <unordered_map>
+#include <cstring>
+#include <cmath>
 
-static std::unordered_map<const BodyDef *, Model> s_cache;
-
-void PreloadMesh(const BodyDef *def)
-{
-    if (!def || def->mesh_path.empty())
-        return;
-    if (s_cache.count(def))
-        return;
-
-    Model m = LoadModel(def->mesh_path.c_str());
-    /*for (int i = 0; i < m.materialCount; ++i)
-        LOG_INFO("BodyDraw: debug texture info: mat[%d] tex_id=%d w=%d h=%d color={%d,%d,%d}",
-                 i,
-                 m.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture.id,
-                 m.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture.width,
-                 m.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture.height,
-                 m.materials[i].maps[MATERIAL_MAP_DIFFUSE].color.r,
-                 m.materials[i].maps[MATERIAL_MAP_DIFFUSE].color.g,
-                 m.materials[i].maps[MATERIAL_MAP_DIFFUSE].color.b);
-                 */
-    if (m.meshCount == 0)
-    {
-        LOG_WARN("BodyDraw: failed to load model: %s", def->mesh_path.c_str());
-        UnloadModel(m);
-        return;
-    }
-    s_cache[def] = m;
-    LOG_DEBUG("BodyDraw: cached model for '%s'", def->name.c_str());
-}
-
-void UnloadAllMeshes()
-{
-    for (auto &[key, model] : s_cache)
-        UnloadModel(model);
-    s_cache.clear();
-}
-
-/// reuse code from Shopping Poroject
-static Matrix QuatToMatrix(const float q[4])
-{
-    float x = q[0], y = q[1], z = q[2], w = q[3];
-    return Matrix{
-        1 - 2 * (y * y + z * z), 2 * (x * y - w * z), 2 * (x * z + w * y), 0,
-        2 * (x * y + w * z), 1 - 2 * (x * x + z * z), 2 * (y * z - w * x), 0,
-        2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y), 0,
-        0, 0, 0, 1};
-}
-
-static Color BodyColor(const BodyDef *def)
-{
-    if (!def)
-        return GRAY;
-    // Static bodies: muted gray
-    if (def->mass == 0.0f)
-        return {255, 255, 255, 255};
-    // Dynamic: stable color from name hash
+static unsigned FNV1a(const char* str) {
     unsigned h = 2166136261u;
-    for (char c : def->name)
-        h = (h ^ (unsigned char)c) * 16777619u;
-    return {
-        (unsigned char)(120 + (h & 0x7F)),
-        (unsigned char)(120 + ((h >> 8) & 0x7F)),
-        (unsigned char)(120 + ((h >> 16) & 0x7F)),
-        255};
+    for (const char* p = str; *p; ++p)
+        h = (h ^ (unsigned char)*p) * 16777619u;
+    return h;
 }
 
-void DrawBodySnapshot(const BodySnapshot &body, Shader *shader, bool wireframe)
-{
-    Vector3 pos = {body.pos[0], body.pos[1], body.pos[2]};
-    Matrix rot = QuatToMatrix(body.rot);
-    Color col = BodyColor(body.def);
-    Matrix transform = MatrixMultiply(rot, MatrixTranslate(pos.x, pos.y, pos.z));
+void BodyColor(const BodyDef* def, float out[4]) {
+    if (!def) {
+        out[0]=0.5f; out[1]=0.5f; out[2]=0.5f; out[3]=1.0f; return;
+    }
+    if (def->mass == 0.0f) {
+        out[0]=1.0f; out[1]=1.0f; out[2]=1.0f; out[3]=1.0f; return;
+    }
+    unsigned h = FNV1a(def->name.c_str());
+    out[0] = (120.0f + (h & 0x7F)) / 255.0f;
+    out[1] = (120.0f + ((h >> 8) & 0x7F)) / 255.0f;
+    out[2] = (120.0f + ((h >> 16) & 0x7F)) / 255.0f;
+    out[3] = 1.0f;
+}
 
-    auto it = body.def ? s_cache.find(body.def) : s_cache.end();
-    if (it == s_cache.end() && body.def && !body.def->mesh_path.empty())
-    {
-        PreloadMesh(body.def);
-        it = s_cache.find(body.def);
+void QuatToMatrix(const float q[4], float out[16]) {
+    float x=q[0], y=q[1], z=q[2], w=q[3];
+    memset(out, 0, 16*sizeof(float));
+    out[0]  = 1 - 2*(y*y + z*z);
+    out[1]  = 2*(x*y + w*z);
+    out[2]  = 2*(x*z - w*y);
+    out[4]  = 2*(x*y - w*z);
+    out[5]  = 1 - 2*(x*x + z*z);
+    out[6]  = 2*(y*z + w*x);
+    out[8]  = 2*(x*z + w*y);
+    out[9]  = 2*(y*z - w*x);
+    out[10] = 1 - 2*(x*x + y*y);
+    out[15] = 1;
+}
+
+void Vec3RotateByQuat(const float v[3], const float q[4], float out[3]) {
+    float x=q[0], y=q[1], z=q[2], w=q[3];
+    float tx = 2*(y*v[2] - z*v[1]);
+    float ty = 2*(z*v[0] - x*v[2]);
+    float tz = 2*(x*v[1] - y*v[0]);
+    out[0] = v[0] + w*tx + (y*tz - z*ty);
+    out[1] = v[1] + w*ty + (z*tx - x*tz);
+    out[2] = v[2] + w*tz + (x*ty - y*tx);
+}
+
+void PreloadMesh(const BodyDef* def, MeshCache* cache) {
+    if (cache) cache->Preload(def);
+}
+
+void UnloadAllMeshes() {
+    // handled by MeshCache::UnloadAll
+}
+
+void DrawBodySnapshot(const BodySnapshot& body, MeshCache* cache, bool wireframe) {
+    if (!cache) return;
+
+    const CachedMesh* mesh = cache->Get(body.def);
+    if (!mesh || !mesh->valid) {
+        // No mesh loaded — draw nothing visible
+        // In the future: draw a fallback placeholder
+        return;
     }
 
-    if (it != s_cache.end())
-    {
-        Model &model = it->second;
-        for (int m = 0; m < model.meshCount; ++m)
-        {
-            Material &mat = model.materials[model.meshMaterial[m]];
-            if (shader)
-                mat.shader = *shader;
+    sg_bindings bind = {};
+    bind.vertex_buffers[0] = mesh->vertex_buf;
+    bind.index_buffer = mesh->index_buf;
+    sg_apply_bindings(&bind);
 
-            // Only apply hash color if the mesh has no embedded texture.
-            // GLBs with textures have a valid texture ID (> 0) in the diffuse slot —
-            // overwriting colDiffuse with a hash color would tint the texture gray.
-            Color &mc = mat.maps[MATERIAL_MAP_DIFFUSE].color;
-            bool has_material_color = !(mc.r == 255 && mc.g == 255 && mc.b == 255);
-            if (!has_material_color)
-                mc = col; // no embedded color — use hash
-            // if has_texture: leave color alone — whatever the GLB embedded is used
-
-            DrawMesh(model.meshes[m], mat, transform);
-        }
-
-        // Wireframe pass — always default shader, no lighting
-        if(wireframe){
-            static Material wire_mat = LoadMaterialDefault();
-            wire_mat.maps[MATERIAL_MAP_DIFFUSE].color = {30, 30, 30, 130};
-            rlPushMatrix();
-            rlMultMatrixf(MatrixToFloat(transform));
-            rlEnableWireMode();
-            for (int m = 0; m < model.meshCount; ++m)
-                DrawMesh(model.meshes[m], wire_mat, MatrixIdentity());
-            rlDisableWireMode();
-            rlPopMatrix();
-        }
-    }
-    else
-    {
-        DrawCube(pos, 0.3f, 0.3f, 0.3f, col);
-        DrawCubeWires(pos, 0.3f, 0.3f, 0.3f, {40, 40, 40, 180});
-    }
+    // Draw all triangles
+    sg_draw(0, mesh->num_indices / 3, 1);
 }
