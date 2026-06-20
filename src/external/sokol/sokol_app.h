@@ -3164,6 +3164,7 @@ typedef struct {
     Atom NET_WM_ICON;
     Atom NET_WM_STATE;
     Atom NET_WM_STATE_FULLSCREEN;
+    Atom NET_WM_BYPASS_COMPOSITOR;
     _sapp_xi_t xi;
     _sapp_xdnd_t xdnd;
     // XLib manual says keycodes are in the range [8, 255] inclusive.
@@ -11862,6 +11863,7 @@ _SOKOL_PRIVATE void _sapp_x11_init_extensions(void) {
     _sapp.x11.NET_WM_ICON             = XInternAtom(_sapp.x11.display, "_NET_WM_ICON", False);
     _sapp.x11.NET_WM_STATE            = XInternAtom(_sapp.x11.display, "_NET_WM_STATE", False);
     _sapp.x11.NET_WM_STATE_FULLSCREEN = XInternAtom(_sapp.x11.display, "_NET_WM_STATE_FULLSCREEN", False);
+    _sapp.x11.NET_WM_BYPASS_COMPOSITOR = XInternAtom(_sapp.x11.display, "_NET_WM_BYPASS_COMPOSITOR", False);
     _sapp.x11.CLIPBOARD = XInternAtom(_sapp.x11.display, "CLIPBOARD", False);
     _sapp.x11.TARGETS   = XInternAtom(_sapp.x11.display, "TARGETS", False);
     if (_sapp.drop.enabled) {
@@ -12950,6 +12952,29 @@ _SOKOL_PRIVATE void _sapp_x11_create_window(Visual* visual_or_null, int depth) {
     if (_sapp.drop.enabled) {
         const Atom version = _SAPP_X11_XDND_VERSION;
         XChangeProperty(_sapp.x11.display, _sapp.x11.window, _sapp.x11.xdnd.XdndAware, XA_ATOM, 32, PropModeReplace, (unsigned char*) &version, 1);
+    }
+
+    // Ask the compositor to bypass its own present pipeline for this window.
+    // Without this, many compositing WMs (GNOME/KDE/etc) will still pace
+    // SwapBuffers to the display refresh rate even when the GL context's
+    // own swap interval is 0 -- vsync would appear "stuck" at the refresh
+    // rate no matter what swap_interval is requested. This is the same
+    // hint GLFW sets by default, which is why GLFW-based apps don't hit
+    // this. Only requested when the app explicitly asked for no vsync.
+    //
+    // NOTE: we can't check _sapp.swap_interval==0 here -- by this point
+    // _sapp_desc_defaults() has already silently coerced a requested 0
+    // back to 1 (see _sapp_def()), so it's never observably 0. Instead we
+    // key off a dedicated env var the app sets itself before sokol_main()
+    // returns when it wants vsync off, which survives that coercion.
+    {
+        const char* uncapped = getenv("SAPP_X11_NO_VSYNC");
+        bool wants_uncapped = uncapped && strcmp(uncapped, "1") == 0;
+        if (wants_uncapped) {
+            const long bypass = 1;
+            XChangeProperty(_sapp.x11.display, _sapp.x11.window, _sapp.x11.NET_WM_BYPASS_COMPOSITOR,
+                             XA_CARDINAL, 32, PropModeReplace, (unsigned char*)&bypass, 1);
+        }
     }
     _sapp_x11_update_window_title();
     _sapp_x11_update_dimensions_from_window_size();

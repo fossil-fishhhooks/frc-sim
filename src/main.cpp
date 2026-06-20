@@ -456,6 +456,14 @@ sapp_desc sokol_main(int argc, char* argv[]) {
 #if !defined(_WIN32)
         setenv("vblank_mode", "0", 0);           // Mesa (Intel/AMD)
         setenv("__GL_SYNC_TO_VBLANK", "0", 0);   // NVIDIA proprietary
+        // Even with the driver told not to throttle, a compositing WM
+        // (GNOME/KDE/etc) will still pace SwapBuffers to the display
+        // refresh rate unless the window asks the compositor to bypass
+        // its own present pipeline. GLFW does this by default on X11
+        // (which is why raylib/GLFW apps don't hit this); our patched
+        // sokol_app.h X11 backend reads this var to do the same -- see
+        // _NET_WM_BYPASS_COMPOSITOR in _sapp_x11_create_window().
+        setenv("SAPP_X11_NO_VSYNC", "1", 0);
 #else
         LOG_WARN("main: --vsync 0 is not yet implemented for the Windows/D3D11 "
                  "backend; swap_interval will still be forced to 1 by sokol_app.");
