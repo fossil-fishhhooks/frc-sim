@@ -6,6 +6,15 @@
 #define SOKOL_LOG_IMPL
 #define SOKOL_DEBUGTEXT_IMPL
 
+// On Windows, sokol_app.h defaults to a WinMain() entry point (a GUI-
+// subsystem convention), which doesn't reliably attach a console to
+// stdout/printf even when the linker is told /subsystem:console -- the
+// CRT's console wiring depends on which entry symbol is actually present,
+// not just the subsystem flag. This app is console-first (LOG_INFO/
+// PrintUsage go to stdout, --help is meant to be read in a terminal), so
+// force a real main() to match. No effect on non-Windows platforms.
+#define SOKOL_WIN32_FORCE_MAIN
+
 #define SOKOL_GLCORE
 #include "sokol_app.h"
 #include "sokol_gfx.h"

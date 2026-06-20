@@ -80,21 +80,49 @@ add_executable(frc_sim
 
 target_include_directories(frc_sim PRIVATE src)
 target_include_directories(frc_sim PRIVATE src/external/sokol)
-target_include_directories(frc_sim PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/build/vcpkg_installed/x64-linux/include)
+
+# vcpkg installs into a per-platform/arch "triplet" directory; this must
+# match whatever triplet vcpkg actually used for this build (visible in
+# vcpkg_installed/<triplet>/...). Override with -DFRC_SIM_VCPKG_TRIPLET=...
+# if your setup uses something nonstandard (e.g. a static or cross triplet).
+if(NOT FRC_SIM_VCPKG_TRIPLET)
+    if(WIN32)
+        set(FRC_SIM_VCPKG_TRIPLET "x64-windows")
+    elseif(APPLE)
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
+            set(FRC_SIM_VCPKG_TRIPLET "arm64-osx")
+        else()
+            set(FRC_SIM_VCPKG_TRIPLET "x64-osx")
+        endif()
+    else()
+        set(FRC_SIM_VCPKG_TRIPLET "x64-linux")
+    endif()
+endif()
+target_include_directories(frc_sim PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/build/vcpkg_installed/${FRC_SIM_VCPKG_TRIPLET}/include)
 
 target_link_libraries(frc_sim PRIVATE
     Jolt
     ntcore
     wpiutil
     nlohmann_json::nlohmann_json
-    dl
-    pthread
-    m
-    X11
-    Xi
-    Xcursor
-    GL
 )
+
+if(UNIX AND NOT APPLE)
+    # Linux: X11/GLX windowing + GL, plus libdl/libpthread/libm which are
+    # separate libs to link against on Linux (unlike Windows, where these
+    # are either built into the CRT or not needed, and macOS, which uses
+    # the Cocoa/IOKit/OpenGL frameworks below instead).
+    target_link_libraries(frc_sim PRIVATE
+        dl
+        pthread
+        m
+        X11
+        Xi
+        Xcursor
+        GL
+    )
+endif()
 
 target_compile_definitions(frc_sim PRIVATE
     JPH_DEBUG_RENDERER_DISABLED
