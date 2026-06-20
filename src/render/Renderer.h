@@ -53,6 +53,17 @@ private:
     sg_shader m_shader = {};
     sg_pass_action m_pass_action = {};
 
+    // Shadow mapping
+    static constexpr int SHADOW_MAP_SIZE = 1024;
+    sg_image m_shadow_depth = {};
+    sg_image m_shadow_color = {};
+    sg_view m_shadow_depth_att_view = {};
+    sg_view m_shadow_color_att_view = {};
+    sg_view m_shadow_tex_view = {};
+    sg_sampler m_shadow_sampler = {};
+    sg_pipeline m_shadow_pipeline = {};
+    sg_shader m_shadow_shader = {};
+
     MeshCache m_mesh_cache;
 
     std::unique_ptr<StreamEncoder> m_stream;
@@ -72,4 +83,5 @@ private:
     void DrawRaycasts(const std::vector<Raycaster*>& rcs);
 
     void BuildMatrix(float out[16], const float pos[3], const float rot[4]) const;
+    void BuildLightVPMatrix(float out[16]) const;
 };

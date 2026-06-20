@@ -426,36 +426,19 @@ void SimWorld::MarkBodyRemoved(JPH::BodyID id)
     {
         if (m_bodies[i].jph_id != id) continue;
 
-        int last = (int)m_bodies.size() - 1;
+        // Tombstone: clear identifying fields so all callers skip it.
+        //   - CaptureSnapshot already skips IsInvalid() bodies.
+        //   - RunIntake / ForceApplicator / ScoreTracker / do_reset all
+        //     check IsInvalid() or def == nullptr before touching Jolt.
+        m_bodies[i].jph_id = JPH::BodyID();
+        m_bodies[i].def    = nullptr;
 
-        if (i != last) {
-            // 1. Remove the body being deleted (slot i) from robot list, if it was a robot
-            m_robot_indices.erase(
-                std::remove(m_robot_indices.begin(), m_robot_indices.end(), i),
-                m_robot_indices.end());
-            // 2. Remap the surviving body (was at last, now moving to i)
-            for (auto &ri : m_robot_indices) if (ri == last) ri = i;
-
-            m_bodies[i].jph_id = m_bodies[last].jph_id;
-        m_bodies[i].def    = m_bodies[last].def;
-        m_bodies[i].motor_snap_cache = std::move(m_bodies[last].motor_snap_cache);
-        for (int m = 0; m < BodyRecord::MAX_MOTORS; ++m) {
-                m_bodies[i].voltage[m].store(m_bodies[last].voltage[m].load());
-                m_bodies[i].omega[m].store(m_bodies[last].omega[m].load());
-                m_bodies[i].normal_force[m].store(m_bodies[last].normal_force[m].load());
-                m_bodies[i].tractive_force[m].store(m_bodies[last].tractive_force[m].load());
-                m_bodies[i].slipping[m].store(m_bodies[last].slipping[m].load());
-                m_bodies[i].steer_angle[m].store(m_bodies[last].steer_angle[m].load());  // ADD
-            }
-    } else {
-        // i == last: just remove it from robot index list if present
+        // Remove from robot index list if this body was a robot.
         m_robot_indices.erase(
-            std::remove(m_robot_indices.begin(), m_robot_indices.end(), last),
+            std::remove(m_robot_indices.begin(), m_robot_indices.end(), i),
             m_robot_indices.end());
-    }
 
-        m_bodies.pop_back();
-        m_snap_scratch_ready = false;  // body count changed — rebuild scratch
+        m_snap_scratch_ready = false;
         return;
     }
 }

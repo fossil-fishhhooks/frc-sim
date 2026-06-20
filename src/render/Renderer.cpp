@@ -9,9 +9,19 @@
 #include <cmath>
 #include <cstring>
 
-static constexpr float LIGHT_X = 0.0f;
-static constexpr float LIGHT_Y = 6.0f;
-static constexpr float LIGHT_Z = 0.0f;
+// ── File loader ──────────────────────────────────────────────────────────────
+
+static bool ReadFile(const char* path, std::string& out) {
+    FILE* f = fopen(path, "rb");
+    if (!f) return false;
+    fseek(f, 0, SEEK_END);
+    long len = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    out.resize(len > 0 ? (size_t)len : 0);
+    if (len > 0) fread(&out[0], 1, (size_t)len, f);
+    fclose(f);
+    return true;
+}
 
 // ── Inline matrix/vector math (no raylib) ────────────────────────────────────
 
@@ -40,6 +50,17 @@ static void mat4_perspective(float fov_y, float aspect, float zn, float zf, floa
     out[10] = (zf + zn) / (zn - zf);
     out[11] = -1.0f;
     out[14] = (2.0f * zf * zn) / (zn - zf);
+}
+
+static void mat4_ortho(float left, float right, float bottom, float top, float zn, float zf, float out[16]) {
+    memset(out, 0, 16*sizeof(float));
+    out[0]  = 2.0f / (right - left);
+    out[5]  = 2.0f / (top - bottom);
+    out[10] = -2.0f / (zf - zn);
+    out[12] = -(right + left) / (right - left);
+    out[13] = -(top + bottom) / (top - bottom);
+    out[14] = -(zf + zn) / (zf - zn);
+    out[15] = 1.0f;
 }
 
 static void mat4_look_at(const float eye[3], const float center[3], const float up[3], float out[16]) {
@@ -109,56 +130,98 @@ struct FsUniforms {
     float ambient[4];
     float light_pos[4];
     float view_pos[4];
+    float light_power;
+    float light_vp[16];
 };
 
-// ── GLSL shaders (GL 3.3 core) ──────────────────────────────────────────────
+struct ShadowVsUniforms {
+    float light_vp[16];
+    float model[16];
+};
 
-static const char* vs_src = R"(
-    #version 330
-    uniform mat4 model;
-    uniform mat4 view;
-    uniform mat4 projection;
-    layout(location = 0) in vec3 position;
-    layout(location = 1) in vec3 normal;
-    layout(location = 2) in vec4 color;
-    out vec3 v_normal;
-    out vec3 v_pos;
-    out vec4 v_color;
-    void main() {
-        vec4 world_pos = model * vec4(position, 1.0);
-        gl_Position = projection * view * world_pos;
-        v_normal = mat3(model) * normal;
-        v_pos = world_pos.xyz;
-        v_color = color;
-    }
-)";
+// ── GLSL shader sources (fallback inline) ────────────────────────────────────
 
-static const char* fs_src = R"(
-    #version 330
-    uniform vec4 model_color;
-    uniform vec4 ambient;
-    uniform vec4 light_pos;
-    uniform vec4 view_pos;
-    in vec3 v_normal;
-    in vec3 v_pos;
-    in vec4 v_color;
-    out vec4 frag_color;
-    void main() {
-        vec3 N = normalize(v_normal);
-        vec3 L = normalize(light_pos.xyz - v_pos);
-        float diff = max(dot(N, L), 0.15);
-        vec3 base = v_color.xyz * model_color.xyz;
-        vec3 amb = ambient.xyz * base;
-        vec3 dif = diff * base;
-        frag_color = vec4(amb + dif, v_color.a * model_color.a);
-    }
-)";
+static const char* vs_src_main_fallback =
+"#version 330\n"
+"uniform mat4 model;\n"
+"uniform mat4 view;\n"
+"uniform mat4 projection;\n"
+"layout(location = 0) in vec3 position;\n"
+"layout(location = 1) in vec3 normal;\n"
+"layout(location = 2) in vec4 color;\n"
+"out vec3 v_normal;\n"
+"out vec3 v_pos;\n"
+"out vec4 v_color;\n"
+"void main() {\n"
+"    vec4 world_pos = model * vec4(position, 1.0);\n"
+"    gl_Position = projection * view * world_pos;\n"
+"    v_normal = mat3(model) * normal;\n"
+"    v_pos = world_pos.xyz;\n"
+"    v_color = color;\n"
+"}\n";
+
+static const char* fs_src_main_fallback =
+"#version 330\n"
+"uniform vec4 model_color;\n"
+"uniform vec4 ambient;\n"
+"uniform vec4 light_pos;\n"
+"uniform vec4 view_pos;\n"
+"uniform float light_power;\n"
+"uniform mat4 light_vp;\n"
+"uniform sampler2D shadow_map;\n"
+"in vec3 v_normal;\n"
+"in vec3 v_pos;\n"
+"in vec4 v_color;\n"
+"out vec4 frag_color;\n"
+"float shadow_factor(vec4 light_space) {\n"
+"    vec3 proj = light_space.xyz / light_space.w;\n"
+"    vec2 uv = proj.xy * 0.5 + 0.5;\n"
+"    float current = proj.z * 0.5 + 0.5;\n"
+"    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)\n"
+"        return 1.0;\n"
+"    float bias = 0.005;\n"
+"    vec2 texel = 1.0 / textureSize(shadow_map, 0);\n"
+"    float sum = 0.0;\n"
+"    for (int x = -1; x <= 1; x++) {\n"
+"        for (int y = -1; y <= 1; y++) {\n"
+"            vec2 off = vec2(float(x), float(y)) * texel;\n"
+"            float d = texture(shadow_map, uv + off).r;\n"
+"            sum += (current - bias > d) ? 0.0 : 1.0;\n"
+"        }\n"
+"    }\n"
+"    return sum / 9.0;\n"
+"}\n"
+"void main() {\n"
+"    vec3 N = normalize(v_normal);\n"
+"    vec3 L = normalize(light_pos.xyz - v_pos);\n"
+"    float diff = max(dot(N, L), 0.0);\n"
+"    float shadow = shadow_factor(light_vp * vec4(v_pos, 1.0));\n"
+"    vec3 base = v_color.xyz * model_color.xyz;\n"
+"    vec3 amb = ambient.xyz * base;\n"
+"    vec3 dif = diff * base * light_power * shadow;\n"
+"    frag_color = vec4(amb + dif, v_color.a * model_color.a);\n"
+"}\n";
+
+static const char* vs_src_shadow_fallback =
+"#version 330\n"
+"uniform mat4 light_vp;\n"
+"uniform mat4 model;\n"
+"layout(location = 0) in vec3 position;\n"
+"void main() {\n"
+"    gl_Position = light_vp * model * vec4(position, 1.0);\n"
+"}\n";
+
+static const char* fs_src_shadow_fallback =
+"#version 330\n"
+"out vec4 frag_color;\n"
+"void main() {\n"
+"    frag_color = vec4(1.0);\n"
+"}\n";
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 void Renderer::Init(int width, int height, const char* title, int target_fps) {
     (void)width; (void)height; (void)title; (void)target_fps;
-    // sokol_gfx is already initialized by sokol_app before init callback
 
     m_pass_action = {};
     m_pass_action.colors[0].load_action = SG_LOADACTION_CLEAR;
@@ -166,11 +229,30 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     m_pass_action.depth.load_action = SG_LOADACTION_CLEAR;
     m_pass_action.depth.clear_value = 1.0f;
 
-    // ── Shader ───────────────────────────────────────────────────────────
+    // ── Load shader sources from files (fallback to inline) ───────────────
+    std::string vs_main_str, fs_main_str, vs_shadow_str, fs_shadow_str;
+
+    bool loaded = ReadFile("assets/shader/main.vs", vs_main_str);
+    const char* vs_main = loaded ? vs_main_str.c_str() : vs_src_main_fallback;
+    if (loaded) LOG_INFO("Renderer: loaded assets/shader/main.vs");
+
+    loaded = ReadFile("assets/shader/main.fs", fs_main_str);
+    const char* fs_main = loaded ? fs_main_str.c_str() : fs_src_main_fallback;
+    if (loaded) LOG_INFO("Renderer: loaded assets/shader/main.fs");
+
+    loaded = ReadFile("assets/shader/shadow.vs", vs_shadow_str);
+    const char* vs_shadow = loaded ? vs_shadow_str.c_str() : vs_src_shadow_fallback;
+    if (loaded) LOG_INFO("Renderer: loaded assets/shader/shadow.vs");
+
+    loaded = ReadFile("assets/shader/shadow.fs", fs_shadow_str);
+    const char* fs_shadow = loaded ? fs_shadow_str.c_str() : fs_src_shadow_fallback;
+    if (loaded) LOG_INFO("Renderer: loaded assets/shader/shadow.fs");
+
+    // ── Main shader ───────────────────────────────────────────────────────
     sg_shader_desc shd = {};
-    shd.vertex_func.source = vs_src;
+    shd.vertex_func.source = vs_main;
     shd.vertex_func.entry = "main";
-    shd.fragment_func.source = fs_src;
+    shd.fragment_func.source = fs_main;
     shd.fragment_func.entry = "main";
 
     shd.uniform_blocks[0].stage = SG_SHADERSTAGE_VERTEX;
@@ -187,14 +269,30 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     shd.uniform_blocks[1].glsl_uniforms[1] = {SG_UNIFORMTYPE_FLOAT4, 1, "ambient"};
     shd.uniform_blocks[1].glsl_uniforms[2] = {SG_UNIFORMTYPE_FLOAT4, 1, "light_pos"};
     shd.uniform_blocks[1].glsl_uniforms[3] = {SG_UNIFORMTYPE_FLOAT4, 1, "view_pos"};
+    shd.uniform_blocks[1].glsl_uniforms[4] = {SG_UNIFORMTYPE_FLOAT, 1, "light_power"};
+    shd.uniform_blocks[1].glsl_uniforms[5] = {SG_UNIFORMTYPE_MAT4, 1, "light_vp"};
+
+    shd.views[0].texture.stage = SG_SHADERSTAGE_FRAGMENT;
+    shd.views[0].texture.image_type = SG_IMAGETYPE_2D;
+
+    shd.samplers[0].stage = SG_SHADERSTAGE_FRAGMENT;
+    shd.samplers[0].sampler_type = SG_SAMPLERTYPE_FILTERING;
+
+    shd.texture_sampler_pairs[0].stage = SG_SHADERSTAGE_FRAGMENT;
+    shd.texture_sampler_pairs[0].view_slot = 0;
+    shd.texture_sampler_pairs[0].sampler_slot = 0;
+    shd.texture_sampler_pairs[0].glsl_name = "shadow_map";
 
     m_shader = sg_make_shader(&shd);
     if (!m_shader.id) {
-        LOG_ERROR("Renderer: failed to create shader");
+        LOG_ERROR("Renderer: failed to create main shader");
     }
 
     // ── Solid pipeline ───────────────────────────────────────────────────
     sg_pipeline_desc pip = {};
+    pip.color_count = 1;
+    pip.colors[0].pixel_format = SG_PIXELFORMAT_RGBA8;
+    pip.depth.pixel_format = SG_PIXELFORMAT_DEPTH_STENCIL;
     pip.layout.attrs[0].format = SG_VERTEXFORMAT_FLOAT3;
     pip.layout.attrs[0].buffer_index = 0;
     pip.layout.attrs[0].offset = 0;
@@ -212,6 +310,79 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     pip.cull_mode = SG_CULLMODE_BACK;
     m_pipeline = sg_make_pipeline(&pip);
 
+    // ── Shadow shader ─────────────────────────────────────────────────────
+    sg_shader_desc shd_shadow = {};
+    shd_shadow.vertex_func.source = vs_shadow;
+    shd_shadow.vertex_func.entry = "main";
+    shd_shadow.fragment_func.source = fs_shadow;
+    shd_shadow.fragment_func.entry = "main";
+
+    shd_shadow.uniform_blocks[0].stage = SG_SHADERSTAGE_VERTEX;
+    shd_shadow.uniform_blocks[0].size = sizeof(ShadowVsUniforms);
+    shd_shadow.uniform_blocks[0].layout = SG_UNIFORMLAYOUT_NATIVE;
+    shd_shadow.uniform_blocks[0].glsl_uniforms[0] = {SG_UNIFORMTYPE_MAT4, 1, "light_vp"};
+    shd_shadow.uniform_blocks[0].glsl_uniforms[1] = {SG_UNIFORMTYPE_MAT4, 1, "model"};
+
+    m_shadow_shader = sg_make_shader(&shd_shadow);
+    if (!m_shadow_shader.id) {
+        LOG_ERROR("Renderer: failed to create shadow shader");
+    }
+
+    // ── Shadow pipeline ───────────────────────────────────────────────────
+    sg_pipeline_desc spip = {};
+    spip.color_count = 1;
+    spip.colors[0].pixel_format = SG_PIXELFORMAT_RGBA8;
+    spip.depth.pixel_format = SG_PIXELFORMAT_DEPTH;
+    spip.layout.attrs[0].format = SG_VERTEXFORMAT_FLOAT3;
+    spip.layout.attrs[0].buffer_index = 0;
+    spip.layout.attrs[0].offset = 0;
+    spip.layout.buffers[0].stride = sizeof(Vertex);
+    spip.shader = m_shadow_shader;
+    spip.index_type = SG_INDEXTYPE_UINT32;
+    spip.depth.compare = SG_COMPAREFUNC_LESS_EQUAL;
+    spip.depth.write_enabled = true;
+    spip.cull_mode = SG_CULLMODE_BACK;
+    m_shadow_pipeline = sg_make_pipeline(&spip);
+
+    // ── Shadow map images ─────────────────────────────────────────────────
+    sg_image_desc depth_desc = {};
+    depth_desc.width = SHADOW_MAP_SIZE;
+    depth_desc.height = SHADOW_MAP_SIZE;
+    depth_desc.pixel_format = SG_PIXELFORMAT_DEPTH;
+    depth_desc.usage.depth_stencil_attachment = true;
+    depth_desc.usage.immutable = true;
+    m_shadow_depth = sg_make_image(&depth_desc);
+
+    sg_image_desc color_desc = {};
+    color_desc.width = SHADOW_MAP_SIZE;
+    color_desc.height = SHADOW_MAP_SIZE;
+    color_desc.pixel_format = SG_PIXELFORMAT_RGBA8;
+    color_desc.usage.color_attachment = true;
+    color_desc.usage.immutable = true;
+    m_shadow_color = sg_make_image(&color_desc);
+
+    // ── Shadow pass attachment views ──────────────────────────────────────
+    sg_view_desc cav = {};
+    cav.color_attachment.image = m_shadow_color;
+    m_shadow_color_att_view = sg_make_view(&cav);
+
+    sg_view_desc dav = {};
+    dav.depth_stencil_attachment.image = m_shadow_depth;
+    m_shadow_depth_att_view = sg_make_view(&dav);
+
+    // ── Shadow map texture view (for sampling in main pass) ──────────────
+    sg_view_desc tv = {};
+    tv.texture.image = m_shadow_depth;
+    m_shadow_tex_view = sg_make_view(&tv);
+
+    // ── Shadow sampler ────────────────────────────────────────────────────
+    sg_sampler_desc smp_desc = {};
+    smp_desc.min_filter = SG_FILTER_LINEAR;
+    smp_desc.mag_filter = SG_FILTER_LINEAR;
+    smp_desc.wrap_u = SG_WRAP_CLAMP_TO_EDGE;
+    smp_desc.wrap_v = SG_WRAP_CLAMP_TO_EDGE;
+    m_shadow_sampler = sg_make_sampler(&smp_desc);
+
     // ── Camera ───────────────────────────────────────────────────────────
     SetupCamera();
     m_stamp = stm_now();
@@ -221,6 +392,14 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
 
 void Renderer::Shutdown() {
     if (m_stream) m_stream->Shutdown();
+    if (m_shadow_sampler.id) sg_destroy_sampler(m_shadow_sampler);
+    if (m_shadow_tex_view.id) sg_destroy_view(m_shadow_tex_view);
+    if (m_shadow_depth_att_view.id) sg_destroy_view(m_shadow_depth_att_view);
+    if (m_shadow_color_att_view.id) sg_destroy_view(m_shadow_color_att_view);
+    if (m_shadow_depth.id) sg_destroy_image(m_shadow_depth);
+    if (m_shadow_color.id) sg_destroy_image(m_shadow_color);
+    if (m_shadow_pipeline.id) sg_destroy_pipeline(m_shadow_pipeline);
+    if (m_shadow_shader.id) sg_destroy_shader(m_shadow_shader);
     if (m_pipeline.id) sg_destroy_pipeline(m_pipeline);
     if (m_shader.id) sg_destroy_shader(m_shader);
     m_mesh_cache.UnloadAll();
@@ -254,6 +433,16 @@ void Renderer::BuildProjMatrix(float out[16], float fov, float near, float far) 
 
 void Renderer::BuildViewMatrix(float out[16]) const {
     mat4_look_at(m_cam.pos, m_cam.target, m_cam.up, out);
+}
+
+void Renderer::BuildLightVPMatrix(float out[16]) const {
+    float eye[3] = {-2.0f, 8.0f, 3.0f};
+    float center[3] = {0.0f, 0.0f, 0.0f};
+    float up[3] = {0.0f, 1.0f, 0.0f};
+    float view[16], proj[16];
+    mat4_look_at(eye, center, up, view);
+    mat4_ortho(-10.0f, 10.0f, -8.0f, 8.0f, 0.5f, 20.0f, proj);
+    mat4_mul(proj, view, out);
 }
 
 void Renderer::UpdateCamera(float dt) {
@@ -293,14 +482,14 @@ void Renderer::HandleEvent(const sapp_event* e) {
                 m_alt_pressed = false;
             break;
         case SAPP_EVENTTYPE_MOUSE_DOWN:
-            if (e->mouse_button == SAPP_MOUSEBUTTON_RIGHT) {
+            if (e->mouse_button == SAPP_MOUSEBUTTON_LEFT) {
                 m_mouse_down = true;
                 m_mouse_last_x = e->mouse_x;
                 m_mouse_last_y = e->mouse_y;
             }
             break;
         case SAPP_EVENTTYPE_MOUSE_UP:
-            if (e->mouse_button == SAPP_MOUSEBUTTON_RIGHT) m_mouse_down = false;
+            if (e->mouse_button == SAPP_MOUSEBUTTON_LEFT) m_mouse_down = false;
             break;
         case SAPP_EVENTTYPE_MOUSE_MOVE:
             if (m_mouse_down && !m_cameraLocked) {
@@ -309,7 +498,7 @@ void Renderer::HandleEvent(const sapp_event* e) {
                 m_mouse_last_x = e->mouse_x;
                 m_mouse_last_y = e->mouse_y;
                 m_cam.yaw += dx * 0.2f;
-                m_cam.pitch += dy * 0.2f;
+                m_cam.pitch -= dy * 0.2f;
                 m_cam.pitch = fmaxf(-89.0f, fminf(89.0f, m_cam.pitch));
             }
             break;
@@ -361,62 +550,117 @@ void Renderer::DrawFrame(const WorldSnapshot& snapshot,
     BuildProjMatrix(proj, m_cam.fov, 0.1f, 100.0f);
     BuildViewMatrix(view);
 
-    // Per-frame FS uniforms (light, ambient, view_pos — color set per-body)
+    // Light VP matrix
+    float light_vp[16];
+    BuildLightVPMatrix(light_vp);
+
+    // Per-frame FS uniforms
     FsUniforms fs_ub = {};
-    fs_ub.light_pos[0] = LIGHT_X;
-    fs_ub.light_pos[1] = LIGHT_Y;
-    fs_ub.light_pos[2] = LIGHT_Z;
+    fs_ub.light_pos[0] = -2.0f;
+    fs_ub.light_pos[1] = 8.0f;
+    fs_ub.light_pos[2] = 3.0f;
     fs_ub.light_pos[3] = 1.0f;
-    fs_ub.ambient[0] = 0.35f;
-    fs_ub.ambient[1] = 0.35f;
-    fs_ub.ambient[2] = 0.40f;
+    fs_ub.ambient[0] = 0.30f;
+    fs_ub.ambient[1] = 0.30f;
+    fs_ub.ambient[2] = 0.35f;
     fs_ub.ambient[3] = 1.0f;
     fs_ub.view_pos[0] = m_cam.pos[0];
     fs_ub.view_pos[1] = m_cam.pos[1];
     fs_ub.view_pos[2] = m_cam.pos[2];
     fs_ub.view_pos[3] = 1.0f;
+    fs_ub.light_power = 1.2f;
+    memcpy(fs_ub.light_vp, light_vp, sizeof(light_vp));
 
-    // ── Begin render pass ────────────────────────────────────────────────
-    sg_pass pass = { .action = m_pass_action, .swapchain = sglue_swapchain() };
-    sg_begin_pass(&pass);
+    // ── Shadow pass ───────────────────────────────────────────────────────
+    {
+        sg_pass_action shadow_action = {};
+        shadow_action.colors[0].load_action = SG_LOADACTION_CLEAR;
+        shadow_action.colors[0].clear_value = {1.0f, 1.0f, 1.0f, 1.0f};
+        shadow_action.depth.load_action = SG_LOADACTION_CLEAR;
+        shadow_action.depth.clear_value = 1.0f;
 
-    // ── Solid pass ────────────────────────────────────────────────────────
-    sg_apply_pipeline(m_pipeline);
-    for (const auto& body : snapshot.bodies) {
-        float model[16];
-        BuildMatrix(model, body.pos, body.rot);
-        VsUniforms vs_ub;
-        memcpy(vs_ub.model, model, sizeof(model));
-        memcpy(vs_ub.view, view, sizeof(view));
-        memcpy(vs_ub.projection, proj, sizeof(proj));
-        sg_apply_uniforms(0, SG_RANGE(vs_ub));
+        sg_pass spass = {};
+        spass.action = shadow_action;
+        spass.attachments.colors[0] = m_shadow_color_att_view;
+        spass.attachments.depth_stencil = m_shadow_depth_att_view;
+        sg_begin_pass(&spass);
 
-        const CachedMesh* mesh = m_mesh_cache.Get(body.def);
-        if (mesh && mesh->valid) {
-            if (!mesh->ranges.empty()) {
-                for (const auto& range : mesh->ranges) {
-                    memcpy(fs_ub.model_color, range.color, sizeof(float[4]));
-                    sg_apply_uniforms(1, SG_RANGE(fs_ub));
-                    DrawBodyRange(body, &m_mesh_cache, range.index_offset, range.index_count);
-                }
-            } else {
-                float col[4];
-                BodyColor(body.def, col);
-                if (mesh->has_vertex_colors) {
-                    col[0] = 1.0f; col[1] = 1.0f; col[2] = 1.0f; col[3] = 1.0f;
-                }
-                memcpy(fs_ub.model_color, col, sizeof(col));
-                sg_apply_uniforms(1, SG_RANGE(fs_ub));
-                DrawBodyRange(body, &m_mesh_cache, 0, mesh->num_indices);
+        sg_apply_pipeline(m_shadow_pipeline);
+
+        ShadowVsUniforms svs_ub;
+        memcpy(svs_ub.light_vp, light_vp, sizeof(light_vp));
+
+        for (const auto& body : snapshot.bodies) {
+            float model[16];
+            BuildMatrix(model, body.pos, body.rot);
+            memcpy(svs_ub.model, model, sizeof(model));
+            sg_apply_uniforms(0, SG_RANGE(svs_ub));
+
+            const CachedMesh* mesh = m_mesh_cache.Get(body.def);
+            if (mesh && mesh->valid) {
+                sg_bindings bind = {};
+                bind.vertex_buffers[0] = mesh->vertex_buf;
+                bind.index_buffer = mesh->index_buf;
+                sg_apply_bindings(&bind);
+                sg_draw(0, mesh->num_indices, 1);
             }
         }
+
+        sg_end_pass();
     }
 
-    // ── Debug overlay ─────────────────────────────────────────────────────
-    DrawDebugOverlay(snapshot, nt_connected, sim_hz, target_hz, nt_ping_ms, m_wall_time_offset_ms);
+    // ── Main render pass ──────────────────────────────────────────────────
+    {
+        sg_pass pass = {};
+        pass.action = m_pass_action;
+        pass.swapchain = sglue_swapchain();
+        sg_begin_pass(&pass);
 
-    // ── End pass ──────────────────────────────────────────────────────────
-    sg_end_pass();
+        sg_apply_pipeline(m_pipeline);
+
+        for (const auto& body : snapshot.bodies) {
+            float model[16];
+            BuildMatrix(model, body.pos, body.rot);
+            VsUniforms vs_ub;
+            memcpy(vs_ub.model, model, sizeof(model));
+            memcpy(vs_ub.view, view, sizeof(view));
+            memcpy(vs_ub.projection, proj, sizeof(proj));
+            sg_apply_uniforms(0, SG_RANGE(vs_ub));
+
+            const CachedMesh* mesh = m_mesh_cache.Get(body.def);
+            if (mesh && mesh->valid) {
+                sg_bindings bind = {};
+                bind.vertex_buffers[0] = mesh->vertex_buf;
+                bind.index_buffer = mesh->index_buf;
+                bind.views[0] = m_shadow_tex_view;
+                bind.samplers[0] = m_shadow_sampler;
+
+                if (!mesh->ranges.empty()) {
+                    for (const auto& range : mesh->ranges) {
+                        memcpy(fs_ub.model_color, range.color, sizeof(float[4]));
+                        sg_apply_uniforms(1, SG_RANGE(fs_ub));
+                        sg_apply_bindings(&bind);
+                        sg_draw(range.index_offset, range.index_count, 1);
+                    }
+                } else {
+                    float col[4];
+                    BodyColor(body.def, col);
+                    if (mesh->has_vertex_colors) {
+                        col[0] = 1.0f; col[1] = 1.0f; col[2] = 1.0f; col[3] = 1.0f;
+                    }
+                    memcpy(fs_ub.model_color, col, sizeof(col));
+                    sg_apply_uniforms(1, SG_RANGE(fs_ub));
+                    sg_apply_bindings(&bind);
+                    sg_draw(0, mesh->num_indices, 1);
+                }
+            }
+        }
+
+        // ── Debug overlay ─────────────────────────────────────────────────
+        DrawDebugOverlay(snapshot, nt_connected, sim_hz, target_hz, nt_ping_ms, m_wall_time_offset_ms);
+
+        sg_end_pass();
+    }
     sg_commit();
 
     // ── Stream (dummy) ───────────────────────────────────────────────────
