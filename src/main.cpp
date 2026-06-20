@@ -199,6 +199,8 @@ static void init_cb() {
     app.motors.LoadFromDirectory("assets/motors");
 
     app.scene = LoadScene(g_args.scene, app.motors);
+    app.renderer.SetFieldBounds(app.scene.has_field_bounds,
+        app.scene.field_half_x, app.scene.field_half_z);
     app.score_tracker.LoadZones(app.scene.scoring_zones);
 
     app.world.Init(g_args.threads);

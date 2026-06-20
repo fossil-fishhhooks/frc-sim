@@ -37,14 +37,13 @@ void main() {
     vec3 L = Lv / dist;
     float atten = 1.0 / (1.0 + 0.007 * dist * dist);
     float diff = max(dot(N, L), 0.0);
-    float shadow = 1.0;
-    //if (diff > 0.0) shadow = shadow_factor(light_vp * vec4(v_pos, 1.0));
+    vec4 light_space = light_vp * vec4(v_pos, 1.0);
+    float sf = shadow_factor(light_space);
+    vec3 base = model_color.rgb * v_color.rgb;
+    vec3 amb = ambient.rgb * base;
+    vec3 diffuse = diff * atten * base * light_power * sf;
     vec3 V = normalize(view_pos.xyz - v_pos);
     vec3 H = normalize(L + V);
-    float spec = pow(max(dot(N, H), 0.0), 32.0);
-    vec3 base = v_color.xyz * model_color.xyz;
-    vec3 amb = ambient.xyz * base;
-    vec3 dif = diff * base * light_power * atten * shadow;
-    vec3 spe = spec * vec3(light_power * 0.2) * shadow;
-    frag_color = vec4(amb + dif + spe, v_color.a * model_color.a);
+    float spec = pow(max(dot(N, H), 0.0), 32.0) * atten * light_power * sf;
+    frag_color = vec4(amb + diffuse + vec3(spec * 0.3), 1.0);
 }

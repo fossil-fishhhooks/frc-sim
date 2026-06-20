@@ -96,6 +96,17 @@ bool MeshCache::LoadGLB(const std::string& path, CachedMesh& out) {
             float world[16];
             cgltf_node_transform_world(node, world);
 
+            // Negative determinant on the upper-left 3x3 means this node's
+            // transform mirrors space (e.g. a mirrored left/right robot
+            // part via negative scale). Mirroring flips effective triangle
+            // winding, so normals computed from (still CCW-authored) local
+            // index order need to be flipped to stay outward-facing.
+            float det3 =
+                world[0] * (world[5]*world[10] - world[6]*world[9]) -
+                world[4] * (world[1]*world[10] - world[2]*world[9]) +
+                world[8] * (world[1]*world[6]  - world[2]*world[5]);
+            float normal_sign = (det3 < 0.0f) ? -1.0f : 1.0f;
+
             if (node->mesh) {
                 for (size_t p = 0; p < node->mesh->primitives_count; ++p) {
                     auto& prim = node->mesh->primitives[p];
@@ -193,13 +204,19 @@ bool MeshCache::LoadGLB(const std::string& path, CachedMesh& out) {
                     mesh_out->ranges.push_back(range);
 
                     if (!norm_acc) {
-                        for (size_t i = 0; i + 2 < pos_acc->count; i += 3) {
+                        for (size_t i = idx_off; i < indices.size(); i += 3) {
+                            uint32_t ia = indices[i], ib = indices[i+1], ic = indices[i+2];
                             float nrm[3];
-                            if (compute_normal(&verts[v_off+i].x, &verts[v_off+i+1].x, &verts[v_off+i+2].x, nrm)) {
-                                verts[v_off+i].nx = nrm[0]; verts[v_off+i].ny = nrm[1]; verts[v_off+i].nz = nrm[2];
-                                verts[v_off+i+1].nx = nrm[0]; verts[v_off+i+1].ny = nrm[1]; verts[v_off+i+1].nz = nrm[2];
-                                verts[v_off+i+2].nx = nrm[0]; verts[v_off+i+2].ny = nrm[1]; verts[v_off+i+2].nz = nrm[2];
+                            if (compute_normal(&verts[ia].x, &verts[ib].x, &verts[ic].x, nrm)) {
+                                verts[ia].nx += nrm[0]*normal_sign; verts[ia].ny += nrm[1]*normal_sign; verts[ia].nz += nrm[2]*normal_sign;
+                                verts[ib].nx += nrm[0]*normal_sign; verts[ib].ny += nrm[1]*normal_sign; verts[ib].nz += nrm[2]*normal_sign;
+                                verts[ic].nx += nrm[0]*normal_sign; verts[ic].ny += nrm[1]*normal_sign; verts[ic].nz += nrm[2]*normal_sign;
                             }
+                        }
+                        for (size_t i = 0; i < pos_acc->count; ++i) {
+                            Vertex& vt = verts[v_off + i];
+                            float len = sqrtf(vt.nx*vt.nx + vt.ny*vt.ny + vt.nz*vt.nz);
+                            if (len > 1e-8f) { vt.nx /= len; vt.ny /= len; vt.nz /= len; }
                         }
                     }
                 }
@@ -281,13 +298,19 @@ bool MeshCache::LoadGLB(const std::string& path, CachedMesh& out) {
                 out.ranges.push_back(range);
 
                 if (!norm) {
-                    for (size_t i = 0; i + 2 < pos->count; i += 3) {
+                    for (size_t i = idx_off_fb; i < indices.size(); i += 3) {
+                        uint32_t ia = indices[i], ib = indices[i+1], ic = indices[i+2];
                         float nrm[3];
-                        if (compute_normal(&verts[vcnt+i].x, &verts[vcnt+i+1].x, &verts[vcnt+i+2].x, nrm)) {
-                            verts[vcnt+i].nx = nrm[0]; verts[vcnt+i].ny = nrm[1]; verts[vcnt+i].nz = nrm[2];
-                            verts[vcnt+i+1].nx = nrm[0]; verts[vcnt+i+1].ny = nrm[1]; verts[vcnt+i+1].nz = nrm[2];
-                            verts[vcnt+i+2].nx = nrm[0]; verts[vcnt+i+2].ny = nrm[1]; verts[vcnt+i+2].nz = nrm[2];
+                        if (compute_normal(&verts[ia].x, &verts[ib].x, &verts[ic].x, nrm)) {
+                            verts[ia].nx += nrm[0]; verts[ia].ny += nrm[1]; verts[ia].nz += nrm[2];
+                            verts[ib].nx += nrm[0]; verts[ib].ny += nrm[1]; verts[ib].nz += nrm[2];
+                            verts[ic].nx += nrm[0]; verts[ic].ny += nrm[1]; verts[ic].nz += nrm[2];
                         }
+                    }
+                    for (size_t i = 0; i < pos->count; ++i) {
+                        Vertex& vt = verts[vcnt + i];
+                        float len = sqrtf(vt.nx*vt.nx + vt.ny*vt.ny + vt.nz*vt.nz);
+                        if (len > 1e-8f) { vt.nx /= len; vt.ny /= len; vt.nz /= len; }
                     }
                 }
             }

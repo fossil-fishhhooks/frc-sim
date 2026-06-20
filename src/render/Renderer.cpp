@@ -128,7 +128,7 @@ struct VsUniforms {
 struct FsUniforms {
     float model_color[4];
     float ambient[4];
-    float light_pos[4];       // (x,y,z,w) = (0, 10, 0, bar_half_extent)
+    float light_pos[4];
     float view_pos[4];
     float light_power;
     float light_vp[16];
@@ -141,7 +141,7 @@ struct ShadowVsUniforms {
 
 // Verify uniform struct sizes match GLSL layout
 static_assert(sizeof(VsUniforms) == 192, "VsUniforms size mismatch (3 mat4)");
-static_assert(sizeof(FsUniforms) == 132, "FsUniforms size mismatch (4 vec4 + float + mat4)");
+static_assert(sizeof(FsUniforms) == 132, "FsUniforms size mismatch");
 static_assert(sizeof(ShadowVsUniforms) == 128, "ShadowVsUniforms size mismatch (2 mat4)");
 
 // ── GLSL shader sources (fallback inline) ────────────────────────────────────
@@ -160,7 +160,7 @@ static const char* vs_src_main_fallback =
 "void main() {\n"
 "    vec4 world_pos = model * vec4(position, 1.0);\n"
 "    gl_Position = projection * view * world_pos;\n"
-"    v_normal = -mat3(model) * normal;\n"
+"    v_normal = mat3(model) * normal;\n"
 "    v_pos = world_pos.xyz;\n"
 "    v_color = color;\n"
 "}\n";
@@ -172,30 +172,10 @@ static const char* fs_src_main_fallback =
 "uniform vec4 light_pos;\n"
 "uniform vec4 view_pos;\n"
 "uniform float light_power;\n"
-"uniform mat4 light_vp;\n"
-"uniform sampler2D shadow_map;\n"
 "in vec3 v_normal;\n"
 "in vec3 v_pos;\n"
 "in vec4 v_color;\n"
 "out vec4 frag_color;\n"
-"float shadow_factor(vec4 light_space) {\n"
-"    vec3 proj = light_space.xyz / light_space.w;\n"
-"    vec2 uv = proj.xy * 0.5 + 0.5;\n"
-"    float current = proj.z * 0.5 + 0.5;\n"
-"    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)\n"
-"        return 1.0;\n"
-"    float bias = 0.003;\n"
-"    vec2 texel = 1.0 / textureSize(shadow_map, 0);\n"
-"    float sum = 0.0;\n"
-"    for (int x = -1; x <= 1; x++) {\n"
-"        for (int y = -1; y <= 1; y++) {\n"
-"            vec2 off = vec2(float(x), float(y)) * texel;\n"
-"            float d = texture(shadow_map, uv + off).r;\n"
-"            sum += (current - bias > d) ? 0.0 : 1.0;\n"
-"        }\n"
-"    }\n"
-"    return sum / 9.0;\n"
-"}\n"
 "void main() {\n"
 "    vec3 N = normalize(v_normal);\n"
 "    vec3 Lv = light_pos.xyz - v_pos;\n"
@@ -203,16 +183,13 @@ static const char* fs_src_main_fallback =
 "    vec3 L = Lv / dist;\n"
 "    float atten = 1.0 / (1.0 + 0.007 * dist * dist);\n"
 "    float diff = max(dot(N, L), 0.0);\n"
-"    float shadow = 1.0;\n"
-"    //if (diff > 0.0) shadow = shadow_factor(light_vp * vec4(v_pos, 1.0));\n"
+"    vec3 base = model_color.rgb * v_color.rgb;\n"
+"    vec3 amb = ambient.rgb * base;\n"
+"    vec3 diffuse = diff * atten * base * light_power;\n"
 "    vec3 V = normalize(view_pos.xyz - v_pos);\n"
 "    vec3 H = normalize(L + V);\n"
-"    float spec = pow(max(dot(N, H), 0.0), 32.0);\n"
-"    vec3 base = v_color.xyz * model_color.xyz;\n"
-"    vec3 amb = ambient.xyz * base;\n"
-"    vec3 dif = diff * base * light_power * atten * shadow;\n"
-"    vec3 spe = spec * vec3(light_power * 0.2) * shadow;\n"
-"    frag_color = vec4(amb + dif + spe, v_color.a * model_color.a);\n"
+"    float spec = pow(max(dot(N, H), 0.0), 32.0) * atten * light_power;\n"
+"    frag_color = vec4(amb + diffuse + vec3(spec * 0.3), 1.0);\n"
 "}\n";
 
 static const char* vs_src_shadow_fallback =
@@ -228,7 +205,8 @@ static const char* fs_src_shadow_fallback =
 "#version 330\n"
 "out vec4 frag_color;\n"
 "void main() {\n"
-"    frag_color = vec4(1.0);\n"
+"    float d = gl_FragCoord.z;\n"
+"    frag_color = vec4(d, d, d, 1.0);\n"
 "}\n";
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -321,7 +299,11 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     pip.depth.compare = SG_COMPAREFUNC_LESS_EQUAL;
     pip.depth.write_enabled = true;
     pip.cull_mode = SG_CULLMODE_BACK;
+    pip.face_winding = SG_FACEWINDING_CCW;
     m_pipeline = sg_make_pipeline(&pip);
+    if (!m_pipeline.id) {
+        LOG_ERROR("Renderer: failed to create main pipeline");
+    }
 
     // ── Shadow shader ─────────────────────────────────────────────────────
     sg_shader_desc shd_shadow = {};
@@ -344,8 +326,8 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     // ── Shadow pipeline ───────────────────────────────────────────────────
     sg_pipeline_desc spip = {};
     spip.color_count = 1;
-    spip.colors[0].pixel_format = SG_PIXELFORMAT_RGBA8;
-    spip.depth.pixel_format = SG_PIXELFORMAT_DEPTH;
+    spip.colors[0].pixel_format = SG_PIXELFORMAT_R32F;
+    spip.depth.pixel_format = SG_PIXELFORMAT_DEPTH_STENCIL;
     spip.layout.attrs[0].format = SG_VERTEXFORMAT_FLOAT3;
     spip.layout.attrs[0].buffer_index = 0;
     spip.layout.attrs[0].offset = 0;
@@ -354,14 +336,14 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     spip.index_type = SG_INDEXTYPE_UINT32;
     spip.depth.compare = SG_COMPAREFUNC_LESS_EQUAL;
     spip.depth.write_enabled = true;
-    spip.cull_mode = SG_CULLMODE_BACK;
+    spip.cull_mode = SG_CULLMODE_NONE;
     m_shadow_pipeline = sg_make_pipeline(&spip);
 
     // ── Shadow map images ─────────────────────────────────────────────────
     sg_image_desc depth_desc = {};
     depth_desc.width = SHADOW_MAP_SIZE;
     depth_desc.height = SHADOW_MAP_SIZE;
-    depth_desc.pixel_format = SG_PIXELFORMAT_DEPTH;
+    depth_desc.pixel_format = SG_PIXELFORMAT_DEPTH_STENCIL;
     depth_desc.usage.depth_stencil_attachment = true;
     depth_desc.usage.immutable = true;
     m_shadow_depth = sg_make_image(&depth_desc);
@@ -369,7 +351,7 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     sg_image_desc color_desc = {};
     color_desc.width = SHADOW_MAP_SIZE;
     color_desc.height = SHADOW_MAP_SIZE;
-    color_desc.pixel_format = SG_PIXELFORMAT_RGBA8;
+    color_desc.pixel_format = SG_PIXELFORMAT_R32F;
     color_desc.usage.color_attachment = true;
     color_desc.usage.immutable = true;
     m_shadow_color = sg_make_image(&color_desc);
@@ -388,10 +370,14 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     tv.texture.image = m_shadow_depth;
     m_shadow_tex_view = sg_make_view(&tv);
 
+    sg_view_desc color_tv = {};
+    color_tv.texture.image = m_shadow_color;
+    m_shadow_color_tex_view = sg_make_view(&color_tv);
+
     // ── Shadow sampler ────────────────────────────────────────────────────
     sg_sampler_desc smp_desc = {};
-    smp_desc.min_filter = SG_FILTER_LINEAR;
-    smp_desc.mag_filter = SG_FILTER_LINEAR;
+    smp_desc.min_filter = SG_FILTER_NEAREST;
+    smp_desc.mag_filter = SG_FILTER_NEAREST;
     smp_desc.wrap_u = SG_WRAP_CLAMP_TO_EDGE;
     smp_desc.wrap_v = SG_WRAP_CLAMP_TO_EDGE;
     m_shadow_sampler = sg_make_sampler(&smp_desc);
@@ -407,6 +393,7 @@ void Renderer::Shutdown() {
     if (m_stream) m_stream->Shutdown();
     if (m_shadow_sampler.id) sg_destroy_sampler(m_shadow_sampler);
     if (m_shadow_tex_view.id) sg_destroy_view(m_shadow_tex_view);
+    if (m_shadow_color_tex_view.id) sg_destroy_view(m_shadow_color_tex_view);
     if (m_shadow_depth_att_view.id) sg_destroy_view(m_shadow_depth_att_view);
     if (m_shadow_color_att_view.id) sg_destroy_view(m_shadow_color_att_view);
     if (m_shadow_depth.id) sg_destroy_image(m_shadow_depth);
@@ -427,6 +414,14 @@ void Renderer::EnableStreaming(int port, int fps) {
     m_stream_fps = fps;
     m_stream = std::make_unique<StreamEncoder>();
     m_stream->Init(port, sapp_width(), sapp_height(), fps);
+}
+
+void Renderer::SetFieldBounds(bool has_bounds, float half_x, float half_z) {
+    m_has_field_bounds = has_bounds;
+    if (has_bounds && half_x > 0.0f && half_z > 0.0f) {
+        m_field_half_x = half_x;
+        m_field_half_z = half_z;
+    }
 }
 
 // ── Camera ────────────────────────────────────────────────────────────────────
@@ -454,7 +449,12 @@ void Renderer::BuildLightVPMatrix(float out[16]) const {
     float up[3] = {0.0f, 0.0f, -1.0f};
     float view[16], proj[16];
     mat4_look_at(eye, center, up, view);
-    mat4_ortho(-10.0f, 10.0f, -8.0f, 8.0f, 0.5f, 20.0f, proj);
+    // Margin accounts for robots/game pieces extending past the nominal field
+    // bounds, and avoids clipping geometry right at the playing surface edge.
+    const float margin = 2.0f;
+    float half_x = m_field_half_x + margin;
+    float half_z = m_field_half_z + margin;
+    mat4_ortho(-half_x, half_x, -half_z, half_z, 0.5f, 20.0f, proj);
     mat4_mul(proj, view, out);
 }
 
@@ -586,17 +586,16 @@ void Renderer::DrawFrame(const WorldSnapshot& snapshot,
 
     // ── Shadow pass ───────────────────────────────────────────────────────
     {
-        sg_pass_action shadow_action = {};
-        shadow_action.colors[0].load_action = SG_LOADACTION_CLEAR;
-        shadow_action.colors[0].clear_value = {1.0f, 1.0f, 1.0f, 1.0f};
-        shadow_action.depth.load_action = SG_LOADACTION_CLEAR;
-        shadow_action.depth.clear_value = 1.0f;
-
-        sg_pass spass = {};
-        spass.action = shadow_action;
-        spass.attachments.colors[0] = m_shadow_color_att_view;
-        spass.attachments.depth_stencil = m_shadow_depth_att_view;
-        sg_begin_pass(&spass);
+        sg_pass shadow_pass = {};
+        shadow_pass.action.colors[0].load_action   = SG_LOADACTION_CLEAR;
+        shadow_pass.action.colors[0].store_action  = SG_STOREACTION_STORE;
+        shadow_pass.action.colors[0].clear_value   = {1.0f, 1.0f, 1.0f, 1.0f};
+        shadow_pass.action.depth.load_action       = SG_LOADACTION_CLEAR;
+        shadow_pass.action.depth.store_action      = SG_STOREACTION_DONTCARE;
+        shadow_pass.action.depth.clear_value       = 1.0f;
+        shadow_pass.attachments.colors[0]          = m_shadow_color_att_view;
+        shadow_pass.attachments.depth_stencil      = m_shadow_depth_att_view;
+        sg_begin_pass(&shadow_pass);
 
         sg_apply_pipeline(m_shadow_pipeline);
 
@@ -645,7 +644,7 @@ void Renderer::DrawFrame(const WorldSnapshot& snapshot,
                 sg_bindings bind = {};
                 bind.vertex_buffers[0] = mesh->vertex_buf;
                 bind.index_buffer = mesh->index_buf;
-                bind.views[0] = m_shadow_tex_view;
+                bind.views[0] = m_shadow_color_tex_view;
                 bind.samplers[0] = m_shadow_sampler;
 
                 if (!mesh->ranges.empty()) {

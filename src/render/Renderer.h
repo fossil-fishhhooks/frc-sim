@@ -24,6 +24,7 @@ public:
     void SetWireframe(bool enabled) { m_wireframe = enabled; }
     void SetWallTimeOffset(float ms) { m_wall_time_offset_ms = ms; }
     void EnableStreaming(int port, int fps);
+    void SetFieldBounds(bool has_bounds, float half_x, float half_z);
 
     MeshCache& GetMeshCache() { return m_mesh_cache; }
     void SetRaycasters(std::vector<Raycaster*> rc) { m_raycasters = std::move(rc); }
@@ -44,6 +45,10 @@ private:
     float m_wall_time_offset_ms = 0.0f;
     bool m_alt_pressed = false;
 
+    bool m_has_field_bounds = false;
+    float m_field_half_x = 8.27f;
+    float m_field_half_z = 4.1f;
+
     bool m_mouse_down = false;
     float m_mouse_last_x = 0, m_mouse_last_y = 0;
     bool m_keys[256] = {};
@@ -60,6 +65,7 @@ private:
     sg_view m_shadow_depth_att_view = {};
     sg_view m_shadow_color_att_view = {};
     sg_view m_shadow_tex_view = {};
+    sg_view m_shadow_color_tex_view = {};
     sg_sampler m_shadow_sampler = {};
     sg_pipeline m_shadow_pipeline = {};
     sg_shader m_shadow_shader = {};
