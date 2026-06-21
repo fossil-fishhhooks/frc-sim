@@ -97,6 +97,20 @@ add_executable(frc_sim
 target_include_directories(frc_sim PRIVATE src)
 target_include_directories(frc_sim PRIVATE src/external/sokol)
 
+# sokol_app.h's macOS backend (Cocoa/AppKit/Metal windowing) contains real
+# Objective-C (@class forward-declarations, etc. -- pulled in transitively
+# via AppKit.h/Foundation.h), which only parses under Objective-C++. Despite
+# its .cpp extension, sokol_impl.cpp must be compiled as Objective-C++ on
+# Apple platforms or these headers fail with "expected unqualified-id" on
+# every @class line. Force the language for just this file, Apple-only --
+# Linux/Windows builds are pure C/C++ here and must not be affected.
+if(APPLE)
+    set_source_files_properties(src/external/sokol/sokol_impl.cpp
+        PROPERTIES
+        COMPILE_FLAGS "-x objective-c++"
+    )
+endif()
+
 # ── Backend selection ───────────────────────────────────────────────────────────
 # Map FRC_SIM_BACKEND to the matching SOKOL_* define.
 set(_BACKEND_IS_VALID TRUE)
