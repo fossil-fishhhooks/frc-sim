@@ -376,15 +376,12 @@ jobs:
         if: steps.download.outcome == 'success'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: nightly
-          name: "Nightly build (${{ github.sha }})"
+          tag_name: latest-multi
+          name: "build (${{ github.sha }})"
           body: |
-            Automated nightly build from `${{ github.ref_name }}` @ ${{ github.sha }}.
-            Built ${{ github.event.schedule && 'on schedule' || 'via manual dispatch' }} on ${{ github.run_id }}.
+            Automated multi-platform build from `${{ github.ref_name }}` @ ${{ github.sha }}.
+            Built via manual dispatch on ${{ github.run_id }}.
 
-            Some legs (linux-vulkan, windows-vulkan, etc.) run smoke tests against
-            a software GPU rasterizer in CI -- see the workflow run for per-leg
-            smoke-test status before relying on a given binary.
           prerelease: true
           make_latest: false
           target_commitish: ${{ github.sha }}
