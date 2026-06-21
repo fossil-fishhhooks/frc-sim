@@ -126,6 +126,12 @@ jobs:
           fi
           echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
 
+      - name: Setup MSVC dev environment (Windows)
+  	if: runner.os == 'Windows'
+  	uses: ilammy/msvc-dev-cmd@v1
+ 	with:
+  	arch: x64
+
       - name: Configure
         shell: bash
         run: |
