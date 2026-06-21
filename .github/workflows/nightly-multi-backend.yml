@@ -6,6 +6,11 @@ on:
     - cron: '0 9 * * *'
   workflow_dispatch: {}   # also allow manual triggering on demand
 
+# Needed by the publish-nightly-release job below, which creates/updates
+# a release and uploads binaries to it via the default GITHUB_TOKEN.
+permissions:
+  contents: write
+
 jobs:
   # ───────────────────────────────────────────────────────────────────────
   # Linux + Windows: build always; the run/smoke-test step is best-effort.
@@ -188,6 +193,14 @@ jobs:
           fi
           echo "No unexpected errors detected."
 
+      - name: Upload binary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frc_sim-${{ matrix.name }}
+          path: ${{ steps.bin.outputs.path }}
+          if-no-files-found: warn
+
       - name: Upload log
         if: always()
         uses: actions/upload-artifact@v4
@@ -253,9 +266,79 @@ jobs:
           fi
           echo "No sg errors/panics/crashes detected in log."
 
+      - name: Upload binary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frc_sim-macos-metal
+          path: build/frc_sim
+          if-no-files-found: warn
+
       - name: Upload log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: macos-metal-run-log
           path: build/metal_run.log
+
+  # ───────────────────────────────────────────────────────────────────────
+  # Collect every leg's binary and publish them under one rolling "nightly"
+  # release/tag, so there's a single stable URL to grab the latest build
+  # from instead of digging through Actions run history. The release is
+  # updated in place each run (same tag, files replaced) rather than
+  # piling up a new release every night.
+  #
+  # Runs even if some legs failed their smoke test (`if: always()`), since
+  # a software-rasterizer smoke-test failure doesn't necessarily mean the
+  # binary itself is bad -- but it's skipped if every build job failed
+  # outright (nothing to publish).
+  # ───────────────────────────────────────────────────────────────────────
+  publish-nightly-release:
+    needs: [build-and-smoke-test, build-and-smoke-test-macos]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all binary artifacts
+        id: download
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: frc_sim-*
+          path: artifacts
+          merge-multiple: false
+
+      - name: Flatten and rename for release upload
+        if: steps.download.outcome == 'success'
+        run: |
+          mkdir -p release-assets
+          for dir in artifacts/*/; do
+            name="$(basename "$dir")"        # e.g. frc_sim-linux-vulkan
+            for f in "$dir"*; do
+              base="$(basename "$f")"
+              ext="${base##*.}"
+              if [ "$base" = "$ext" ]; then
+                cp "$f" "release-assets/${name}"
+              else
+                cp "$f" "release-assets/${name}.${ext}"
+              fi
+            done
+          done
+          ls -la release-assets
+
+      - name: Publish/update nightly release
+        if: steps.download.outcome == 'success'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: "Nightly build (${{ github.sha }})"
+          body: |
+            Automated nightly build from `${{ github.ref_name }}` @ ${{ github.sha }}.
+            Built ${{ github.event.schedule && 'on schedule' || 'via manual dispatch' }} on ${{ github.run_id }}.
+
+            Some legs (linux-vulkan, windows-vulkan, etc.) run smoke tests against
+            a software GPU rasterizer in CI -- see the workflow run for per-leg
+            smoke-test status before relying on a given binary.
+          prerelease: true
+          make_latest: false
+          target_commitish: ${{ github.sha }}
+          files: release-assets/*
