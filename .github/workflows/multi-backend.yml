@@ -1,10 +1,7 @@
-name: Nightly multi-backend build
+name: multi-backend build
 
 on:
-  schedule:
-    # 09:00 UTC nightly. Cron is always UTC regardless of repo settings.
-    - cron: '0 9 * * *'
-  workflow_dispatch: {}   # also allow manual triggering on demand
+  workflow_dispatch:   # also allow manual triggering on demand
 
 # Needed by the publish-nightly-release job below, which creates/updates
 # a release and uploads binaries to it via the default GITHUB_TOKEN.
