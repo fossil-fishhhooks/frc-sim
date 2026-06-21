@@ -12,6 +12,13 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# ── Backend selection ───────────────────────────────────────────────────────────
+# Graphics backend, one of: gl, vulkan, d3d11 (Windows), metal (macOS).
+# This is a compile-time choice; sokol-gfx does not support runtime switching.
+# Use --backend at runtime to match, or the binary will abort.
+set(FRC_SIM_BACKEND "gl" CACHE STRING
+    "Graphics backend (gl|vulkan|d3d11|metal), platform-dependent")
+
 # ── vcpkg deps ─────────────────────────────────────────────────────────────────
 find_package(nlohmann_json CONFIG REQUIRED)
 
@@ -81,6 +88,38 @@ add_executable(frc_sim
 target_include_directories(frc_sim PRIVATE src)
 target_include_directories(frc_sim PRIVATE src/external/sokol)
 
+# ── Backend selection ───────────────────────────────────────────────────────────
+# Map FRC_SIM_BACKEND to the matching SOKOL_* define and validate platform.
+#
+# Backend   Platform     Sokol define     Required link libraries
+# -------   --------     --------------   ------------------------
+# gl        all          SOKOL_GLCORE     GL/OpenGL
+# vulkan    all          SOKOL_VULKAN     Vulkan
+# d3d11     Win32 only   SOKOL_D3D11      d3d11, dxgi
+# metal     Apple only   SOKOL_METAL      Metal.framework
+set(_BACKEND_IS_VALID TRUE)
+
+if(FRC_SIM_BACKEND STREQUAL "gl")
+    target_compile_definitions(frc_sim PRIVATE SOKOL_GLCORE)
+elseif(FRC_SIM_BACKEND STREQUAL "vulkan")
+    target_compile_definitions(frc_sim PRIVATE SOKOL_VULKAN)
+elseif(FRC_SIM_BACKEND STREQUAL "d3d11")
+    if(NOT WIN32)
+        set(_BACKEND_IS_VALID FALSE)
+        message(FATAL_ERROR "FRC_SIM_BACKEND=d3d11 is only supported on Windows")
+    endif()
+    target_compile_definitions(frc_sim PRIVATE SOKOL_D3D11)
+elseif(FRC_SIM_BACKEND STREQUAL "metal")
+    if(NOT APPLE)
+        set(_BACKEND_IS_VALID FALSE)
+        message(FATAL_ERROR "FRC_SIM_BACKEND=metal is only supported on macOS")
+    endif()
+    target_compile_definitions(frc_sim PRIVATE SOKOL_METAL)
+else()
+    message(FATAL_ERROR
+        "FRC_SIM_BACKEND must be one of: gl, vulkan, d3d11 (Windows), metal (macOS)")
+endif()
+
 # vcpkg installs into a per-platform/arch "triplet" directory; this must
 # match whatever triplet vcpkg actually used for this build (visible in
 # vcpkg_installed/<triplet>/...). Override with -DFRC_SIM_VCPKG_TRIPLET=...
@@ -109,32 +148,49 @@ target_link_libraries(frc_sim PRIVATE
 )
 
 if(UNIX AND NOT APPLE)
-    # Linux: X11/GLX windowing + GL, plus libdl/libpthread/libm which are
-    # separate libs to link against on Linux (unlike Windows, where these
-    # are either built into the CRT or not needed, and macOS, which uses
-    # the Cocoa/IOKit/OpenGL frameworks below instead).
+    # ── Linux: X11 is always needed; platform libs ─────────────────────────
+    target_link_libraries(frc_sim PRIVATE dl pthread m X11 Xi Xcursor)
+
+    # ── Linux: backend-specific libraries ──────────────────────────────────
+    if(FRC_SIM_BACKEND STREQUAL "vulkan")
+        target_link_libraries(frc_sim PRIVATE vulkan Xrandr)
+    else()
+        target_link_libraries(frc_sim PRIVATE GL)
+    endif()
+endif()
+
+# ── macOS: backend-specific frameworks ────────────────────────────────────────
+if(APPLE)
+    # Common to all macOS builds:
     target_link_libraries(frc_sim PRIVATE
-        dl
-        pthread
-        m
-        X11
-        Xi
-        Xcursor
-        GL
+        "-framework Cocoa"
+        "-framework IOKit"
+        "-framework QuartzCore"
     )
+    if(FRC_SIM_BACKEND STREQUAL "metal")
+        target_link_libraries(frc_sim PRIVATE
+            "-framework Metal"
+            "-framework MetalKit"
+        )
+    else()
+        target_link_libraries(frc_sim PRIVATE "-framework OpenGL")
+    endif()
+endif()
+
+# ── Windows: backend-specific libraries ──────────────────────────────────────
+if(WIN32)
+    if(FRC_SIM_BACKEND STREQUAL "d3d11")
+        target_link_libraries(frc_sim PRIVATE d3d11 dxgi)
+    elseif(FRC_SIM_BACKEND STREQUAL "vulkan")
+        target_link_libraries(frc_sim PRIVATE vulkan-1)
+    else()
+        target_link_libraries(frc_sim PRIVATE opengl32)
+    endif()
 endif()
 
 target_compile_definitions(frc_sim PRIVATE
     JPH_DEBUG_RENDERER_DISABLED
 )
-
-if(APPLE)
-    target_link_libraries(frc_sim PRIVATE
-        "-framework Cocoa"
-        "-framework IOKit"
-        "-framework OpenGL"
-    )
-endif()
 
 # Copy assets next to the binary on every build
 add_custom_command(TARGET frc_sim POST_BUILD

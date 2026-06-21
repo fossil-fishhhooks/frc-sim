@@ -446,7 +446,7 @@ void Renderer::BuildLightVPMatrix(float out[16]) const {
     float view[16], proj[16];
     mat4_look_at(eye, center, up, view);
     mat4_ortho(-0.001f, 0.001f, -8.0f, 8.0f, 0.5f, 20.0f, proj); // tiny numbers here. basically the render works in the region OUTSIDE the rectange bounded by those numbers.
-    mat4_mul(proj, view, out);
+    mat4_mul(view, proj, out);
 }
 
 void Renderer::UpdateCamera(float dt) {

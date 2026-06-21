@@ -15,10 +15,21 @@
 // force a real main() to match. No effect on non-Windows platforms.
 #define SOKOL_WIN32_FORCE_MAIN
 
-#define SOKOL_GLCORE
 #include "sokol_app.h"
 #include "sokol_gfx.h"
 #include "sokol_glue.h"
 #include "sokol_time.h"
 #include "sokol_log.h"
 #include "sokol_debugtext.h"
+
+// Expose the compiled backend name so the runtime can validate --backend.
+extern const char* frc_sim_compiled_backend;
+#if defined(SOKOL_D3D11)
+    const char* frc_sim_compiled_backend = "d3d11";
+#elif defined(SOKOL_METAL)
+    const char* frc_sim_compiled_backend = "metal";
+#elif defined(SOKOL_VULKAN)
+    const char* frc_sim_compiled_backend = "vulkan";
+#else
+    const char* frc_sim_compiled_backend = "gl";
+#endif

@@ -75,7 +75,7 @@ static void PrintUsage(const char* argv0) {
                  "  --h      <height>            Window height       (default: 720)\n"
                  "  --threads <n>                Jolt worker threads (default: auto)\n"
                  "  --vsync  <0|1>               Enable/disable vsync (default: 1)\n"
-                 "  --backend <gl|vulkan>        Graphics backend    (default: gl)\n"
+                  "  --backend <gl|vulkan|d3d11|metal>  Graphics backend (default: gl; d3d11 Windows, metal macOS)\n"
                  "  --stream <port>              Streaming port      (default: 5000)\n"
                  "  --stream-fps <fps>           Stream frame rate   (default: 30)\n"
                  "  --raycast <path.json>        Raycast sensor definitions\n";
@@ -168,6 +168,9 @@ static void ApplySpawnRandomization(const RobotSpawn& spawn, float pos[3], float
     }
 }
 
+// Compiled-backend string exposed by sokol_impl.cpp
+extern const char* frc_sim_compiled_backend;
+
 // ── sokol_app callbacks ───────────────────────────────────────────────────────
 
 static void init_cb() {
@@ -186,6 +189,17 @@ static void init_cb() {
         LOG_ERROR("sokol_gfx: failed to initialize");
         return;
     }
+
+    // Validate --backend against the compiled backend.
+    if (g_args.backend != frc_sim_compiled_backend) {
+        LOG_ERROR("main: --backend %s requested but binary was compiled with "
+                  "%s backend (re-run cmake with -DFRC_SIM_BACKEND=%s)",
+                  g_args.backend.c_str(),
+                  frc_sim_compiled_backend,
+                  g_args.backend.c_str());
+        exit(1);
+    }
+    LOG_INFO("main: using %s backend", frc_sim_compiled_backend);
     sdtx_desc_t sdtx_desc = {};
     sdtx_desc.logger.func = slog_func;
     sdtx_desc.fonts[0] = sdtx_font_kc853();
