@@ -7,7 +7,12 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL" CACHE STRING "" FORCE)
+# Force Jolt Physics to use the global CMAKE_MSVC_RUNTIME_LIBRARY setting
+# above (config-aware /MD or /MDd) instead of its own default, so Jolt's
+# build doesn't end up linking a different CRT variant than the rest of
+# the project.
+set(USE_STATIC_MSVC_RUNTIME_LIBRARY OFF CACHE BOOL "" FORCE)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -175,7 +180,10 @@ endif()
 # ── Windows: backend-specific libraries ──────────────────────────────────────
 if(WIN32)
     if(FRC_SIM_BACKEND STREQUAL "vulkan")
-        target_link_libraries(frc_sim PRIVATE vulkan-1)
+        # Explicitly find Vulkan to get both include paths and libraries
+        find_package(Vulkan REQUIRED)
+        target_include_directories(frc_sim PRIVATE ${Vulkan_INCLUDE_DIRS})
+        target_link_libraries(frc_sim PRIVATE Vulkan::Vulkan)
     else()
         target_link_libraries(frc_sim PRIVATE opengl32)
     endif()

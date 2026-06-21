@@ -62,60 +62,62 @@ static Args g_args;
 
 static void PrintUsage(const char* argv0) {
     std::cout << "Usage: " << argv0 << " --scene <path> --robot <def@host:port> [--robot ...] [options]\n"
-                 "\n"
-                 "  --scene  <path>              Scene JSON (required)\n"
-                 "  --robot  <def@host:port>     Add a robot (repeatable, up to 6)\n"
-                 "  --dt     <seconds>           Physics timestep    (default: 0.002)\n"
-                 "  --substeps <n>               Jolt collision steps per tick (default: 2)\n"
-                 "  --speed  <factor>            Sim speed multiplier(default: 1.0)\n"
-                 "  --fps    <target>            Target render FPS, 0=uncapped (default: 60)\n"
-                 "                                  note: vsync caps frames too; use --vsync 0\n"
-                 "                                  with --fps 0 for a true uncapped/perf-test run\n"
-                 "  --w      <width>             Window width        (default: 1280)\n"
-                 "  --h      <height>            Window height       (default: 720)\n"
-                 "  --threads <n>                Jolt worker threads (default: auto)\n"
-                 "  --vsync  <0|1>               Enable/disable vsync (default: 1)\n"
-                  "  --backend <gl|vulkan|metal>  Graphics backend (default: gl; metal only on macOS)\n"
-                 "  --stream <port>              Streaming port      (default: 5000)\n"
-                 "  --stream-fps <fps>           Stream frame rate   (default: 30)\n"
-                 "  --raycast <path.json>        Raycast sensor definitions\n";
+        "\n"
+        "  --scene  <path>              Scene JSON (required)\n"
+        "  --robot  <def@host:port>     Add a robot (repeatable, up to 6)\n"
+        "  --dt     <seconds>           Physics timestep    (default: 0.002)\n"
+        "  --substeps <n>               Jolt collision steps per tick (default: 2)\n"
+        "  --speed  <factor>            Sim speed multiplier(default: 1.0)\n"
+        "  --fps    <target>            Target render FPS, 0=uncapped (default: 60)\n"
+        "                                  note: vsync caps frames too; use --vsync 0\n"
+        "                                  with --fps 0 for a true uncapped/perf-test run\n"
+        "  --w      <width>             Window width        (default: 1280)\n"
+        "  --h      <height>            Window height       (default: 720)\n"
+        "  --threads <n>                Jolt worker threads (default: auto)\n"
+        "  --vsync  <0|1>               Enable/disable vsync (default: 1)\n"
+        "  --backend <gl|vulkan|metal>  Graphics backend (default: gl; metal only on macOS)\n"
+        "  --stream <port>              Streaming port      (default: 5000)\n"
+        "  --stream-fps <fps>           Stream frame rate   (default: 30)\n"
+        "  --raycast <path.json>        Raycast sensor definitions\n";
 }
 
 static Args ParseArgs(int argc, char* argv[]) {
     Args a;
     for (int i = 1; i < argc; ++i) {
-        if (!strcmp(argv[i], "--scene") && i+1 < argc) a.scene = argv[++i];
-        else if (!strcmp(argv[i], "--robot") && i+1 < argc) {
+        if (!strcmp(argv[i], "--scene") && i + 1 < argc) a.scene = argv[++i];
+        else if (!strcmp(argv[i], "--robot") && i + 1 < argc) {
             std::string s = argv[++i];
             Args::RobotArg ra;
             auto at = s.rfind('@');
             if (at != std::string::npos) {
                 ra.def_path = s.substr(0, at);
-                std::string addr = s.substr(at+1);
+                std::string addr = s.substr(at + 1);
                 auto colon = addr.rfind(':');
                 if (colon != std::string::npos) {
                     ra.nt_host = addr.substr(0, colon);
-                    ra.nt_port = std::stoi(addr.substr(colon+1));
-                } else ra.nt_host = addr;
-            } else ra.def_path = s;
+                    ra.nt_port = std::stoi(addr.substr(colon + 1));
+                }
+                else ra.nt_host = addr;
+            }
+            else ra.def_path = s;
             if (a.robots.size() < 6) a.robots.push_back(std::move(ra));
             else LOG_WARN("main: max 6 robots");
         }
-        else if (!strcmp(argv[i], "--dt") && i+1 < argc) a.dt = std::stof(argv[++i]);
-        else if (!strcmp(argv[i], "--substeps") && i+1 < argc) a.substeps = std::stoi(argv[++i]);
-        else if (!strcmp(argv[i], "--speed") && i+1 < argc) a.speed = std::stof(argv[++i]);
-        else if (!strcmp(argv[i], "--fps") && i+1 < argc) a.target_fps = std::stoi(argv[++i]);
-        else if (!strcmp(argv[i], "--w") && i+1 < argc) a.width = std::stoi(argv[++i]);
-        else if (!strcmp(argv[i], "--h") && i+1 < argc) a.height = std::stoi(argv[++i]);
-        else if (!strcmp(argv[i], "--threads") && i+1 < argc) a.threads = std::stoi(argv[++i]);
-        else if (!strcmp(argv[i], "--vsync") && i+1 < argc) a.vsync = std::stoi(argv[++i]) != 0;
-        else if (!strcmp(argv[i], "--backend") && i+1 < argc) a.backend = argv[++i];
-        else if (!strcmp(argv[i], "--raycast") && i+1 < argc) a.raycast_path = argv[++i];
+        else if (!strcmp(argv[i], "--dt") && i + 1 < argc) a.dt = std::stof(argv[++i]);
+        else if (!strcmp(argv[i], "--substeps") && i + 1 < argc) a.substeps = std::stoi(argv[++i]);
+        else if (!strcmp(argv[i], "--speed") && i + 1 < argc) a.speed = std::stof(argv[++i]);
+        else if (!strcmp(argv[i], "--fps") && i + 1 < argc) a.target_fps = std::stoi(argv[++i]);
+        else if (!strcmp(argv[i], "--w") && i + 1 < argc) a.width = std::stoi(argv[++i]);
+        else if (!strcmp(argv[i], "--h") && i + 1 < argc) a.height = std::stoi(argv[++i]);
+        else if (!strcmp(argv[i], "--threads") && i + 1 < argc) a.threads = std::stoi(argv[++i]);
+        else if (!strcmp(argv[i], "--vsync") && i + 1 < argc) a.vsync = std::stoi(argv[++i]) != 0;
+        else if (!strcmp(argv[i], "--backend") && i + 1 < argc) a.backend = argv[++i];
+        else if (!strcmp(argv[i], "--raycast") && i + 1 < argc) a.raycast_path = argv[++i];
         else if (!strcmp(argv[i], "--stream")) {
             a.stream = true;
-            if (i+1 < argc) a.stream_port = std::stoi(argv[++i]);
+            if (i + 1 < argc) a.stream_port = std::stoi(argv[++i]);
         }
-        else if (!strcmp(argv[i], "--stream-fps") && i+1 < argc) a.stream_fps = std::stoi(argv[++i]);
+        else if (!strcmp(argv[i], "--stream-fps") && i + 1 < argc) a.stream_fps = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
             PrintUsage(argv[0]); std::exit(0);
         }
@@ -193,10 +195,10 @@ static void init_cb() {
     // Validate --backend against the compiled backend.
     if (g_args.backend != frc_sim_compiled_backend) {
         LOG_ERROR("main: --backend %s requested but binary was compiled with "
-                  "%s backend (re-run cmake with -DFRC_SIM_BACKEND=%s)",
-                  g_args.backend.c_str(),
-                  frc_sim_compiled_backend,
-                  g_args.backend.c_str());
+            "%s backend (re-run cmake with -DFRC_SIM_BACKEND=%s)",
+            g_args.backend.c_str(),
+            frc_sim_compiled_backend,
+            g_args.backend.c_str());
         exit(1);
     }
     LOG_INFO("main: using %s backend", frc_sim_compiled_backend);
@@ -208,7 +210,7 @@ static void init_cb() {
     g_app = new App();
     App& app = *g_app;
 
-    app.renderer.Init(g_args.width, g_args.height, "FRC Sim 3D", g_args.target_fps);
+    app.renderer.Init(g_args.width, g_args.height, "FRC Sim 3D by Arin J", g_args.target_fps);
     app.frame_stamp = stm_now();
 
     app.motors.LoadFromDirectory("assets/motors");
@@ -245,13 +247,13 @@ static void init_cb() {
         app.robot_defs.push_back(std::move(*maybe));
         BodyDef& def = app.robot_defs.back();
 
-        float pos[3] = {0.0f, 0.051f, (float)ri * 1.5f};
-        float rot[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+        float pos[3] = { 0.0f, 0.051f, (float)ri * 1.5f };
+        float rot[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
         if (ri < (int)app.scene.robot_spawns.size()) {
             auto& rs = app.scene.robot_spawns[ri];
-            pos[0]=rs.position[0]; pos[1]=rs.position[1]; pos[2]=rs.position[2];
-            rot[0]=rs.orientation[0]; rot[1]=rs.orientation[1];
-            rot[2]=rs.orientation[2]; rot[3]=rs.orientation[3];
+            pos[0] = rs.position[0]; pos[1] = rs.position[1]; pos[2] = rs.position[2];
+            rot[0] = rs.orientation[0]; rot[1] = rs.orientation[1];
+            rot[2] = rs.orientation[2]; rot[3] = rs.orientation[3];
         }
         if (ri < (int)app.scene.robot_spawns.size())
             ApplySpawnRandomization(app.scene.robot_spawns[ri], pos, rot);
@@ -272,7 +274,8 @@ static void init_cb() {
             auto& rs = app.scene.robot_spawns[ri];
             app.all_mechanisms.push_back(std::make_unique<MechanismSystem>(
                 app.world, rs.intake, rs.shooter, body_idx));
-        } else {
+        }
+        else {
             app.all_mechanisms.push_back(nullptr);
         }
     }
@@ -282,7 +285,7 @@ static void init_cb() {
 
     app.forces = std::make_unique<ForceApplicator>(app.world, app.motors, app.world.GetContactListener());
     app.sim = std::make_unique<SimLoop>(app.world, app.forces.get(), std::move(mech_ptrs),
-                                        &app.score_tracker, g_args.dt, g_args.speed);
+        &app.score_tracker, g_args.dt, g_args.speed);
     app.sim->Start();
 
     auto do_reset = [&app]() {
@@ -313,13 +316,13 @@ static void init_cb() {
             int body_idx = app.world.GetRobotIndices()[ri];
             JPH::BodyID bid = app.world.GetBodyID(body_idx);
             if (bid.IsInvalid()) continue;
-            float pos[3] = {0.0f, 0.3f, 0.0f};
-            float rot[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+            float pos[3] = { 0.0f, 0.3f, 0.0f };
+            float rot[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
             if (ri < (int)app.scene.robot_spawns.size()) {
                 auto& rs = app.scene.robot_spawns[ri];
-                pos[0]=rs.position[0]; pos[1]=rs.position[1]; pos[2]=rs.position[2];
-                rot[0]=rs.orientation[0]; rot[1]=rs.orientation[1];
-                rot[2]=rs.orientation[2]; rot[3]=rs.orientation[3];
+                pos[0] = rs.position[0]; pos[1] = rs.position[1]; pos[2] = rs.position[2];
+                rot[0] = rs.orientation[0]; rot[1] = rs.orientation[1];
+                rot[2] = rs.orientation[2]; rot[3] = rs.orientation[3];
                 ApplySpawnRandomization(rs, pos, rot);
             }
             bi.SetPositionAndRotation(bid,
@@ -335,7 +338,7 @@ static void init_cb() {
         app.sim->Start();
         app.reset_just_happened = true;
         LOG_INFO("main: reset complete");
-    };
+        };
     app.do_reset = do_reset;
 
     const auto& robot_indices = app.world.GetRobotIndices();
@@ -411,7 +414,7 @@ static void frame_cb() {
     }
 
     app.renderer.DrawFrame(snapshot, any_connected,
-                           app.sim->MeasuredHz(), app.sim->TargetHz(), best_ping);
+        app.sim->MeasuredHz(), app.sim->TargetHz(), best_ping);
 }
 
 static void event_cb(const sapp_event* e) {
@@ -451,7 +454,7 @@ sapp_desc sokol_main(int argc, char* argv[]) {
     if (g_args.target_fps < 0) g_args.target_fps = 60;
     if (g_args.target_fps == 0 && g_args.vsync) {
         LOG_WARN("main: --fps 0 requested but vsync is on; frames will still be capped "
-                 "to display refresh rate. Add --vsync 0 for a true uncapped run.");
+            "to display refresh rate. Add --vsync 0 for a true uncapped run.");
     }
     if (g_args.width <= 0 || g_args.height <= 0) {
         LOG_ERROR("main: bad window dimensions"); exit(1);
@@ -478,14 +481,20 @@ sapp_desc sokol_main(int argc, char* argv[]) {
         // sokol_app.h X11 backend reads this var to do the same -- see
         // _NET_WM_BYPASS_COMPOSITOR in _sapp_x11_create_window().
         setenv("SAPP_X11_NO_VSYNC", "1", 0);
+        setenv("SAPP_VULKAN_NO_VSYNC", "1", 0);
 #else
-        (void)0;
+        // Vulkan's swapchain present mode was previously hardcoded to
+        // VK_PRESENT_MODE_FIFO_KHR (vsync-equivalent) regardless of any
+        // flag -- our patched sokol_app.h now picks IMMEDIATE/MAILBOX
+        // instead when this is set, same mechanism on every platform
+        // since present-mode selection isn't X11/GL-specific.
+        _putenv_s("SAPP_VULKAN_NO_VSYNC", "1");
 #endif
     }
 
     LOG_INFO("main: target_fps=%d vsync=%d (requested swap_interval=%d; "
-             "see vblank_mode/__GL_SYNC_TO_VBLANK env if vsync=0)",
-             g_args.target_fps, g_args.vsync ? 1 : 0, g_args.vsync ? 1 : 0);
+        "see vblank_mode/__GL_SYNC_TO_VBLANK env if vsync=0)",
+        g_args.target_fps, g_args.vsync ? 1 : 0, g_args.vsync ? 1 : 0);
 
     sapp_desc desc = {};
     desc.init_cb = init_cb;
@@ -494,7 +503,7 @@ sapp_desc sokol_main(int argc, char* argv[]) {
     desc.cleanup_cb = cleanup_cb;
     desc.width = g_args.width;
     desc.height = g_args.height;
-    desc.window_title = "FRC Sim 3D";
+    desc.window_title = "FRC Sim 3D by Arin J";
     desc.sample_count = 4; // MSAA 4x
     desc.swap_interval = g_args.vsync ? 1 : 0;
     desc.logger.func = slog_func;

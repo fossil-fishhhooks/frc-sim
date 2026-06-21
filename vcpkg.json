@@ -5,6 +5,7 @@
   "dependencies": [
     "nlohmann-json",
     "protobuf",
-    "shaderc"
+    "shaderc",
+    "vulkan"
   ]
 }
