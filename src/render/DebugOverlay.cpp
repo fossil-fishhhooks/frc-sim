@@ -1,211 +1,177 @@
 #include "render/DebugOverlay.h"
-#include <raylib.h>
-#include <cstdio>
-#include <cmath>
-#include <algorithm>
 #include "io/EasyLog.h"
 
-static void DrawBar(int x, int y, int w, int h,
-                    float fraction, Color fill, Color bg)
-{
-    DrawRectangle(x, y, w, h, bg);
-    DrawRectangle(x, y, (int)(w * std::fabs(fraction)), h, fill);
-    DrawRectangleLines(x, y, w, h, {80, 80, 80, 200});
-}
+#include <sokol_app.h>
+#include <sokol_gfx.h>
+#include <sokol_debugtext.h>
+#include <cstdio>
+#include <cstring>
+#include <cmath>
+#include <algorithm>
 
-void DrawDebugOverlay(const WorldSnapshot &snapshot,
-                      bool  nt_connected,
+void DrawDebugOverlay(const WorldSnapshot& snapshot,
+                      bool nt_connected,
                       float sim_hz, float target_hz,
                       float nt_ping_ms,
-                      float wall_time_offset_ms)
-{
-    constexpr int PAD   = 10;
-    constexpr int LINE  = 18;
-    constexpr int SMALL = 14;
+                      float wall_time_offset_ms) {
+    float cw = (float)sapp_width() / 8.0f;
+    float ch = (float)sapp_height() / 8.0f;
+    sdtx_canvas(cw * 8.0f, ch * 8.0f);
+    sdtx_font(0);
 
-    int y = PAD;
-    char buf[128];
+    constexpr float PAD = 1.0f;
+    constexpr float LINE = 1.0f;
+    float y = PAD;
+    char buf[256];
 
-    // ── FPS + sim Hz ──────────────────────────────────────────────────────
-    DrawFPS(PAD, y);
-    y += LINE + 2;
+    auto line = [&](uint8_t r, uint8_t g, uint8_t b, const char* fmt, auto... args) {
+        sdtx_pos(PAD, y);
+        snprintf(buf, sizeof(buf), fmt, args...);
+        sdtx_color3b(r, g, b);
+        sdtx_puts(buf);
+        y += LINE;
+    };
 
-    snprintf(buf, sizeof(buf), "Physics:  %.0f/%.0f Hz", sim_hz, target_hz);
-    Color speed_color = ((target_hz - sim_hz > 5.0f) || (sim_hz - target_hz > 2.0f))
-                      ? RED : LIGHTGRAY;
-    DrawText(buf, PAD, y, SMALL, speed_color);
-    y += LINE;
+    // FPS
+    double fps = sapp_frame_duration() > 0.0 ? 1.0 / sapp_frame_duration() : 0.0;
+    line(0, 255, 0, "FPS: %.0f", fps);
 
-    snprintf(buf, sizeof(buf), "Physics Time: %.2f s", snapshot.sim_time);
-    DrawText(buf, PAD, y, SMALL, LIGHTGRAY);
-    y += LINE;
+    // Physics Hz
+    uint8_t phz_r = 192, phz_g = 192, phz_b = 192;
+    if (fabsf(target_hz - sim_hz) > 5.0f) { phz_r = 255; phz_g = 0; phz_b = 0; }
+    else if (sim_hz > 0.0f) { phz_r = 0; phz_g = 255; phz_b = 0; }
+    line(phz_r, phz_g, phz_b, "Physics: %.0f/%.0f Hz", sim_hz, target_hz);
 
-    snprintf(buf, sizeof(buf), "Wall Time: %.2f s",
-             (logger::elapsed() - wall_time_offset_ms) / 1000.0f);
-    DrawText(buf, PAD, y, SMALL, LIGHTGRAY);
-    y += LINE;
+    line(192, 192, 192, "Sim Time: %.2f s", snapshot.sim_time);
 
-    float time_loss = ((logger::elapsed() - wall_time_offset_ms) / 1000.0f) - snapshot.sim_time;
-    snprintf(buf, sizeof(buf), "Time Loss: %.2f s", time_loss);
-    DrawText(buf, PAD, y, SMALL, time_loss > 2.9f ? RED : LIGHTGRAY);
-    y += LINE;
+    float wall_sec = (logger::elapsed() - wall_time_offset_ms) / 1000.0f;
+    line(192, 192, 192, "Wall Time: %.2f s", wall_sec);
 
-    snprintf(buf, sizeof(buf), "Bodies: %d  Robots: %d",
-             (int)snapshot.bodies.size(), (int)snapshot.robot_indices.size());
-    DrawText(buf, PAD, y, SMALL, LIGHTGRAY);
-    y += LINE + 4;
+    float time_loss = wall_sec - snapshot.sim_time;
+    line(time_loss > 2.9f ? 255 : 192, 192, 192, "Time Loss: %.2f s", time_loss);
 
-    // ── NT4 status ────────────────────────────────────────────────────────
-    DrawCircle(PAD + 6, y + 6, 6, nt_connected ? GREEN : RED);
-    DrawText(nt_connected ? "NT4  connected" : "NT4  disconnected",
-             PAD + 18, y, SMALL, nt_connected ? GREEN : RED);
-    if (nt_connected) {
-        if (nt_ping_ms < 0)
-            snprintf(buf, sizeof(buf), "  (no data yet)");
-        else
-            snprintf(buf, sizeof(buf), "  %.1f ms", nt_ping_ms);
-        Color pc = nt_ping_ms < 0 ? ORANGE : nt_ping_ms > 100 ? RED
-                 : nt_ping_ms > 20 ? YELLOW : GREEN;
-        DrawText(buf, PAD + 140, y, SMALL, pc);
+    line(192, 192, 192, "Bodies: %d  Robots: %d",
+         (int)snapshot.bodies.size(), (int)snapshot.robot_indices.size());
+
+    y += 0.5f;
+
+    // NT4
+    line(nt_connected ? 0 : 255, nt_connected ? 255 : 0, 0,
+         nt_connected ? "NT4 connected" : "NT4 disconnected");
+    if (nt_connected && nt_ping_ms >= 0) {
+        uint8_t pr=0, pg=255, pb=0;
+        if (nt_ping_ms > 100) { pr=255; pg=0; pb=0; }
+        else if (nt_ping_ms > 20) { pr=255; pg=255; pb=0; }
+        sdtx_pos(PAD + 15.0f, y - LINE);
+        sdtx_color3b(pr, pg, pb);
+        snprintf(buf, sizeof(buf), "%.0f ms", nt_ping_ms);
+        sdtx_puts(buf);
     }
-    y += LINE + 6;
 
-    // ── Per-robot telemetry ───────────────────────────────────────────────
-    for (int ri = 0; ri < (int)snapshot.robot_indices.size(); ++ri)
-    {
+    y += 0.75f;
+
+    // Per-robot telemetry
+    for (int ri = 0; ri < (int)snapshot.robot_indices.size(); ++ri) {
         int body_idx = snapshot.robot_indices[ri];
         if (body_idx < 0 || body_idx >= (int)snapshot.bodies.size())
             continue;
+        const BodySnapshot& robot = snapshot.bodies[body_idx];
 
-        const BodySnapshot &robot = snapshot.bodies[body_idx];
-
-        // Robot header
+        sdtx_pos(PAD, y);
+        sdtx_color3b(100, 180, 255);
         snprintf(buf, sizeof(buf), "--- ROBOT %d ---", ri);
-        DrawText(buf, PAD, y, SMALL, {100, 180, 255, 255});
+        sdtx_puts(buf);
         y += LINE;
 
-        // Mechanism state
-        if (ri < (int)snapshot.robot_mech.size())
-        {
-            const RobotMechSnapshot &mech = snapshot.robot_mech[ri];
-            if (mech.intake_max_capacity > 0)
-            {
-                snprintf(buf, sizeof(buf), "Hopper: %d / %d",
-                         mech.intake_held, mech.intake_max_capacity);
-                DrawText(buf, PAD, y, SMALL, WHITE);
-
-                float frac = (float)mech.intake_held / mech.intake_max_capacity;
-                Color ic   = mech.intake_held == mech.intake_max_capacity ? BLUE : GREEN;
-                DrawBar(PAD + 120, y + 2, 60, LINE - 6, frac, ic, {40,40,40,200});
+        if (ri < (int)snapshot.robot_mech.size()) {
+            const RobotMechSnapshot& mech = snapshot.robot_mech[ri];
+            if (mech.intake_max_capacity > 0) {
+                int pct = (int)(100.0f * mech.intake_held / mech.intake_max_capacity);
+                sdtx_pos(PAD, y);
+                sdtx_color3b(255, 255, 255);
+                snprintf(buf, sizeof(buf), "Hopper: %d/%d (%d%%)",
+                         mech.intake_held, mech.intake_max_capacity, pct);
+                sdtx_puts(buf);
                 y += LINE;
 
-                DrawText("Shooter:", PAD, y, SMALL, WHITE);
-                if (mech.shooter_armed)
-                    DrawText("ACTIVE", PAD + 72, y, SMALL, ORANGE);
-                else if (mech.intake_held > 0)
-                    DrawText("READY",  PAD + 72, y, SMALL, GREEN);
-                else
-                    DrawText("EMPTY",  PAD + 72, y, SMALL, {80,80,80,200});
+                sdtx_pos(PAD, y);
+                sdtx_color3b(255, 255, 255);
+                sdtx_puts("Shooter: ");
+                if (mech.shooter_armed) {
+                    sdtx_color3b(255, 165, 0); sdtx_puts("ACTIVE");
+                } else if (mech.intake_held > 0) {
+                    sdtx_color3b(0, 255, 0); sdtx_puts("READY");
+                } else {
+                    sdtx_color3b(80, 80, 80); sdtx_puts("EMPTY");
+                }
                 y += LINE;
             }
         }
 
-        if (robot.motors.empty()) {
-            y += 4;
-            continue;
-        }
+        if (robot.motors.empty()) { y += 0.5f; continue; }
 
-        // Motor bars
-        for (int i = 0; i < (int)robot.motors.size(); ++i)
-        {
-            const MotorSnapshot &m = robot.motors[i];
-            snprintf(buf, sizeof(buf), "[%d] %+6.1f rad/s", i, m.omega);
-            DrawText(buf, PAD, y, SMALL, LIGHTGRAY);
+        for (int i = 0; i < (int)robot.motors.size(); ++i) {
+            const MotorSnapshot& m = robot.motors[i];
 
+            sdtx_pos(PAD, y);
+            if (m.slipping)
+                sdtx_color3b(255, 0, 0);
+            else
+                sdtx_color3b(192, 192, 192);
             constexpr float FREE_SPEED = 608.0f;
             float frac = std::clamp(m.omega / FREE_SPEED, -1.0f, 1.0f);
-            DrawBar(PAD + 150, y + 2, 80, LINE - 6,
-                    frac, m.slipping ? RED : SKYBLUE, {40,40,40,200});
-            if (m.slipping)
-                DrawText("SLIP", PAD + 240, y, SMALL, RED);
+            snprintf(buf, sizeof(buf), "M[%d] %+.0f rad/s (%+d%%)", i, m.omega,
+                     (int)(frac * 100.0f));
+            sdtx_puts(buf);
+            if (m.slipping) sdtx_puts(" SLIP");
             y += LINE;
         }
-
-        y += 6; // gap between robots
+        y += 0.5f;
     }
 
-
-
-
-    // ── Scoreboard ────────────────────────────────────────────────────────
-    const auto &ss = snapshot.score_state;
+    // Scoreboard (right side)
+    const auto& ss = snapshot.score_state;
     if (ss.phase != MatchPhase::WAITING) {
-        constexpr int SW  = 220;
-        constexpr int SX  = 10;  // top-right anchored below
-        int sw_x = GetScreenWidth() - SW - PAD;
+        constexpr float SW = 24.0f;
+        float bx = cw - SW - PAD;
+        float by = PAD;
 
-        // measure height: header + scores + phase/time + active zones
-        int active_zone_count = 0;
-        for (const auto &z : snapshot.score_zones) {
-            bool active = true;
-            if (z.active_start >= 0.f && ss.match_time < z.active_start) active = false;
-            if (z.active_end   >= 0.f && ss.match_time > z.active_end)   active = false;
-            if (active) ++active_zone_count;
-        }
-        int box_h = 14 + 26 + 16 + 14 + (active_zone_count > 0 ? 14 + active_zone_count * 13 : 0) + 10;
-        int bx = sw_x, by = PAD;
+        const char* phase_str = ss.phase == MatchPhase::COUNTDOWN ? "COUNTDOWN"
+                              : ss.phase == MatchPhase::AUTO ? "AUTO"
+                              : ss.phase == MatchPhase::TELEOP ? "TELEOP" : "ENDED";
+        float sx = bx + SW * 0.5f - strlen(phase_str) * 0.5f;
+        sdtx_pos(sx, by);
+        sdtx_color3b(192, 192, 192);
+        sdtx_puts(phase_str);
 
-        // background
-        DrawRectangle(bx, by, SW, box_h, {0, 0, 0, 160});
-        DrawRectangleLines(bx, by, SW, box_h, {80, 80, 80, 200});
-
-        int iy = by + 6;
-
-        // phase label
-        const char *phase_str = ss.phase == MatchPhase::COUNTDOWN ? "COUNTDOWN"
-                              : ss.phase == MatchPhase::AUTO       ? "AUTO"
-                              : ss.phase == MatchPhase::TELEOP     ? "TELEOP"
-                              : "ENDED";
-        DrawText(phase_str, bx + SW/2 - MeasureText(phase_str, 12)/2, iy, 12, LIGHTGRAY);
-        iy += 16;
-
-        // scores side by side
+        // Score row
+        sdtx_pos(bx + 3.0f, by + 1.5f);
+        sdtx_color3b(100, 149, 237);
         snprintf(buf, sizeof(buf), "%d", ss.score[0]);
-        DrawText(buf, bx + 20, iy, 26, {100, 149, 237, 255});  // blue
-        snprintf(buf, sizeof(buf), "%d", ss.score[1]);
-        DrawText(buf, bx + SW - 20 - MeasureText(buf, 26), iy, 26, {220, 50, 47, 255});  // red
-        // divider dash
-        DrawText("-", bx + SW/2 - MeasureText("-", 26)/2, iy, 26, LIGHTGRAY);
-        iy += 30;
+        sdtx_puts(buf);
 
-        // time
+        sdtx_pos(bx + SW * 0.5f - 0.5f, by + 1.5f);
+        sdtx_color3b(192, 192, 192);
+        sdtx_puts("-");
+
+        sdtx_pos(bx + SW - 4.0f, by + 1.5f);
+        sdtx_color3b(220, 50, 47);
+        snprintf(buf, sizeof(buf), "%d", ss.score[1]);
+        sdtx_puts(buf);
+
+        // Timer row
+        sdtx_pos(bx + 1.0f, by + 3.0f);
         if (ss.phase == MatchPhase::COUNTDOWN) {
             snprintf(buf, sizeof(buf), "%.0f", ceilf(ss.countdown));
-            DrawText(buf, bx + SW/2 - MeasureText(buf, 16)/2, iy, 16, YELLOW);
+            sdtx_color3b(255, 255, 0);
         } else {
             int mins = (int)ss.remaining / 60;
-            float secs = fmodf(ss.remaining, 60.f);
+            float secs = fmodf(ss.remaining, 60.0f);
             snprintf(buf, sizeof(buf), "%d:%05.2f", mins, secs);
-            DrawText(buf, bx + SW/2 - MeasureText(buf, 14)/2, iy, 14, WHITE);
+            sdtx_color3b(255, 255, 255);
         }
-        iy += 18;
-
-        // active zones
-        if (active_zone_count > 0) {
-            DrawLine(bx + 6, iy, bx + SW - 6, iy, {80, 80, 80, 160});
-            iy += 6;
-            DrawText("Active Zones", bx + 6, iy, 11, {160, 160, 160, 255});
-            iy += 14;
-            for (const auto &z : snapshot.score_zones) {
-                bool active = true;
-                if (z.active_start >= 0.f && ss.match_time < z.active_start) active = false;
-                if (z.active_end   >= 0.f && ss.match_time > z.active_end)   active = false;
-                if (!active) continue;
-                Color zc = z.team == 0 ? Color{100, 149, 237, 255} : Color{220, 50, 47, 255};
-                snprintf(buf, sizeof(buf), "%s (+%d)", z.id.c_str(), z.points);
-                DrawText(buf, bx + 10, iy, 11, zc);
-                iy += 13;
-            }
-        }
+        sdtx_puts(buf);
     }
+
+    sdtx_draw();
 }

@@ -1,0 +1,80 @@
+name: macOS Metal build
+
+# Manual trigger only -- macOS runner minutes are billed at a 10x
+# multiplier vs Linux, so this doesn't run on every push.
+on:
+  workflow_dispatch:
+
+jobs:
+  build-metal:
+    # apple silicon runner; swap to macos-13 if you specifically need an
+    # Intel Mac runner instead (Metal works on both, this is just which
+    # GitHub-hosted machine you get).
+    runs-on: macos-14
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/vcpkg
+            build/vcpkg_installed
+          key: vcpkg-macos-${{ hashFiles('vcpkg.json', '**/vcpkg-configuration.json') }}
+
+      # Jolt + allwpilib are pulled fresh via FetchContent every configure
+      # unless this cache hits -- on a macOS runner that's expensive both
+      # in minutes and in flakiness (cloning allwpilib is not small).
+      - name: Cache FetchContent deps
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: fetchcontent-macos-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Install vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git "$HOME/vcpkg"
+          "$HOME/vcpkg/bootstrap-vcpkg.sh"
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
+
+      - name: Configure (Metal backend)
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DFRC_SIM_BACKEND=metal \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Smoke test (headless run, capture log)
+        run: |
+          cd build
+          # Headless macOS runners have no real display; this just verifies
+          # the binary starts, creates the Metal device/shaders/pipeline,
+          # and gets into the sim loop without erroring or crashing --
+          # not a visual check. Kill it after a few seconds either way.
+          # (macOS doesn't ship GNU `timeout` by default, hence the
+          # background + sleep + kill instead of `timeout 8 ...`.)
+          ./frc_sim --scene ../assets/scenes/955.json --backend metal > metal_run.log 2>&1 &
+          PID=$!
+          sleep 8
+          kill "$PID" 2>/dev/null || true
+          wait "$PID" 2>/dev/null || true
+          cat metal_run.log
+          echo "----- exit handling -----"
+          if grep -qE '\[sg\]\[(error|panic)\]|Segmentation fault|abort' metal_run.log; then
+            echo "Found an error/panic/crash in the log:"
+            grep -E '\[sg\]\[(error|panic)\]|Segmentation fault|abort' metal_run.log
+            exit 1
+          fi
+          echo "No sg errors/panics/crashes detected in log."
+
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: metal-run-log
+          path: build/metal_run.log

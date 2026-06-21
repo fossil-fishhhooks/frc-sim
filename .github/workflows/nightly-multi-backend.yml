@@ -1,0 +1,261 @@
+name: Nightly multi-backend build
+
+on:
+  schedule:
+    # 09:00 UTC nightly. Cron is always UTC regardless of repo settings.
+    - cron: '0 9 * * *'
+  workflow_dispatch: {}   # also allow manual triggering on demand
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────
+  # Linux + Windows: build always; the run/smoke-test step is best-effort.
+  # GitHub-hosted Linux/Windows runners have NO real GPU. For GL this often
+  # still works via a software rasterizer fallback; for Vulkan, instance
+  # creation can succeed (loader + SDK present) while device/swapchain
+  # creation still fails because there's no real adapter. That failure
+  # mode is EXPECTED here and is not treated as a build problem -- it's
+  # a CI environment limitation, not a code bug. We still capture and
+  # upload the log either way so a *new* kind of failure (a crash, a
+  # shader compile error, a segfault) stands out from the expected
+  # "no GPU" case.
+  # ───────────────────────────────────────────────────────────────────────
+  build-and-smoke-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            backend: gl
+            name: linux-gl
+          - os: ubuntu-latest
+            backend: vulkan
+            name: linux-vulkan
+          - os: windows-latest
+            backend: gl
+            name: windows-gl
+          - os: windows-latest
+            backend: vulkan
+            name: windows-vulkan
+
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.name }}
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      # ── Linux system packages ────────────────────────────────────────
+      - name: Install Linux build deps (GL)
+        if: runner.os == 'Linux' && matrix.backend == 'gl'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential libx11-dev libxi-dev libxcursor-dev \
+            libgl1-mesa-dev mesa-utils
+
+      - name: Install Linux build deps (Vulkan)
+        if: runner.os == 'Linux' && matrix.backend == 'vulkan'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential libx11-dev libxi-dev libxcursor-dev libxrandr-dev \
+            libvulkan-dev vulkan-tools mesa-vulkan-drivers \
+            vulkan-validationlayers
+          # mesa-vulkan-drivers includes Lavapipe, a CPU-based software
+          # Vulkan ICD, so vkCreateInstance/vkCreateDevice have something
+          # real to bind to on this GPU-less runner. Lavapipe is
+          # explicitly documented upstream as "not a conformant Vulkan
+          # implementation, testing use only" -- a green run here means
+          # the build/shader/pipeline path is structurally sound, not
+          # that it's guaranteed correct against a real GPU driver.
+
+      # ── Windows: Vulkan SDK + a software Vulkan implementation ───────
+      # GitHub-hosted Windows runners have no real GPU, so without a
+      # software Vulkan device, every run would fail at vkCreateDevice
+      # (correctly, but uselessly -- that's an environment limitation,
+      # not a signal about our code). This installs SwiftShader alongside
+      # the SDK so device/swapchain creation has something real to bind
+      # to. Like Mesa's lavapipe (used for the Linux job below),
+      # SwiftShader is explicitly a testing-only software implementation,
+      # not a substitute for validating against a real GPU driver -- a
+      # green run here means "the pipeline/shader setup is structurally
+      # sound", not "this is guaranteed correct on real hardware".
+      - name: Install Vulkan SDK + SwiftShader (Windows)
+        if: runner.os == 'Windows' && matrix.backend == 'vulkan'
+        uses: NcStudios/VulkanCI@v1.0
+        with:
+          sdkVersion: 1.4.309.0
+
+      # ── vcpkg (all platforms/backends: nlohmann_json is unconditional;
+      #    shaderc is pulled in by CMakeLists only for the vulkan backend) ──
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/vcpkg
+            ~/AppData/Local/vcpkg/archives
+            build/vcpkg_installed
+          key: vcpkg-${{ matrix.name }}-${{ hashFiles('vcpkg.json') }}
+
+      - name: Cache FetchContent deps (Jolt, allwpilib)
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: fetchcontent-${{ matrix.name }}-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Install vcpkg
+        shell: bash
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git "$HOME/vcpkg"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            "$HOME/vcpkg/bootstrap-vcpkg.bat"
+          else
+            "$HOME/vcpkg/bootstrap-vcpkg.sh"
+          fi
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
+
+      - name: Configure
+        shell: bash
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DFRC_SIM_BACKEND=${{ matrix.backend }} \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Locate built binary
+        id: bin
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            echo "path=build/frc_sim.exe" >> "$GITHUB_OUTPUT"
+          elif [ -f build/frc_sim ]; then
+            echo "path=build/frc_sim" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=build/Release/frc_sim" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Smoke test (best-effort -- see job comment)
+        uses: coactions/setup-xvfb@v1
+        if: runner.os == 'Linux'
+        with:
+          run: |
+            BIN="${{ steps.bin.outputs.path }}"
+            LOG="${{ matrix.name }}-run.log"
+            "$BIN" --scene assets/scenes/955.json --backend ${{ matrix.backend }} > "$LOG" 2>&1 &
+            sleep 8
+            pkill -f frc_sim 2>/dev/null || true
+            cat "$LOG" || true
+
+            # Distinguish "expected: no real GPU in CI" from a genuine bug.
+            # These substrings are the documented panic/error text sokol
+            # itself emits for instance/device/surface creation failure --
+            # i.e. "Vulkan loader and SDK are fine, there's just no GPU".
+            if grep -qE 'VULKAN_CREATE_INSTANCE_FAILED|VULKAN_CREATE_DEVICE_FAILED|VULKAN_CREATE_SWAPCHAIN_FAILED|no.*(physical device|adapter)' "$LOG"; then
+              echo "::warning::No usable GPU on this CI runner (expected for ${{ matrix.name }}) -- not treated as a failure."
+              exit 0
+            fi
+
+            if grep -qE '\[sg\]\[(error|panic)\]|Segmentation fault|abort|VULKAN_CREATE_GRAPHICS_PIPELINE_FAILED' "$LOG"; then
+              echo "Found an unexpected error/panic/crash:"
+              grep -E '\[sg\]\[(error|panic)\]|Segmentation fault|abort' "$LOG"
+              exit 1
+            fi
+            echo "No unexpected errors detected."
+
+      - name: Smoke test (best-effort -- see job comment, Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          BIN="${{ steps.bin.outputs.path }}"
+          LOG="${{ matrix.name }}-run.log"
+          ("$BIN" --scene assets/scenes/955.json --backend ${{ matrix.backend }} > "$LOG" 2>&1 &)
+          sleep 8
+          pkill -f frc_sim 2>/dev/null || true
+          cat "$LOG" || true
+
+          if grep -qE 'VULKAN_CREATE_INSTANCE_FAILED|VULKAN_CREATE_DEVICE_FAILED|VULKAN_CREATE_SWAPCHAIN_FAILED|no.*(physical device|adapter)' "$LOG"; then
+            echo "::warning::No usable GPU on this CI runner (expected for ${{ matrix.name }}) -- not treated as a failure."
+            exit 0
+          fi
+
+          if grep -qE '\[sg\]\[(error|panic)\]|Segmentation fault|abort|VULKAN_CREATE_GRAPHICS_PIPELINE_FAILED' "$LOG"; then
+            echo "Found an unexpected error/panic/crash:"
+            grep -E '\[sg\]\[(error|panic)\]|Segmentation fault|abort' "$LOG"
+            exit 1
+          fi
+          echo "No unexpected errors detected."
+
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}-run-log
+          path: ${{ matrix.name }}-run.log
+
+  # ───────────────────────────────────────────────────────────────────────
+  # macOS Metal: real GPU on the runner, so failures here are meaningful
+  # in a way the headless Linux/Windows runs above usually aren't.
+  # ───────────────────────────────────────────────────────────────────────
+  build-and-smoke-test-macos:
+    runs-on: macos-14
+    name: macos-metal
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/vcpkg
+            build/vcpkg_installed
+          key: vcpkg-macos-metal-${{ hashFiles('vcpkg.json') }}
+
+      - name: Cache FetchContent deps
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: fetchcontent-macos-metal-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Install vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git "$HOME/vcpkg"
+          "$HOME/vcpkg/bootstrap-vcpkg.sh"
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
+
+      - name: Configure (Metal backend)
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DFRC_SIM_BACKEND=metal \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Smoke test
+        run: |
+          cd build
+          ./frc_sim --scene ../assets/scenes/955.json --backend metal > metal_run.log 2>&1 &
+          PID=$!
+          sleep 8
+          kill "$PID" 2>/dev/null || true
+          wait "$PID" 2>/dev/null || true
+          cat metal_run.log
+          if grep -qE '\[sg\]\[(error|panic)\]|Segmentation fault|abort' metal_run.log; then
+            echo "Found an error/panic/crash in the log:"
+            grep -E '\[sg\]\[(error|panic)\]|Segmentation fault|abort' metal_run.log
+            exit 1
+          fi
+          echo "No sg errors/panics/crashes detected in log."
+
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-metal-run-log
+          path: build/metal_run.log

@@ -6142,6 +6142,10 @@
       "pass_through": true,
       "reset_position": [-3.1, 0.5, 0.0]
     }
-    ]
+    ],
+    "field_bounds": {
+      "half_x": 7.25,
+      "half_z": 4.05
+      }
 
 }

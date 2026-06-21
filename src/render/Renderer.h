@@ -1,88 +1,87 @@
 #pragma once
 #include "core/Snapshot.h"
+#include "render/MeshCache.h"
 #include "render/StreamEncoder.h"
 #include "io/Raycaster.h"
-#include <raylib.h>
-#include <rlgl.h>
+
+#include <sokol_gfx.h>
+#include <sokol_app.h>
+
 #include <memory>
+#include <vector>
 
-struct LightUniform
-{
-    int enabled;
-    int type;
-    float position[3];
-    float target[3];
-    float color[4];
-};
-
-class Renderer
-{
+class Renderer {
 public:
-    void Init(int width, int height, const char *title, int target_fps);
+    void Init(int width, int height, const char* title, int target_fps);
     void Shutdown();
     bool ShouldClose() const;
 
-    void DrawFrame(const WorldSnapshot &snapshot,
+    void DrawFrame(const WorldSnapshot& snapshot,
                    bool nt_connected,
                    float sim_hz, float target_hz, float nt_staleness_ms);
 
     bool m_cameraLocked = false;
-
-    void SetWireframe(bool enabled) { m_wireframe = enabled; }
-
     void SetWallTimeOffset(float ms) { m_wall_time_offset_ms = ms; }
-
     void EnableStreaming(int port, int fps);
 
-    void SetRaycasters(std::vector<Raycaster*> raycasters) { m_raycasters = std::move(raycasters); }
+    MeshCache& GetMeshCache() { return m_mesh_cache; }
+    void SetRaycasters(std::vector<Raycaster*> rc) { m_raycasters = std::move(rc); }
+    void HandleEvent(const sapp_event* e);
 
 private:
-    Camera3D m_camera{};
+    struct Camera {
+        float pos[3] = {5, 4, 5};
+        float target[3] = {0, 0, 0};
+        float up[3] = {0, 1, 0};
+        float fov = 60.0f;
+        float yaw = -45.0f;
+        float pitch = -30.0f;
+        float dist = 7.5f;
+    } m_cam;
 
-    bool m_wireframe = false;
+    int m_target_fps = 0;
+    uint64_t m_pace_stamp = 0;
     float m_wall_time_offset_ms = 0.0f;
+    bool m_alt_pressed = false;
 
-    // ── Main lighting shader ──────────────────────────────────────────────
-    Shader m_shader{};
-    bool m_shaderLoaded = false;
-    bool m_shadowEnabled = false; // true only if shader has shadowMap uniform
+    bool m_mouse_down = false;
+    float m_mouse_last_x = 0, m_mouse_last_y = 0;
+    bool m_keys[256] = {};
+    uint64_t m_stamp = 0;
 
-    int m_locViewPos = -1;
-    int m_locAmbient = -1;
-    int m_locLightSpaceMat = -1; // uniform mat4 lightSpaceMatrix
-    int m_locShadowMap = -1;     // uniform sampler2D shadowMap
+    sg_pipeline m_pipeline = {};
+    sg_shader m_shader = {};
+    sg_pass_action m_pass_action = {};
 
-    struct LightLocs
-    {
-        int enabled, type, position, target, color;
-    };
-    LightLocs m_lightLocs[2];
+    // Shadow mapping
+    static constexpr int SHADOW_MAP_SIZE = 1024;
+    sg_image m_shadow_depth = {};
+    sg_image m_shadow_color = {};
+    sg_view m_shadow_depth_att_view = {};
+    sg_view m_shadow_color_att_view = {};
+    sg_view m_shadow_tex_view = {};
+    sg_view m_shadow_color_tex_view = {};
+    sg_sampler m_shadow_sampler = {};
+    sg_pipeline m_shadow_pipeline = {};
+    sg_shader m_shadow_shader = {};
 
-    // ── Shadow map resources ──────────────────────────────────────────────
-    static constexpr int SHADOW_MAP_SIZE = 2048;
-    unsigned int m_shadowFBO = 0;      // framebuffer
-    unsigned int m_shadowDepthTex = 0; // depth texture bound to FBO
-
-    // Light view+projection matrix — orthographic from overhead bar position
-    // Recomputed once in SetupLights (static light, no need to update per frame)
-    float m_lightSpaceMat[16]{};
-
-    // ── Helpers ───────────────────────────────────────────────────────────
-    void SetupLights();
-    void UpdateLightUniforms();
-    void RenderShadowPass(const WorldSnapshot &snapshot);
-    void BuildLightSpaceMatrix(float light_x, float light_y, float light_z);
-
-    void DrawLightGizmos();
-    void DrawForceVectors(const WorldSnapshot &);
-    void DrawArrow3D(Vector3, Vector3, Color, float);
+    MeshCache m_mesh_cache;
 
     std::unique_ptr<StreamEncoder> m_stream;
-    int                            m_stream_fps = 30;
-    float                          m_stream_accum = 0.0f;
-
-    RenderTexture2D m_stream_rt = {0};
+    int m_stream_fps = 30;
+    float m_stream_accum = 0;
 
     std::vector<Raycaster*> m_raycasters;
-    void DrawRaycasts(const std::vector<Raycaster*> &raycasters);
+
+    void SetupCamera();
+    void BuildProjMatrix(float out[16], float fov, float near, float far) const;
+    void BuildViewMatrix(float out[16]) const;
+    void UpdateCamera(float dt);
+
+    void DrawForceVectors(const WorldSnapshot& snapshot);
+    void DrawLightGizmos();
+    void DrawRaycasts(const std::vector<Raycaster*>& rcs);
+
+    void BuildMatrix(float out[16], const float pos[3], const float rot[4]) const;
+    void BuildLightVPMatrix(float out[16]) const;
 };

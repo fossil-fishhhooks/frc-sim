@@ -1,456 +1,847 @@
-///// Written by AI + human edits
 #include "render/Renderer.h"
 #include "render/BodyDraw.h"
 #include "render/DebugOverlay.h"
 #include "io/EasyLog.h"
-#include "raymath.h"
-#include <rlgl.h>
-#include <cmath>
+
+#include <sokol_app.h>
+#include <sokol_time.h>
+#include <sokol_glue.h>
 #include <cstdio>
+#include <cmath>
 #include <cstring>
+#include <cstdint>
+#include <chrono>
+#include <thread>
 
-static bool FileExists_safe(const char *path) { return FileExists(path); }
+// ── Swapchain format helper ─────────────────────────────────────────────────
+// The window's actual swapchain color format is negotiated at startup and
+// varies by backend/platform/driver (e.g. RGBA8 vs BGRA8) -- it is NOT
+// always SG_PIXELFORMAT_RGBA8. Any pipeline that renders directly into the
+// swapchain (as opposed to an offscreen render target the app controls
+// itself, like the shadow map) must match whatever sapp_color_format()
+// actually reports, or sg_apply_pipeline's validation will reject it.
+static sg_pixel_format SwapchainColorFormat() {
+    switch (sapp_color_format()) {
+        case SAPP_PIXELFORMAT_RGBA8:   return SG_PIXELFORMAT_RGBA8;
+        case SAPP_PIXELFORMAT_SRGB8A8: return SG_PIXELFORMAT_SRGB8A8;
+        case SAPP_PIXELFORMAT_BGRA8:   return SG_PIXELFORMAT_BGRA8;
+        default:
+            LOG_ERROR("Renderer: unexpected sapp_color_format(), falling back to RGBA8");
+            return SG_PIXELFORMAT_RGBA8;
+    }
+}
 
-// ── Light position (single overhead bar) ─────────────────────────────────────
-// Adjust these to match your field scale.
-static constexpr float LIGHT_X = 0.0f;
-static constexpr float LIGHT_Y = 6.0f;
-static constexpr float LIGHT_Z = 0.0f;
+// ── File loader ──────────────────────────────────────────────────────────────
+
+static bool ReadFile(const char* path, std::string& out) {
+    FILE* f = fopen(path, "rb");
+    if (!f) return false;
+    fseek(f, 0, SEEK_END);
+    long len = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    out.resize(len > 0 ? (size_t)len : 0);
+    if (len > 0) fread(&out[0], 1, (size_t)len, f);
+    fclose(f);
+    return true;
+}
+
+// Each backend's shader source lives in its own assets/shader/<backend>/
+// subfolder, since GL (loose uniforms), Vulkan (GLSL uniform blocks +
+// explicit set/binding), and Metal (MSL) all need genuinely different
+// shader text, not just a recompiled version of the same source.
+static const char* BackendShaderDir() {
+#if defined(SOKOL_VULKAN)
+    return "vulkan";
+#elif defined(SOKOL_METAL)
+    return "metal";
+#else
+    return "gl";
+#endif
+}
+
+// ── Inline matrix/vector math (no raylib) ────────────────────────────────────
+
+static void mat4_identity(float m[16]) {
+    memset(m, 0, 16*sizeof(float));
+    m[0]=m[5]=m[10]=m[15]=1.0f;
+}
+
+static void mat4_mul(const float a[16], const float b[16], float out[16]) {
+    float t[16];
+    for (int i = 0; i < 4; ++i)
+        for (int j = 0; j < 4; ++j) {
+            float sum = 0;
+            for (int k = 0; k < 4; ++k)
+                sum += a[k*4+i] * b[j*4+k];
+            t[j*4+i] = sum;
+        }
+    memcpy(out, t, sizeof(t));
+}
+
+static void mat4_perspective(float fov_y, float aspect, float zn, float zf, float out[16]) {
+    memset(out, 0, 16*sizeof(float));
+    float f = 1.0f / tanf(fov_y * 0.5f);
+    out[0] = f / aspect;
+    out[5] = f;
+    out[10] = (zf + zn) / (zn - zf);
+    out[11] = -1.0f;
+    out[14] = (2.0f * zf * zn) / (zn - zf);
+}
+
+static void mat4_ortho(float left, float right, float bottom, float top, float zn, float zf, float out[16]) {
+    memset(out, 0, 16*sizeof(float));
+    out[0]  = 2.0f / (right - left);
+    out[5]  = 2.0f / (top - bottom);
+    out[10] = -2.0f / (zf - zn);
+    out[12] = -(right + left) / (right - left);
+    out[13] = -(top + bottom) / (top - bottom);
+    out[14] = -(zf + zn) / (zf - zn);
+    out[15] = 1.0f;
+}
+
+static void mat4_look_at(const float eye[3], const float center[3], const float up[3], float out[16]) {
+    float f[3], s[3], u[3];
+    f[0] = center[0]-eye[0]; f[1] = center[1]-eye[1]; f[2] = center[2]-eye[2];
+    float flen = sqrtf(f[0]*f[0]+f[1]*f[1]+f[2]*f[2]);
+    if (flen > 1e-8f) { f[0]/=flen; f[1]/=flen; f[2]/=flen; }
+
+    s[0] = f[1]*up[2] - f[2]*up[1];
+    s[1] = f[2]*up[0] - f[0]*up[2];
+    s[2] = f[0]*up[1] - f[1]*up[0];
+    float slen = sqrtf(s[0]*s[0]+s[1]*s[1]+s[2]*s[2]);
+    if (slen > 1e-8f) { s[0]/=slen; s[1]/=slen; s[2]/=slen; }
+
+    u[0] = s[1]*f[2] - s[2]*f[1];
+    u[1] = s[2]*f[0] - s[0]*f[2];
+    u[2] = s[0]*f[1] - s[1]*f[0];
+
+    out[0]=s[0]; out[1]=u[0]; out[2]=-f[0]; out[3]=0;
+    out[4]=s[1]; out[5]=u[1]; out[6]=-f[1]; out[7]=0;
+    out[8]=s[2]; out[9]=u[2]; out[10]=-f[2]; out[11]=0;
+    out[12]=-(s[0]*eye[0]+s[1]*eye[1]+s[2]*eye[2]);
+    out[13]=-(u[0]*eye[0]+u[1]*eye[1]+u[2]*eye[2]);
+    out[14]=f[0]*eye[0]+f[1]*eye[1]+f[2]*eye[2];
+    out[15]=1;
+}
+
+static void vec3_sub(const float a[3], const float b[3], float out[3]) {
+    out[0]=a[0]-b[0]; out[1]=a[1]-b[1]; out[2]=a[2]-b[2];
+}
+static void vec3_add(const float a[3], const float b[3], float out[3]) {
+    out[0]=a[0]+b[0]; out[1]=a[1]+b[1]; out[2]=a[2]+b[2];
+}
+static void vec3_scale(const float a[3], float s, float out[3]) {
+    out[0]=a[0]*s; out[1]=a[1]*s; out[2]=a[2]*s;
+}
+static float vec3_dot(const float a[3], const float b[3]) {
+    return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+}
+static void vec3_cross(const float a[3], const float b[3], float out[3]) {
+    out[0]=a[1]*b[2]-a[2]*b[1];
+    out[1]=a[2]*b[0]-a[0]*b[2];
+    out[2]=a[0]*b[1]-a[1]*b[0];
+}
+static void vec3_normalize(const float a[3], float out[3]) {
+    float len = sqrtf(a[0]*a[0]+a[1]*a[1]+a[2]*a[2]);
+    if (len>1e-8f) { out[0]=a[0]/len; out[1]=a[1]/len; out[2]=a[2]/len; }
+    else memcpy(out, a, 3*sizeof(float));
+}
+
+// ── Vertex & uniform layouts ────────────────────────────────────────────────
+
+struct Vertex {
+    float x, y, z;
+    float nx, ny, nz;
+    uint8_t r, g, b, a;
+};
+
+struct VsUniforms {
+    float model[16];
+    float view[16];
+    float projection[16];
+};
+
+struct FsUniforms {
+    float model_color[4];
+    float ambient[4];
+    float light_pos[4];
+    float view_pos[4];
+    float light_vp[16];
+    float light_power;
+};
+
+struct ShadowVsUniforms {
+    float light_vp[16];
+    float model[16];
+};
+
+// Verify uniform struct sizes match GLSL layout
+static_assert(sizeof(VsUniforms) == 192, "VsUniforms size mismatch (3 mat4)");
+static_assert(sizeof(FsUniforms) == 132, "FsUniforms size mismatch");
+static_assert(sizeof(ShadowVsUniforms) == 128, "ShadowVsUniforms size mismatch (2 mat4)");
+
+// ── GLSL shader sources (fallback inline) ────────────────────────────────────
+
+static const char* vs_src_main_fallback =
+"#version 330\n"
+"uniform mat4 model;\n"
+"uniform mat4 view;\n"
+"uniform mat4 projection;\n"
+"layout(location = 0) in vec3 position;\n"
+"layout(location = 1) in vec3 normal;\n"
+"layout(location = 2) in vec4 color;\n"
+"out vec3 v_normal;\n"
+"out vec3 v_pos;\n"
+"out vec4 v_color;\n"
+"void main() {\n"
+"    vec4 world_pos = model * vec4(position, 1.0);\n"
+"    gl_Position = projection * view * world_pos;\n"
+"    v_normal = mat3(model) * normal;\n"
+"    v_pos = world_pos.xyz;\n"
+"    v_color = color;\n"
+"}\n";
+
+static const char* fs_src_main_fallback =
+"#version 330\n"
+"uniform vec4 model_color;\n"
+"uniform vec4 ambient;\n"
+"uniform vec4 light_pos;\n"
+"uniform vec4 view_pos;\n"
+"uniform float light_power;\n"
+"in vec3 v_normal;\n"
+"in vec3 v_pos;\n"
+"in vec4 v_color;\n"
+"out vec4 frag_color;\n"
+"void main() {\n"
+"    vec3 N = normalize(v_normal);\n"
+"    vec3 Lv = light_pos.xyz - v_pos;\n"
+"    float dist = length(Lv);\n"
+"    vec3 L = Lv / dist;\n"
+"    float atten = 1.0 / (1.0 + 0.007 * dist * dist);\n"
+"    float diff = max(dot(N, L), 0.0);\n"
+"    vec3 base = model_color.rgb * v_color.rgb;\n"
+"    vec3 amb = ambient.rgb * base;\n"
+"    vec3 diffuse = diff * atten * base * light_power;\n"
+"    vec3 V = normalize(view_pos.xyz - v_pos);\n"
+"    vec3 H = normalize(L + V);\n"
+"    float spec = pow(max(dot(N, H), 0.0), 32.0) * atten * light_power;\n"
+"    frag_color = vec4(amb + diffuse + vec3(spec * 0.3), 1.0);\n"
+"}\n";
+
+static const char* vs_src_shadow_fallback =
+"#version 330\n"
+"uniform mat4 light_vp;\n"
+"uniform mat4 model;\n"
+"layout(location = 0) in vec3 position;\n"
+"void main() {\n"
+"    gl_Position = light_vp * model * vec4(position, 1.0);\n"
+"}\n";
+
+static const char* fs_src_shadow_fallback =
+"#version 330\n"
+"out vec4 frag_color;\n"
+"void main() {\n"
+"    float d = gl_FragCoord.z;\n"
+"    frag_color = vec4(d, d, d, 1.0);\n"
+"}\n";
+
+// ── Vulkan SPIR-V compilation (source loaded from assets/shader/vulkan/) ────
+#ifdef SOKOL_VULKAN
+#include <shaderc/shaderc.h>
+#include <vector>
+
+struct CompiledSpv {
+    std::vector<uint32_t> bytecode;
+};
+
+static CompiledSpv CompileGLSLtoSPV(const char* source, shaderc_shader_kind kind, const char* name) {
+    CompiledSpv result;
+    fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) start\n", name);
+    shaderc_compiler_t compiler = shaderc_compiler_initialize();
+    if (!compiler) {
+        LOG_ERROR("Renderer: shaderc_compiler_initialize failed");
+        fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) compiler init FAILED\n", name);
+        return result;
+    }
+    fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) compiler ok\n", name);
+    shaderc_compile_options_t opts = shaderc_compile_options_initialize();
+    shaderc_compilation_result_t cr = shaderc_compile_into_spv(compiler, source, strlen(source), kind, name, "main", opts);
+    fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) compile done\n", name);
+    if (shaderc_result_get_compilation_status(cr) != shaderc_compilation_status_success) {
+        LOG_ERROR("Renderer: shaderc compilation of %s failed: %s", name, shaderc_result_get_error_message(cr));
+        shaderc_result_release(cr);
+        shaderc_compile_options_release(opts);
+        shaderc_compiler_release(compiler);
+        fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) COMPILATION FAILED\n", name);
+        return result;
+    }
+    fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) compile SUCCESS\n", name);
+    size_t n = shaderc_result_get_length(cr);
+    result.bytecode.resize(n / sizeof(uint32_t));
+    memcpy(result.bytecode.data(), shaderc_result_get_bytes(cr), n);
+    shaderc_result_release(cr);
+    shaderc_compile_options_release(opts);
+    shaderc_compiler_release(compiler);
+    fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) done, %zu bytes SPIR-V\n", name, n);
+    return result;
+}
+#endif
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-void Renderer::Init(int width, int height, const char *title, int target_fps)
-{
-    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_WINDOW_RESIZABLE);
-    if (target_fps <= 0)
-    {
-        LOG_WARN("Renderer: uncapped FPS");
-        ClearWindowState(FLAG_VSYNC_HINT);
+void Renderer::Init(int width, int height, const char* title, int target_fps) {
+    (void)width; (void)height; (void)title;
+    m_target_fps = target_fps;
+
+    m_pass_action = {};
+    m_pass_action.colors[0].load_action = SG_LOADACTION_CLEAR;
+    m_pass_action.colors[0].clear_value = {0.11f, 0.11f, 0.125f, 1.0f};
+    m_pass_action.depth.load_action = SG_LOADACTION_CLEAR;
+    m_pass_action.depth.clear_value = 1.0f;
+
+    // ── Load shader sources from files ──────────────────────────────────────
+    // Path layout: assets/shader/<backend>/<file>, since GL, Vulkan, and
+    // Metal each need genuinely different shader text (see BackendShaderDir).
+    const char* dir = BackendShaderDir();
+    std::string main_vs_path, main_fs_path, shadow_vs_path, shadow_fs_path;
+#if defined(SOKOL_VULKAN)
+    main_vs_path   = std::string("assets/shader/") + dir + "/main.vert";
+    main_fs_path   = std::string("assets/shader/") + dir + "/main.frag";
+    shadow_vs_path = std::string("assets/shader/") + dir + "/shadow.vert";
+    shadow_fs_path = std::string("assets/shader/") + dir + "/shadow.frag";
+#elif defined(SOKOL_METAL)
+    // Metal combines vertex+fragment per pass into one .metal file; both
+    // "paths" below point at the same file, the entry-point names (set in
+    // sg_shader_desc.*.entry below) select which function gets used.
+    main_vs_path   = std::string("assets/shader/") + dir + "/main.metal";
+    main_fs_path   = main_vs_path;
+    shadow_vs_path = std::string("assets/shader/") + dir + "/shadow.metal";
+    shadow_fs_path = shadow_vs_path;
+#else
+    main_vs_path   = std::string("assets/shader/") + dir + "/main.vs";
+    main_fs_path   = std::string("assets/shader/") + dir + "/main.fs";
+    shadow_vs_path = std::string("assets/shader/") + dir + "/shadow.vs";
+    shadow_fs_path = std::string("assets/shader/") + dir + "/shadow.fs";
+#endif
+
+    std::string vs_main_str, fs_main_str, vs_shadow_str, fs_shadow_str;
+
+    bool loaded = ReadFile(main_vs_path.c_str(), vs_main_str);
+    const char* vs_main = loaded ? vs_main_str.c_str() : vs_src_main_fallback;
+    if (loaded) LOG_INFO("Renderer: loaded %s", main_vs_path.c_str());
+    else LOG_ERROR("Renderer: failed to load %s", main_vs_path.c_str());
+
+    loaded = ReadFile(main_fs_path.c_str(), fs_main_str);
+    const char* fs_main = loaded ? fs_main_str.c_str() : fs_src_main_fallback;
+    if (loaded) LOG_INFO("Renderer: loaded %s", main_fs_path.c_str());
+    else LOG_ERROR("Renderer: failed to load %s", main_fs_path.c_str());
+
+    loaded = ReadFile(shadow_vs_path.c_str(), vs_shadow_str);
+    const char* vs_shadow = loaded ? vs_shadow_str.c_str() : vs_src_shadow_fallback;
+    if (loaded) LOG_INFO("Renderer: loaded %s", shadow_vs_path.c_str());
+    else LOG_ERROR("Renderer: failed to load %s", shadow_vs_path.c_str());
+
+    loaded = ReadFile(shadow_fs_path.c_str(), fs_shadow_str);
+    const char* fs_shadow = loaded ? fs_shadow_str.c_str() : fs_src_shadow_fallback;
+    if (loaded) LOG_INFO("Renderer: loaded %s", shadow_fs_path.c_str());
+    else LOG_ERROR("Renderer: failed to load %s", shadow_fs_path.c_str());
+
+#ifdef SOKOL_VULKAN
+    // vs_main/fs_main/vs_shadow/fs_shadow above are now the real GLSL text
+    // loaded from assets/shader/vulkan/ -- compile it to SPIR-V.
+    CompiledSpv vs_main_spv = CompileGLSLtoSPV(vs_main, shaderc_glsl_vertex_shader, "main.vs");
+    CompiledSpv fs_main_spv = CompileGLSLtoSPV(fs_main, shaderc_glsl_fragment_shader, "main.fs");
+    CompiledSpv vs_shadow_spv = CompileGLSLtoSPV(vs_shadow, shaderc_glsl_vertex_shader, "shadow.vs");
+    CompiledSpv fs_shadow_spv = CompileGLSLtoSPV(fs_shadow, shaderc_glsl_fragment_shader, "shadow.fs");
+#endif
+
+    // ── Main shader ───────────────────────────────────────────────────────
+    sg_shader_desc shd = {};
+#ifdef SOKOL_VULKAN
+    // NOTE: SG_RANGE(x) expands to {&x, sizeof(x)} -- correct for a plain
+    // struct, but vs_main_spv.bytecode is a std::vector<uint32_t>, so that
+    // would capture the vector's own control-block address/size instead of
+    // its heap-allocated SPIR-V data. Build the range manually from the
+    // vector's actual data pointer and byte length.
+    shd.vertex_func.bytecode = sg_range{ vs_main_spv.bytecode.data(), vs_main_spv.bytecode.size() * sizeof(uint32_t) };
+    shd.vertex_func.entry = "main";
+    shd.fragment_func.bytecode = sg_range{ fs_main_spv.bytecode.data(), fs_main_spv.bytecode.size() * sizeof(uint32_t) };
+    shd.fragment_func.entry = "main";
+#elif defined(SOKOL_METAL)
+    shd.vertex_func.source = vs_main;
+    shd.vertex_func.entry = "main_vs";
+    shd.fragment_func.source = fs_main;
+    shd.fragment_func.entry = "main_fs";
+#else
+    shd.vertex_func.source = vs_main;
+    shd.vertex_func.entry = "main";
+    shd.fragment_func.source = fs_main;
+    shd.fragment_func.entry = "main";
+#endif
+
+    shd.uniform_blocks[0].stage = SG_SHADERSTAGE_VERTEX;
+    shd.uniform_blocks[0].size = sizeof(VsUniforms);
+    shd.uniform_blocks[0].layout = SG_UNIFORMLAYOUT_NATIVE;
+    shd.uniform_blocks[0].spirv_set0_binding_n = 0;
+    shd.uniform_blocks[0].msl_buffer_n = 0;
+    shd.uniform_blocks[0].glsl_uniforms[0] = {SG_UNIFORMTYPE_MAT4, 1, "model"};
+    shd.uniform_blocks[0].glsl_uniforms[1] = {SG_UNIFORMTYPE_MAT4, 1, "view"};
+    shd.uniform_blocks[0].glsl_uniforms[2] = {SG_UNIFORMTYPE_MAT4, 1, "projection"};
+
+    shd.uniform_blocks[1].stage = SG_SHADERSTAGE_FRAGMENT;
+    shd.uniform_blocks[1].size = sizeof(FsUniforms);
+    shd.uniform_blocks[1].layout = SG_UNIFORMLAYOUT_NATIVE;
+    shd.uniform_blocks[1].spirv_set0_binding_n = 1;
+    shd.uniform_blocks[1].msl_buffer_n = 1;
+    shd.uniform_blocks[1].glsl_uniforms[0] = {SG_UNIFORMTYPE_FLOAT4, 1, "model_color"};
+    shd.uniform_blocks[1].glsl_uniforms[1] = {SG_UNIFORMTYPE_FLOAT4, 1, "ambient"};
+    shd.uniform_blocks[1].glsl_uniforms[2] = {SG_UNIFORMTYPE_FLOAT4, 1, "light_pos"};
+    shd.uniform_blocks[1].glsl_uniforms[3] = {SG_UNIFORMTYPE_FLOAT4, 1, "view_pos"};
+    shd.uniform_blocks[1].glsl_uniforms[4] = {SG_UNIFORMTYPE_MAT4, 1, "light_vp"};
+    shd.uniform_blocks[1].glsl_uniforms[5] = {SG_UNIFORMTYPE_FLOAT, 1, "light_power"};
+
+    shd.views[0].texture.stage = SG_SHADERSTAGE_FRAGMENT;
+    shd.views[0].texture.image_type = SG_IMAGETYPE_2D;
+    shd.views[0].texture.spirv_set1_binding_n = 0;
+    shd.views[0].texture.msl_texture_n = 0;
+
+    shd.samplers[0].stage = SG_SHADERSTAGE_FRAGMENT;
+    shd.samplers[0].sampler_type = SG_SAMPLERTYPE_FILTERING;
+    shd.samplers[0].spirv_set1_binding_n = 1;
+    shd.samplers[0].msl_sampler_n = 0;
+
+    shd.texture_sampler_pairs[0].stage = SG_SHADERSTAGE_FRAGMENT;
+    shd.texture_sampler_pairs[0].view_slot = 0;
+    shd.texture_sampler_pairs[0].sampler_slot = 0;
+    shd.texture_sampler_pairs[0].glsl_name = "shadow_map";
+
+    m_shader = sg_make_shader(&shd);
+    if (!m_shader.id) {
+        LOG_ERROR("Renderer: failed to create main shader");
     }
-    InitWindow(width, height, title);
-    SetTargetFPS(target_fps);
 
-    m_camera.position = {5.0f, 4.0f, 5.0f};
-    m_camera.target = {0.0f, 0.0f, 0.0f};
-    m_camera.up = {0.0f, 1.0f, 0.0f};
-    m_camera.fovy = 60.0f;
-    m_camera.projection = CAMERA_PERSPECTIVE;
-
-    // ── Load shader ───────────────────────────────────────────────────────
-    const char *vs_path = "./assets/shader/lighting.vs";
-    const char *fs_path = "./assets/shader/lighting.fs";
-
-    if (FileExists_safe(vs_path) && FileExists_safe(fs_path))
-    {
-        m_shader = LoadShader(vs_path, fs_path);
-        m_shader.locs[SHADER_LOC_MATRIX_MODEL] = GetShaderLocation(m_shader, "matModel");
-
-        m_locViewPos = GetShaderLocation(m_shader, "viewPos");
-        m_locAmbient = GetShaderLocation(m_shader, "ambient");
-        m_locLightSpaceMat = GetShaderLocation(m_shader, "lightSpaceMatrix");
-        m_locShadowMap = GetShaderLocation(m_shader, "shadowMap");
-
-        char buf[64];
-        for (int i = 0; i < 2; ++i)
-        {
-            snprintf(buf, sizeof(buf), "lights[%d].enabled", i);
-            m_lightLocs[i].enabled = GetShaderLocation(m_shader, buf);
-            snprintf(buf, sizeof(buf), "lights[%d].type", i);
-            m_lightLocs[i].type = GetShaderLocation(m_shader, buf);
-            snprintf(buf, sizeof(buf), "lights[%d].position", i);
-            m_lightLocs[i].position = GetShaderLocation(m_shader, buf);
-            snprintf(buf, sizeof(buf), "lights[%d].target", i);
-            m_lightLocs[i].target = GetShaderLocation(m_shader, buf);
-            snprintf(buf, sizeof(buf), "lights[%d].color", i);
-            m_lightLocs[i].color = GetShaderLocation(m_shader, buf);
-        }
-
-        SetupLights();
-        m_shaderLoaded = true;
-
-        // Shadow map only available if the new shader has the uniforms.
-        // Old lighting.fs won't have shadowMap or lightSpaceMatrix — that's fine,
-        // GetShaderLocation returns -1 and we just skip the shadow pass.
-        if (m_locShadowMap >= 0 && m_locLightSpaceMat >= 0)
-        {
-            // ── Create shadow FBO + depth texture ─────────────────────────
-            m_shadowFBO = rlLoadFramebuffer();
-            rlEnableFramebuffer(m_shadowFBO);
-
-            m_shadowDepthTex = rlLoadTextureDepth(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, false);
-            rlFramebufferAttach(m_shadowFBO, m_shadowDepthTex,
-                                RL_ATTACHMENT_DEPTH,
-                                RL_ATTACHMENT_TEXTURE2D, 0);
-
-            if (rlFramebufferComplete(m_shadowFBO))
-            {
-                m_shadowEnabled = true;
-                LOG_INFO("Renderer: shadow map %dx%d ready", SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-            }
-            else
-            {
-                LOG_WARN("Renderer: shadow FBO incomplete — shadows disabled");
-                rlUnloadFramebuffer(m_shadowFBO);
-                m_shadowFBO = 0;
-            }
-
-            rlDisableFramebuffer();
-
-            // Bind shadow map to texture slot 1 (slot 0 = diffuse, owned by raylib)
-            if (m_shadowEnabled)
-            {
-                BeginShaderMode(m_shader);
-                int slot = 1;
-                SetShaderValue(m_shader, m_locShadowMap, &slot, SHADER_UNIFORM_INT);
-                EndShaderMode();
-            }
-
-            BuildLightSpaceMatrix(LIGHT_X, LIGHT_Y, LIGHT_Z);
-        }
-        else
-        {
-            LOG_INFO("Renderer: shader has no shadow uniforms (shadowMap=%d lightSpaceMatrix=%d) — shadows disabled",
-         m_locShadowMap, m_locLightSpaceMat);
-        }
-
-        LOG_INFO("Renderer: shader loaded  shadows=%s", m_shadowEnabled ? "yes" : "no");
-    }
-    else
-    {
-        LOG_WARN("Renderer: shader files not found — unlit fallback");
+    // ── Solid pipeline ───────────────────────────────────────────────────
+    sg_pipeline_desc pip = {};
+    pip.color_count = 1;
+    pip.colors[0].pixel_format = SwapchainColorFormat();
+    pip.depth.pixel_format = SG_PIXELFORMAT_DEPTH_STENCIL;
+    pip.layout.attrs[0].format = SG_VERTEXFORMAT_FLOAT3;
+    pip.layout.attrs[0].buffer_index = 0;
+    pip.layout.attrs[0].offset = 0;
+    pip.layout.attrs[1].format = SG_VERTEXFORMAT_FLOAT3;
+    pip.layout.attrs[1].buffer_index = 0;
+    pip.layout.attrs[1].offset = 12;
+    pip.layout.attrs[2].format = SG_VERTEXFORMAT_UBYTE4N;
+    pip.layout.attrs[2].buffer_index = 0;
+    pip.layout.attrs[2].offset = 24;
+    pip.layout.buffers[0].stride = sizeof(Vertex);
+    pip.sample_count = sapp_sample_count();
+    pip.shader = m_shader;
+    pip.index_type = SG_INDEXTYPE_UINT32;
+    pip.depth.compare = SG_COMPAREFUNC_LESS_EQUAL;
+    pip.depth.write_enabled = true;
+    pip.cull_mode = SG_CULLMODE_BACK;
+    pip.face_winding = SG_FACEWINDING_CCW;
+    fprintf(stderr, "DEBUG: before sg_make_pipeline (main)\n");
+    m_pipeline = sg_make_pipeline(&pip);
+    fprintf(stderr, "DEBUG: after sg_make_pipeline (main), id=%u\n", m_pipeline.id);
+    if (!m_pipeline.id) {
+        LOG_ERROR("Renderer: failed to create main pipeline");
     }
 
-    LOG_INFO("Renderer: window %dx%d '%s'", width, height, title);
-}
+    // ── Shadow shader ─────────────────────────────────────────────────────
+    sg_shader_desc shd_shadow = {};
+#ifdef SOKOL_VULKAN
+    shd_shadow.vertex_func.bytecode = sg_range{ vs_shadow_spv.bytecode.data(), vs_shadow_spv.bytecode.size() * sizeof(uint32_t) };
+    shd_shadow.vertex_func.entry = "main";
+    shd_shadow.fragment_func.bytecode = sg_range{ fs_shadow_spv.bytecode.data(), fs_shadow_spv.bytecode.size() * sizeof(uint32_t) };
+    shd_shadow.fragment_func.entry = "main";
+#elif defined(SOKOL_METAL)
+    shd_shadow.vertex_func.source = vs_shadow;
+    shd_shadow.vertex_func.entry = "shadow_vs";
+    shd_shadow.fragment_func.source = fs_shadow;
+    shd_shadow.fragment_func.entry = "shadow_fs";
+#else
+    shd_shadow.vertex_func.source = vs_shadow;
+    shd_shadow.vertex_func.entry = "main";
+    shd_shadow.fragment_func.source = fs_shadow;
+    shd_shadow.fragment_func.entry = "main";
+#endif
 
-// ── Light space matrix (orthographic, looking straight down from bar) ─────────
+    shd_shadow.uniform_blocks[0].stage = SG_SHADERSTAGE_VERTEX;
+    shd_shadow.uniform_blocks[0].size = sizeof(ShadowVsUniforms);
+    shd_shadow.uniform_blocks[0].layout = SG_UNIFORMLAYOUT_NATIVE;
+    shd_shadow.uniform_blocks[0].spirv_set0_binding_n = 0;
+    shd_shadow.uniform_blocks[0].msl_buffer_n = 0;
+    shd_shadow.uniform_blocks[0].glsl_uniforms[0] = {SG_UNIFORMTYPE_MAT4, 1, "light_vp"};
+    shd_shadow.uniform_blocks[0].glsl_uniforms[1] = {SG_UNIFORMTYPE_MAT4, 1, "model"};
 
-void Renderer::BuildLightSpaceMatrix(float lx, float ly, float lz)
-{
-    // Orthographic projection covering the whole field.
-    // Adjust left/right/bottom/top to your field size in metres.
-    // FRC 2024 field is ~16.5m × 8.2m — using 12×7 with headroom.
-    Matrix lightProj = MatrixOrtho(-12.0f, 12.0f, -7.0f, 7.0f, 0.1f, 30.0f);
-
-    // View: look from light position straight down to field centre
-    Matrix lightView = MatrixLookAt(
-        {lx, ly, lz},       // eye
-        {0.0f, 0.0f, 0.0f}, // target
-        {0.0f, 0.0f, 1.0f}  // up — Z since we're looking straight down Y
-    );
-
-    Matrix lsm = MatrixMultiply(lightView, lightProj);
-    // Store column-major for glUniformMatrix4fv
-    float *dst = m_lightSpaceMat;
-    dst[0] = lsm.m0;
-    dst[1] = lsm.m1;
-    dst[2] = lsm.m2;
-    dst[3] = lsm.m3;
-    dst[4] = lsm.m4;
-    dst[5] = lsm.m5;
-    dst[6] = lsm.m6;
-    dst[7] = lsm.m7;
-    dst[8] = lsm.m8;
-    dst[9] = lsm.m9;
-    dst[10] = lsm.m10;
-    dst[11] = lsm.m11;
-    dst[12] = lsm.m12;
-    dst[13] = lsm.m13;
-    dst[14] = lsm.m14;
-    dst[15] = lsm.m15;
-}
-
-// ── Lights ────────────────────────────────────────────────────────────────────
-
-void Renderer::SetupLights()
-{
-    // Light 0: overhead point light (the bar)
-    int one = 1, point = 1;
-    SetShaderValue(m_shader, m_lightLocs[0].enabled, &one, SHADER_UNIFORM_INT);
-    SetShaderValue(m_shader, m_lightLocs[0].type, &point, SHADER_UNIFORM_INT);
-    float bar_pos[3] = {LIGHT_X, LIGHT_Y, LIGHT_Z};
-    float bar_target[3] = {0.0f, 0.0f, 0.0f};
-    float bar_color[4] = {1.8f, 1.7f, 1.62f, 1.0f}; // was 1.0 — HDR value, compensates for falloff
-    SetShaderValue(m_shader, m_lightLocs[0].position, bar_pos, SHADER_UNIFORM_VEC3);
-    SetShaderValue(m_shader, m_lightLocs[0].target, bar_target, SHADER_UNIFORM_VEC3);
-    SetShaderValue(m_shader, m_lightLocs[0].color, bar_color, SHADER_UNIFORM_VEC4);
-
-    // Light 1: disabled
-    int zero = 0;
-    SetShaderValue(m_shader, m_lightLocs[1].enabled, &zero, SHADER_UNIFORM_INT);
-
-    float ambient[4] = {0.08f, 0.08f, 0.10f, 1.0f};
-    SetShaderValue(m_shader, m_locAmbient, ambient, SHADER_UNIFORM_VEC4);
-}
-
-void Renderer::UpdateLightUniforms()
-{
-    float vp[3] = {m_camera.position.x, m_camera.position.y, m_camera.position.z};
-    SetShaderValue(m_shader, m_locViewPos, vp, SHADER_UNIFORM_VEC3);
-
-    if (m_shadowEnabled)
-        SetShaderValueMatrix(m_shader, m_locLightSpaceMat,
-                             *(Matrix *)m_lightSpaceMat);
-}
-
-// ── Shadow pass ───────────────────────────────────────────────────────────────
-// Render every body into the depth texture from the light's POV.
-// We use a minimal depth-only shader built into rlgl.
-
-void Renderer::RenderShadowPass(const WorldSnapshot &snapshot)
-{
-    rlEnableFramebuffer(m_shadowFBO);
-    rlViewport(0, 0, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-    rlClearScreenBuffers();
-    rlEnableDepthTest();
-
-    // Build a temporary camera from light's POV for DrawBodySnapshot
-    Camera3D lightCam{};
-    lightCam.position = {LIGHT_X, LIGHT_Y, LIGHT_Z};
-    lightCam.target = {0.0f, 0.0f, 0.0f};
-    lightCam.up = {0.0f, 0.0f, 1.0f};
-    lightCam.fovy = 90.0f;
-    lightCam.projection = CAMERA_ORTHOGRAPHIC;
-
-    BeginMode3D(lightCam);
-    for (const auto &body : snapshot.bodies)
-        DrawBodySnapshot(body, nullptr, false); // nullptr = no shader, depth only
-    EndMode3D();
-
-    rlDisableFramebuffer();
-    rlViewport(0, 0, GetScreenWidth(), GetScreenHeight());
-}
-
-// ── Shutdown ──────────────────────────────────────────────────────────────────
-
-void Renderer::Shutdown()
-{
-    if (m_stream)
-        m_stream->Shutdown();
-    if (m_stream_rt.id > 0) UnloadRenderTexture(m_stream_rt);
-    if (m_shadowEnabled)
-    {
-        rlUnloadFramebuffer(m_shadowFBO);
-        rlUnloadTexture(m_shadowDepthTex);
+    m_shadow_shader = sg_make_shader(&shd_shadow);
+    if (!m_shadow_shader.id) {
+        LOG_ERROR("Renderer: failed to create shadow shader");
     }
-    if (m_shaderLoaded)
-        UnloadShader(m_shader);
-    UnloadAllMeshes();
-    CloseWindow();
+
+    // ── Shadow pipeline ───────────────────────────────────────────────────
+    sg_pipeline_desc spip = {};
+    spip.color_count = 1;
+    spip.colors[0].pixel_format = SG_PIXELFORMAT_RGBA8;
+    spip.depth.pixel_format = SG_PIXELFORMAT_DEPTH;
+    spip.layout.attrs[0].format = SG_VERTEXFORMAT_FLOAT3;
+    spip.layout.attrs[0].buffer_index = 0;
+    spip.layout.attrs[0].offset = 0;
+    spip.layout.buffers[0].stride = sizeof(Vertex);
+    spip.shader = m_shadow_shader;
+    spip.index_type = SG_INDEXTYPE_UINT32;
+    spip.depth.compare = SG_COMPAREFUNC_LESS_EQUAL;
+    spip.depth.write_enabled = true;
+    spip.sample_count = 1;
+    spip.cull_mode = SG_CULLMODE_NONE;
+    m_shadow_pipeline = sg_make_pipeline(&spip);
+
+    // ── Shadow map images ─────────────────────────────────────────────────
+    sg_image_desc depth_desc = {};
+    depth_desc.width = SHADOW_MAP_SIZE;
+    depth_desc.height = SHADOW_MAP_SIZE;
+    depth_desc.pixel_format = SG_PIXELFORMAT_DEPTH;
+    depth_desc.sample_count = 1;
+    depth_desc.usage.depth_stencil_attachment = true;
+    m_shadow_depth = sg_make_image(&depth_desc);
+
+    sg_image_desc color_desc = {};
+    color_desc.width = SHADOW_MAP_SIZE;
+    color_desc.height = SHADOW_MAP_SIZE;
+    color_desc.pixel_format = SG_PIXELFORMAT_RGBA8;
+    color_desc.sample_count = 1;
+    color_desc.usage.color_attachment = true;
+    m_shadow_color = sg_make_image(&color_desc);
+
+    // ── Shadow pass attachment views ──────────────────────────────────────
+    sg_view_desc cav = {};
+    cav.color_attachment.image = m_shadow_color;
+    m_shadow_color_att_view = sg_make_view(&cav);
+
+    sg_view_desc dav = {};
+    dav.depth_stencil_attachment.image = m_shadow_depth;
+    m_shadow_depth_att_view = sg_make_view(&dav);
+
+    // ── Shadow map texture view (for sampling in main pass) ──────────────
+    sg_view_desc tv = {};
+    tv.texture.image = m_shadow_depth;
+    m_shadow_tex_view = sg_make_view(&tv);
+
+    sg_view_desc color_tv = {};
+    color_tv.texture.image = m_shadow_color;
+    m_shadow_color_tex_view = sg_make_view(&color_tv);
+
+    // ── Shadow sampler ────────────────────────────────────────────────────
+    sg_sampler_desc smp_desc = {};
+    smp_desc.min_filter = SG_FILTER_NEAREST;
+    smp_desc.mag_filter = SG_FILTER_NEAREST;
+    smp_desc.wrap_u = SG_WRAP_CLAMP_TO_EDGE;
+    smp_desc.wrap_v = SG_WRAP_CLAMP_TO_EDGE;
+    m_shadow_sampler = sg_make_sampler(&smp_desc);
+
+    // ── Camera ───────────────────────────────────────────────────────────
+    SetupCamera();
+    m_stamp = stm_now();
+    m_pace_stamp = stm_now();
+
+    LOG_INFO("Renderer: sokol_gfx initialized");
+}
+
+void Renderer::Shutdown() {
+    if (m_stream) m_stream->Shutdown();
+    if (m_shadow_sampler.id) sg_destroy_sampler(m_shadow_sampler);
+    if (m_shadow_tex_view.id) sg_destroy_view(m_shadow_tex_view);
+    if (m_shadow_color_tex_view.id) sg_destroy_view(m_shadow_color_tex_view);
+    if (m_shadow_depth_att_view.id) sg_destroy_view(m_shadow_depth_att_view);
+    if (m_shadow_color_att_view.id) sg_destroy_view(m_shadow_color_att_view);
+    if (m_shadow_depth.id) sg_destroy_image(m_shadow_depth);
+    if (m_shadow_color.id) sg_destroy_image(m_shadow_color);
+    if (m_shadow_pipeline.id) sg_destroy_pipeline(m_shadow_pipeline);
+    if (m_shadow_shader.id) sg_destroy_shader(m_shadow_shader);
+    if (m_pipeline.id) sg_destroy_pipeline(m_pipeline);
+    if (m_shader.id) sg_destroy_shader(m_shader);
+    m_mesh_cache.UnloadAll();
     LOG_INFO("Renderer: shutdown");
 }
 
-bool Renderer::ShouldClose() const { return WindowShouldClose(); }
+bool Renderer::ShouldClose() const {
+    return false;
+}
+
+void Renderer::EnableStreaming(int port, int fps) {
+    m_stream_fps = fps;
+    m_stream = std::make_unique<StreamEncoder>();
+    m_stream->Init(port, sapp_width(), sapp_height(), fps);
+}
+
+// ── Camera ────────────────────────────────────────────────────────────────────
+
+void Renderer::SetupCamera() {
+    float sp = m_cam.dist * sinf(m_cam.pitch * 3.14159265f / 180.0f);
+    float c = m_cam.dist * cosf(m_cam.pitch * 3.14159265f / 180.0f);
+    m_cam.pos[0] = m_cam.target[0] + c * sinf(m_cam.yaw * 3.14159265f / 180.0f);
+    m_cam.pos[1] = m_cam.target[1] - sp;
+    m_cam.pos[2] = m_cam.target[2] + c * cosf(m_cam.yaw * 3.14159265f / 180.0f);
+}
+
+void Renderer::BuildProjMatrix(float out[16], float fov, float near, float far) const {
+    float aspect = (float)sapp_width() / fmaxf(1.0f, (float)sapp_height());
+    mat4_perspective(fov * 3.14159265f / 180.0f, aspect, near, far, out);
+}
+
+void Renderer::BuildViewMatrix(float out[16]) const {
+    mat4_look_at(m_cam.pos, m_cam.target, m_cam.up, out);
+}
+
+void Renderer::BuildLightVPMatrix(float out[16]) const {
+    float eye[3] = {0.0f, 10.0f, 0.0f};
+    float center[3] = {0.0f, 0.0f, 0.0f};
+    float up[3] = {0.0f, 0.0f, -1.0f};
+    float view[16], proj[16];
+    mat4_look_at(eye, center, up, view);
+    mat4_ortho(-0.001f, 0.001f, -8.0f, 8.0f, 0.5f, 20.0f, proj); // tiny numbers here. basically the render works in the region OUTSIDE the rectange bounded by those numbers.
+    mat4_mul(view, proj, out);
+}
+
+void Renderer::UpdateCamera(float dt) {
+    float speed = 5.0f * dt;
+    float fwd[3], right[3];
+    vec3_sub(m_cam.target, m_cam.pos, fwd);
+    fwd[1] = 0;
+    vec3_normalize(fwd, fwd);
+    vec3_cross(fwd, m_cam.up, right);
+    vec3_normalize(right, right);
+
+    float move[3] = {0,0,0};
+    if (m_keys[SAPP_KEYCODE_W]) vec3_add(move, fwd, move);
+    if (m_keys[SAPP_KEYCODE_S]) vec3_sub(move, fwd, move);
+    if (m_keys[SAPP_KEYCODE_A]) vec3_sub(move, right, move);
+    if (m_keys[SAPP_KEYCODE_D]) vec3_add(move, right, move);
+    if (m_keys[SAPP_KEYCODE_Q]) move[1] += 1;
+    if (m_keys[SAPP_KEYCODE_E]) move[1] -= 1;
+    vec3_scale(move, speed, move);
+    vec3_add(m_cam.target, move, m_cam.target);
+    vec3_add(m_cam.pos, move, m_cam.pos);
+}
+
+// ── Event handling ────────────────────────────────────────────────────────────
+
+void Renderer::HandleEvent(const sapp_event* e) {
+    switch (e->type) {
+        case SAPP_EVENTTYPE_KEY_DOWN:
+            if (e->key_code < 256) m_keys[e->key_code] = true;
+            if (e->key_code == SAPP_KEYCODE_TAB) m_cameraLocked = !m_cameraLocked;
+            if (e->key_code == SAPP_KEYCODE_LEFT_ALT || e->key_code == SAPP_KEYCODE_RIGHT_ALT)
+                m_alt_pressed = true;
+            break;
+        case SAPP_EVENTTYPE_KEY_UP:
+            if (e->key_code < 256) m_keys[e->key_code] = false;
+            if (e->key_code == SAPP_KEYCODE_LEFT_ALT || e->key_code == SAPP_KEYCODE_RIGHT_ALT)
+                m_alt_pressed = false;
+            break;
+        case SAPP_EVENTTYPE_MOUSE_DOWN:
+            if (e->mouse_button == SAPP_MOUSEBUTTON_LEFT) {
+                m_mouse_down = true;
+                m_mouse_last_x = e->mouse_x;
+                m_mouse_last_y = e->mouse_y;
+            }
+            break;
+        case SAPP_EVENTTYPE_MOUSE_UP:
+            if (e->mouse_button == SAPP_MOUSEBUTTON_LEFT) m_mouse_down = false;
+            break;
+        case SAPP_EVENTTYPE_MOUSE_MOVE:
+            if (m_mouse_down && !m_cameraLocked) {
+                float dx = e->mouse_x - m_mouse_last_x;
+                float dy = e->mouse_y - m_mouse_last_y;
+                m_mouse_last_x = e->mouse_x;
+                m_mouse_last_y = e->mouse_y;
+                m_cam.yaw += dx * 0.2f;
+                m_cam.pitch -= dy * 0.2f;
+                m_cam.pitch = fmaxf(-89.0f, fminf(89.0f, m_cam.pitch));
+            }
+            break;
+        case SAPP_EVENTTYPE_MOUSE_SCROLL:
+            m_cam.dist *= (e->scroll_y > 0) ? 0.9f : 1.1f;
+            if (m_cam.dist < 0.5f) m_cam.dist = 0.5f;
+            if (m_cam.dist > 50.0f) m_cam.dist = 50.0f;
+            break;
+        default:
+            break;
+    }
+}
+
+// ── Draw helpers ──────────────────────────────────────────────────────────────
+
+void Renderer::BuildMatrix(float out[16], const float pos[3], const float rot[4]) const {
+    float r[16];
+    QuatToMatrix(rot, r);
+    r[12] = pos[0]; r[13] = pos[1]; r[14] = pos[2];
+    memcpy(out, r, 16 * sizeof(float));
+}
+
+void Renderer::DrawLightGizmos() {
+    (void)0;
+}
+
+void Renderer::DrawForceVectors(const WorldSnapshot& snap) {
+    (void)snap;
+}
+
+void Renderer::DrawRaycasts(const std::vector<Raycaster*>& rcs) {
+    (void)rcs;
+}
 
 // ── Main draw ─────────────────────────────────────────────────────────────────
 
-void Renderer::DrawFrame(const WorldSnapshot &snapshot,
-                         bool nt_connected,
-                         float sim_hz, float target_hz, float nt_staleness_ms)
-{
-    if (IsKeyPressed(KEY_TAB))
-        m_cameraLocked = !m_cameraLocked;
-    if (m_cameraLocked)
-        UpdateCamera(&m_camera, CAMERA_FREE);
-
-    if (m_shaderLoaded)
-        UpdateLightUniforms();
-
-    // ── Shadow pass (depth only, into FBO) ───────────────────────────────
-    if (m_shadowEnabled)
-    {
-        RenderShadowPass(snapshot);
-
-        // Bind the depth texture to slot 1 so the main shader can sample it
-        rlActiveTextureSlot(1);
-        rlEnableTexture(m_shadowDepthTex);
-    }
-    if (m_stream)
-        BeginTextureMode(m_stream_rt);
-
-    // ── Main pass ─────────────────────────────────────────────────────────
-    BeginDrawing();
-    ClearBackground({28, 28, 32, 255});
-    BeginMode3D(m_camera);
-
-    for (const auto &body : snapshot.bodies)
-        DrawBodySnapshot(body, m_shaderLoaded ? &m_shader : nullptr, m_wireframe);
-
-    const auto &ss = snapshot.score_state;
-    float match_t = ss.match_time;
-    for (const auto &z : snapshot.score_zones) {
-        // active_start/end check
-        bool active = true;
-        if (z.active_start >= 0.f && match_t < z.active_start) active = false;
-        if (z.active_end   >= 0.f && match_t > z.active_end)   active = false;
-        if (!active) continue;
-
-        Color c = (z.team == 0)
-            ? Color{60, 100, 255, 180}
-            : Color{255, 60,  60,  180};
-        DrawCubeWires(
-            Vector3{z.center[0], z.center[1], z.center[2]},
-            z.half_extents[0] * 2.f,
-            z.half_extents[1] * 2.f,
-            z.half_extents[2] * 2.f,
-            c);
-    }
-
-    DrawLightGizmos();
-    DrawForceVectors(snapshot);
-    DrawRaycasts(m_raycasters);
-    EndMode3D();
-
-    if (m_shadowEnabled)
-    {
-        rlActiveTextureSlot(1);
-        rlDisableTexture();
-        rlActiveTextureSlot(0);
-    }
-
-    DrawDebugOverlay(snapshot, nt_connected, sim_hz, target_hz, nt_staleness_ms,m_wall_time_offset_ms);
-    DrawText("WASD: movement  RMB drag: cam angle  EQ+Arrows: rotate view  Scroll: zoom   ESC: quit  TAB: lock/unlock camera",
-             10, GetScreenHeight() - 20, 12, {200, 10, 10, 255});
-    if (m_stream)
-        {
-            EndTextureMode();
-            BeginDrawing();
-            DrawTextureRec(m_stream_rt.texture,
-                        {0, 0, (float)GetScreenWidth(), -(float)GetScreenHeight()},
-                        {0, 0}, WHITE);
-            EndDrawing();
+void Renderer::DrawFrame(const WorldSnapshot& snapshot,
+                          bool nt_connected,
+                          float sim_hz, float target_hz, float nt_ping_ms) {
+    // ── Frame pacing (--fps) ────────────────────────────────────────────
+    // sokol's frame_cb runs as fast as the swap chain allows; when a target
+    // FPS is set we sleep off whatever time is left in the frame budget so
+    // we don't render (and re-publish NT/raycast data) faster than asked.
+    if (m_target_fps > 0) {
+        double frame_budget = 1.0 / (double)m_target_fps;
+        double elapsed = stm_sec(stm_now() - m_pace_stamp);
+        if (elapsed < frame_budget) {
+            double remaining = frame_budget - elapsed;
+            std::this_thread::sleep_for(std::chrono::duration<double>(remaining));
         }
-        else
-        {
-            EndDrawing();
-        }
-
-
-
-if (m_stream)
-{
-    m_stream_accum += GetFrameTime();
-    if (m_stream_accum >= 1.0f / m_stream_fps)
-    {
-        m_stream_accum -= 1.0f / m_stream_fps;
-
-        Image frame = LoadImageFromTexture(m_stream_rt.texture);
-        ImageFlipVertical(&frame);
-        m_stream->PushFrame(frame.data, frame.width, frame.height);
-        UnloadImage(frame);
     }
-}
-}
+    m_pace_stamp = stm_now();
 
-void Renderer::EnableStreaming(int port, int fps)
-{
-    m_stream_fps  = fps;
-    m_stream_rt   = LoadRenderTexture(GetScreenWidth(), GetScreenHeight());
-    m_stream = std::make_unique<StreamEncoder>();
-    m_stream->Init(port, GetScreenWidth(), GetScreenHeight(), fps);
-}
+    float dt = stm_sec(stm_laptime(&m_stamp));
+    if (dt > 0.1f) dt = 0.1f;
 
-// ── Light gizmos ──────────────────────────────────────────────────────────────
+    if (!m_cameraLocked)
+        UpdateCamera(dt);
+    SetupCamera();
 
-void Renderer::DrawLightGizmos()
-{
-    if (!m_shaderLoaded)
-        return;
-    DrawSphere({LIGHT_X, LIGHT_Y, LIGHT_Z}, 0.12f, {255, 245, 200, 255});
-}
+    // Per-frame matrices
+    float proj[16], view[16];
+    BuildProjMatrix(proj, m_cam.fov, 0.1f, 100.0f);
+    BuildViewMatrix(view);
 
-// ── Force vectors ─────────────────────────────────────────────────────────────
+    // Light VP matrix
+    float light_vp[16];
+    BuildLightVPMatrix(light_vp);
 
-void Renderer::DrawForceVectors(const WorldSnapshot &snapshot)
-{
-    for (int ri = 0; ri < (int)snapshot.robot_indices.size(); ++ri)
+    // Per-frame FS uniforms
+    FsUniforms fs_ub = {};
+    fs_ub.light_pos[0] = 0.0f;
+    fs_ub.light_pos[1] = 10.0f;
+    fs_ub.light_pos[2] = 0.0f;
+    fs_ub.light_pos[3] = 1.0f;
+    fs_ub.ambient[0] = 0.50f;
+    fs_ub.ambient[1] = 0.50f;
+    fs_ub.ambient[2] = 0.50f;
+    fs_ub.ambient[3] = 1.0f;
+    fs_ub.view_pos[0] = m_cam.pos[0];
+    fs_ub.view_pos[1] = m_cam.pos[1];
+    fs_ub.view_pos[2] = m_cam.pos[2];
+    fs_ub.view_pos[3] = 1.0f;
+    fs_ub.light_power = 2.5f;
+    memcpy(fs_ub.light_vp, light_vp, sizeof(light_vp));
+
+    // ── Shadow pass ───────────────────────────────────────────────────────
     {
-        int robot_index = snapshot.robot_indices[ri];
-        if (robot_index < 0 || robot_index >= (int)snapshot.bodies.size())
-            continue;
-        const BodySnapshot &robot = snapshot.bodies[robot_index];
-        if (robot.motors.empty())
-            continue;
+        sg_pass shadow_pass = {};
+        shadow_pass.action.colors[0].load_action   = SG_LOADACTION_CLEAR;
+        shadow_pass.action.colors[0].store_action  = SG_STOREACTION_STORE;
+        shadow_pass.action.colors[0].clear_value   = {1.0f, 1.0f, 1.0f, 1.0f};
+        shadow_pass.action.depth.load_action       = SG_LOADACTION_CLEAR;
+        shadow_pass.action.depth.store_action      = SG_STOREACTION_DONTCARE;
+        shadow_pass.action.depth.clear_value       = 1.0f;
+        shadow_pass.attachments.colors[0]          = m_shadow_color_att_view;
+        shadow_pass.attachments.depth_stencil      = m_shadow_depth_att_view;
+        sg_begin_pass(&shadow_pass);
 
-        Vector3 robot_pos = {robot.pos[0], robot.pos[1], robot.pos[2]};
-        Quaternion robot_rot = {robot.rot[0], robot.rot[1], robot.rot[2], robot.rot[3]};
+        sg_apply_pipeline(m_shadow_pipeline);
 
-        for (int i = 0; i < (int)robot.motors.size(); ++i)
-        {
-            const MotorSnapshot &motor = robot.motors[i];
-            Vector3 local_pos = {motor.position[0], motor.position[1], motor.position[2]};
-            Vector3 world_pos = Vector3Add(robot_pos, Vector3RotateByQuaternion(local_pos, robot_rot));
+        ShadowVsUniforms svs_ub;
+        memcpy(svs_ub.light_vp, light_vp, sizeof(light_vp));
 
-            if (motor.normal_force > 0.5f)
-            {
-                float len = motor.normal_force * 0.01f;
-                Vector3 tip = Vector3Add(world_pos, {0, len, 0});
-                DrawArrow3D(world_pos, tip, motor.normal_force > 10000.0f ? ORANGE : GREEN, 20.0f);
-            }
+        for (const auto& body : snapshot.bodies) {
+            float model[16];
+            BuildMatrix(model, body.pos, body.rot);
+            memcpy(svs_ub.model, model, sizeof(model));
+            sg_apply_uniforms(0, SG_RANGE(svs_ub));
 
-            if (std::abs(motor.tractive_force) > 0.1f)
-            {
-                float len = std::abs(motor.tractive_force) * 0.001f;
-                Vector3 local_dir = {motor.direction[0], motor.direction[1], motor.direction[2]};
-                if (motor.tractive_force < 0)
-                    local_dir = Vector3Negate(local_dir);
-                Vector3 world_dir = Vector3RotateByQuaternion(local_dir, robot_rot);
-                Vector3 tip = Vector3Add(world_pos, Vector3Scale(world_dir, len));
-                Color col = std::abs(motor.tractive_force) > 1000.0f ? ORANGE
-                            : motor.slipping                          ? RED
-                                                                      : BLUE;
-                DrawArrow3D(world_pos, tip, col, 0.02f);
+            const CachedMesh* mesh = m_mesh_cache.Get(body.def);
+            if (mesh && mesh->valid) {
+                sg_bindings bind = {};
+                bind.vertex_buffers[0] = mesh->vertex_buf;
+                bind.index_buffer = mesh->index_buf;
+                sg_apply_bindings(&bind);
+                sg_draw(0, mesh->num_indices, 1);
             }
         }
+
+        sg_end_pass();
     }
-}
-void Renderer::DrawArrow3D(Vector3 start, Vector3 end, Color color, float thickness)
-{
-    DrawLine3D(start, end, color);
 
-    Vector3 dir = Vector3Normalize(Vector3Subtract(end, start));
-    Vector3 arrowhead = Vector3Subtract(end, Vector3Scale(dir, 0.05f));
-    Vector3 head_end = Vector3Add(arrowhead, Vector3Scale(dir, 0.03f));
-
-    Vector3 perp1 = Vector3CrossProduct(dir, {0, 1, 0});
-    if (Vector3Length(perp1) < 0.001f)
-        perp1 = Vector3CrossProduct(dir, {1, 0, 0});
-    perp1 = Vector3Normalize(perp1);
-    Vector3 perp2 = Vector3CrossProduct(dir, perp1);
-
-    float w = 0.015f;
-    DrawLine3D(head_end, Vector3Add(arrowhead, Vector3Scale(perp1, w)), color);
-    DrawLine3D(head_end, Vector3Add(arrowhead, Vector3Scale(perp1, -w)), color);
-    DrawLine3D(head_end, Vector3Add(arrowhead, Vector3Scale(perp2, w)), color);
-    DrawLine3D(head_end, Vector3Add(arrowhead, Vector3Scale(perp2, -w)), color);
-}
-
-void Renderer::DrawRaycasts(const std::vector<Raycaster*> &raycasters)
-{
-    //LOG_INFO("DrawRaycasts: %zu raycasters", raycasters.size());
-    for (const Raycaster *rc : raycasters)
+    // ── Main render pass ──────────────────────────────────────────────────
     {
-        if (!rc) continue;
-        
-        for (const RayRenderData &r : rc->RenderData())
-        {
-            Color col = { r.color[0], r.color[1], r.color[2], r.color[3] };
-            Color hit_col = r.did_hit
-                ? Color{ (uint8_t)std::min(255, (int)r.color[0] + 60),
-                         r.color[1], r.color[2], 255 }
-                : Color{ r.color[0], r.color[1], r.color[2],
-                         (uint8_t)(r.color[3] / 3) };  // dim if no hit
+        sg_pass pass = {};
+        pass.action = m_pass_action;
+        pass.swapchain = sglue_swapchain();
+        sg_begin_pass(&pass);
 
-            // Ray line
-            DrawLine3D(
-                Vector3{ r.origin[0], r.origin[1], r.origin[2] },
-                Vector3{ r.hit[0],    r.hit[1],    r.hit[2]    },
-                col
-            );
+        sg_apply_pipeline(m_pipeline);
 
-            // Hit sphere marker
-            if (r.did_hit)
-                DrawSphere(Vector3{ r.hit[0], r.hit[1], r.hit[2] }, 0.04f, hit_col);
+        for (const auto& body : snapshot.bodies) {
+            float model[16];
+            BuildMatrix(model, body.pos, body.rot);
+            VsUniforms vs_ub;
+            memcpy(vs_ub.model, model, sizeof(model));
+            memcpy(vs_ub.view, view, sizeof(view));
+            memcpy(vs_ub.projection, proj, sizeof(proj));
+            sg_apply_uniforms(0, SG_RANGE(vs_ub));
+
+            const CachedMesh* mesh = m_mesh_cache.Get(body.def);
+            if (mesh && mesh->valid) {
+                sg_bindings bind = {};
+                bind.vertex_buffers[0] = mesh->vertex_buf;
+                bind.index_buffer = mesh->index_buf;
+                bind.views[0] = m_shadow_color_tex_view;
+                bind.samplers[0] = m_shadow_sampler;
+
+                if (!mesh->ranges.empty()) {
+                    for (const auto& range : mesh->ranges) {
+                        memcpy(fs_ub.model_color, range.color, sizeof(float[4]));
+                        sg_apply_uniforms(1, SG_RANGE(fs_ub));
+                        sg_apply_bindings(&bind);
+                        sg_draw(range.index_offset, range.index_count, 1);
+                    }
+                } else {
+                    float col[4];
+                    BodyColor(body.def, col);
+                    if (mesh->has_vertex_colors) {
+                        col[0] = 1.0f; col[1] = 1.0f; col[2] = 1.0f; col[3] = 1.0f;
+                    }
+                    memcpy(fs_ub.model_color, col, sizeof(col));
+                    sg_apply_uniforms(1, SG_RANGE(fs_ub));
+                    sg_apply_bindings(&bind);
+                    sg_draw(0, mesh->num_indices, 1);
+                }
+            }
+        }
+
+        // ── Debug overlay ─────────────────────────────────────────────────
+        DrawDebugOverlay(snapshot, nt_connected, sim_hz, target_hz, nt_ping_ms, m_wall_time_offset_ms);
+
+        sg_end_pass();
+    }
+    sg_commit();
+
+    // ── Stream (dummy) ───────────────────────────────────────────────────
+    if (m_stream) {
+        m_stream_accum += dt;
+        if (m_stream_accum >= 1.0f / m_stream_fps) {
+            m_stream_accum -= 1.0f / m_stream_fps;
+            m_stream->PushFrame(nullptr, sapp_width(), sapp_height());
         }
     }
 }
