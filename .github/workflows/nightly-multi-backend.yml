@@ -142,6 +142,32 @@ jobs:
             echo "path=build/Release/frc_sim" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Stage binary + runtime deps for distribution
+        id: stage
+        if: steps.bin.outcome == 'success'
+        shell: bash
+        run: |
+          STAGE="dist/frc_sim-${{ matrix.name }}"
+          mkdir -p "$STAGE"
+          cp "${{ steps.bin.outputs.path }}" "$STAGE/"
+
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            # vcpkg's default Windows triplet (x64-windows) links shared
+            # (DLL) by default -- Release-config DLLs for every vcpkg dep
+            # land in vcpkg_installed/x64-windows/bin. Windows resolves DLLs
+            # from the same folder as the .exe, so copy them alongside it
+            # rather than relying on the machine running this having
+            # vcpkg/VCPKG_ROOT set up.
+            cp build/vcpkg_installed/x64-windows/bin/*.dll "$STAGE/" 2>/dev/null || true
+          fi
+          # Linux's default triplet (x64-linux) links vcpkg deps statically,
+          # so there's nothing vcpkg-provided to stage here. What's left is
+          # dynamically linked against true *system* libraries (X11, GL,
+          # the Vulkan loader) -- those ship with the OS and aren't
+          # something an app bundles itself.
+
+          echo "path=$STAGE" >> "$GITHUB_OUTPUT"
+
       - name: Smoke test (best-effort -- see job comment)
         uses: coactions/setup-xvfb@v1
         if: runner.os == 'Linux'
@@ -194,11 +220,11 @@ jobs:
           echo "No unexpected errors detected."
 
       - name: Upload binary
-        if: steps.bin.outcome == 'success'
+        if: steps.stage.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: frc_sim-${{ matrix.name }}
-          path: ${{ steps.bin.outputs.path }}
+          path: ${{ steps.stage.outputs.path }}
           if-no-files-found: warn
 
       - name: Upload log
@@ -267,6 +293,11 @@ jobs:
           echo "No sg errors/panics/crashes detected in log."
 
       - name: Upload binary
+        # macOS's default vcpkg triplet (arm64-osx on these Apple Silicon
+        # runners) links vcpkg deps statically, same reasoning as the Linux
+        # legs above -- nothing vcpkg-provided to bundle. Remaining dynamic
+        # links are macOS system frameworks (Metal, Cocoa), which ship with
+        # the OS, not something the app distributes.
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -307,21 +338,13 @@ jobs:
           path: artifacts
           merge-multiple: false
 
-      - name: Flatten and rename for release upload
+      - name: Zip each leg for release upload
         if: steps.download.outcome == 'success'
         run: |
           mkdir -p release-assets
           for dir in artifacts/*/; do
-            name="$(basename "$dir")"        # e.g. frc_sim-linux-vulkan
-            for f in "$dir"*; do
-              base="$(basename "$f")"
-              ext="${base##*.}"
-              if [ "$base" = "$ext" ]; then
-                cp "$f" "release-assets/${name}"
-              else
-                cp "$f" "release-assets/${name}.${ext}"
-              fi
-            done
+            name="$(basename "$dir")"   # e.g. frc_sim-windows-vulkan
+            ( cd "$dir" && zip -r "../../release-assets/${name}.zip" . )
           done
           ls -la release-assets
 
