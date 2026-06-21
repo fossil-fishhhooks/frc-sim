@@ -130,7 +130,7 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
         with:
-        arch: x64
+          arch: x64
 
       - name: Configure
         shell: bash
