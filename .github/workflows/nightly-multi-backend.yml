@@ -35,10 +35,17 @@ jobs:
           - os: ubuntu-latest
             backend: vulkan
             name: linux-vulkan
-          - os: windows-latest
+          # Pinned to windows-2022 rather than windows-latest: as of June
+          # 2026 windows-latest rolled over to a VS 2026 ("Visual Studio 18")
+          # image, and the CMake version bundled there doesn't yet fully
+          # support that generator -- C-language compiler detection breaks
+          # for allwpilib (a C+CXX project) even though CXX detection still
+          # works. Revisit pinning once runner images ship a CMake new
+          # enough for VS 2026 (tracked upstream in cmake/conan/vscode-tools).
+          - os: windows-2022
             backend: gl
             name: windows-gl
-          - os: windows-latest
+          - os: windows-2022
             backend: vulkan
             name: windows-vulkan
 
