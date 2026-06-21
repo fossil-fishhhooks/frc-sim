@@ -3,11 +3,13 @@
 #include "render/DebugOverlay.h"
 #include "io/EasyLog.h"
 
+#include <sokol_app.h>
 #include <sokol_time.h>
 #include <sokol_glue.h>
 #include <cstdio>
 #include <cmath>
 #include <cstring>
+#include <cstdint>
 #include <chrono>
 #include <thread>
 
@@ -132,8 +134,8 @@ struct FsUniforms {
     float ambient[4];
     float light_pos[4];
     float view_pos[4];
-    float light_power;
     float light_vp[16];
+    float light_power;
 };
 
 struct ShadowVsUniforms {
@@ -211,6 +213,119 @@ static const char* fs_src_shadow_fallback =
 "    frag_color = vec4(d, d, d, 1.0);\n"
 "}\n";
 
+// ── Vulkan-specific shader sources (scalar block layout, explicit bindings) ──
+#ifdef SOKOL_VULKAN
+#include <shaderc/shaderc.h>
+#include <vector>
+
+static const char* vs_src_main_vk =
+"#version 450\n"
+"layout(std140, binding = 0) uniform vs_params {\n"
+"    mat4 model;\n"
+"    mat4 view;\n"
+"    mat4 projection;\n"
+"};\n"
+"layout(location = 0) in vec3 position;\n"
+"layout(location = 1) in vec3 normal;\n"
+"layout(location = 2) in vec4 color;\n"
+"layout(location = 0) out vec3 v_normal;\n"
+"layout(location = 1) out vec3 v_pos;\n"
+"layout(location = 2) out vec4 v_color;\n"
+"void main() {\n"
+"    vec4 world_pos = model * vec4(position, 1.0);\n"
+"    gl_Position = projection * view * world_pos;\n"
+"    v_normal = mat3(model) * normal;\n"
+"    v_pos = world_pos.xyz;\n"
+"    v_color = color;\n"
+"}\n";
+
+static const char* fs_src_main_vk =
+"#version 450\n"
+"layout(std140, binding = 1) uniform fs_params {\n"
+"    vec4 model_color;\n"
+"    vec4 ambient;\n"
+"    vec4 light_pos;\n"
+"    vec4 view_pos;\n"
+"    mat4 light_vp;\n"
+"    float light_power;\n"
+"};\n"
+"layout(set = 1, binding = 0) uniform sampler2D shadow_map;\n"
+"layout(location = 0) in vec3 v_normal;\n"
+"layout(location = 1) in vec3 v_pos;\n"
+"layout(location = 2) in vec4 v_color;\n"
+"layout(location = 0) out vec4 frag_color;\n"
+"void main() {\n"
+"    vec3 N = normalize(v_normal);\n"
+"    vec3 Lv = light_pos.xyz - v_pos;\n"
+"    float dist = length(Lv);\n"
+"    vec3 L = Lv / dist;\n"
+"    float atten = 1.0 / (1.0 + 0.007 * dist * dist);\n"
+"    float diff = max(dot(N, L), 0.0);\n"
+"    vec3 base = model_color.rgb * v_color.rgb;\n"
+"    vec3 amb = ambient.rgb * base;\n"
+"    vec3 diffuse = diff * atten * base * light_power;\n"
+"    vec3 V = normalize(view_pos.xyz - v_pos);\n"
+"    vec3 H = normalize(L + V);\n"
+"    float spec = pow(max(dot(N, H), 0.0), 32.0) * atten * light_power;\n"
+"    frag_color = vec4(amb + diffuse + vec3(spec * 0.3), 1.0);\n"
+"}\n";
+
+static const char* vs_src_shadow_vk =
+"#version 450\n"
+"layout(std140, binding = 0) uniform shadow_vs_params {\n"
+"    mat4 light_vp;\n"
+"    mat4 model;\n"
+"};\n"
+"layout(location = 0) in vec3 position;\n"
+"void main() {\n"
+"    gl_Position = light_vp * model * vec4(position, 1.0);\n"
+"}\n";
+
+static const char* fs_src_shadow_vk =
+"#version 450\n"
+"layout(location = 0) out vec4 frag_color;\n"
+"void main() {\n"
+"    float d = gl_FragCoord.z;\n"
+"    frag_color = vec4(d, d, d, 1.0);\n"
+"}\n";
+
+struct CompiledSpv {
+    std::vector<uint32_t> bytecode;
+};
+
+static CompiledSpv CompileGLSLtoSPV(const char* source, shaderc_shader_kind kind, const char* name) {
+    CompiledSpv result;
+    fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) start\n", name);
+    shaderc_compiler_t compiler = shaderc_compiler_initialize();
+    if (!compiler) {
+        LOG_ERROR("Renderer: shaderc_compiler_initialize failed");
+        fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) compiler init FAILED\n", name);
+        return result;
+    }
+    fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) compiler ok\n", name);
+    shaderc_compile_options_t opts = shaderc_compile_options_initialize();
+    shaderc_compilation_result_t cr = shaderc_compile_into_spv(compiler, source, strlen(source), kind, name, "main", opts);
+    fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) compile done\n", name);
+    if (shaderc_result_get_compilation_status(cr) != shaderc_compilation_status_success) {
+        LOG_ERROR("Renderer: shaderc compilation of %s failed: %s", name, shaderc_result_get_error_message(cr));
+        shaderc_result_release(cr);
+        shaderc_compile_options_release(opts);
+        shaderc_compiler_release(compiler);
+        fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) COMPILATION FAILED\n", name);
+        return result;
+    }
+    fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) compile SUCCESS\n", name);
+    size_t n = shaderc_result_get_length(cr);
+    result.bytecode.resize(n / sizeof(uint32_t));
+    memcpy(result.bytecode.data(), shaderc_result_get_bytes(cr), n);
+    shaderc_result_release(cr);
+    shaderc_compile_options_release(opts);
+    shaderc_compiler_release(compiler);
+    fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) done, %zu bytes SPIR-V\n", name, n);
+    return result;
+}
+#endif
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 void Renderer::Init(int width, int height, const char* title, int target_fps) {
@@ -242,16 +357,37 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     const char* fs_shadow = loaded ? fs_shadow_str.c_str() : fs_src_shadow_fallback;
     if (loaded) LOG_INFO("Renderer: loaded assets/shader/shadow.fs");
 
+#ifdef SOKOL_VULKAN
+    // Override shader sources for Vulkan (use #version 450 with explicit bindings)
+    vs_main = vs_src_main_vk;
+    fs_main = fs_src_main_vk;
+    vs_shadow = vs_src_shadow_vk;
+    fs_shadow = fs_src_shadow_vk;
+
+    CompiledSpv vs_main_spv = CompileGLSLtoSPV(vs_main, shaderc_glsl_vertex_shader, "main.vs");
+    CompiledSpv fs_main_spv = CompileGLSLtoSPV(fs_main, shaderc_glsl_fragment_shader, "main.fs");
+    CompiledSpv vs_shadow_spv = CompileGLSLtoSPV(vs_shadow, shaderc_glsl_vertex_shader, "shadow.vs");
+    CompiledSpv fs_shadow_spv = CompileGLSLtoSPV(fs_shadow, shaderc_glsl_fragment_shader, "shadow.fs");
+#endif
+
     // ── Main shader ───────────────────────────────────────────────────────
     sg_shader_desc shd = {};
+#ifdef SOKOL_VULKAN
+    shd.vertex_func.bytecode = SG_RANGE(vs_main_spv.bytecode);
+    shd.vertex_func.entry = "main";
+    shd.fragment_func.bytecode = SG_RANGE(fs_main_spv.bytecode);
+    shd.fragment_func.entry = "main";
+#else
     shd.vertex_func.source = vs_main;
     shd.vertex_func.entry = "main";
     shd.fragment_func.source = fs_main;
     shd.fragment_func.entry = "main";
+#endif
 
     shd.uniform_blocks[0].stage = SG_SHADERSTAGE_VERTEX;
     shd.uniform_blocks[0].size = sizeof(VsUniforms);
     shd.uniform_blocks[0].layout = SG_UNIFORMLAYOUT_NATIVE;
+    shd.uniform_blocks[0].spirv_set0_binding_n = 0;
     shd.uniform_blocks[0].glsl_uniforms[0] = {SG_UNIFORMTYPE_MAT4, 1, "model"};
     shd.uniform_blocks[0].glsl_uniforms[1] = {SG_UNIFORMTYPE_MAT4, 1, "view"};
     shd.uniform_blocks[0].glsl_uniforms[2] = {SG_UNIFORMTYPE_MAT4, 1, "projection"};
@@ -259,18 +395,21 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     shd.uniform_blocks[1].stage = SG_SHADERSTAGE_FRAGMENT;
     shd.uniform_blocks[1].size = sizeof(FsUniforms);
     shd.uniform_blocks[1].layout = SG_UNIFORMLAYOUT_NATIVE;
+    shd.uniform_blocks[1].spirv_set0_binding_n = 1;
     shd.uniform_blocks[1].glsl_uniforms[0] = {SG_UNIFORMTYPE_FLOAT4, 1, "model_color"};
     shd.uniform_blocks[1].glsl_uniforms[1] = {SG_UNIFORMTYPE_FLOAT4, 1, "ambient"};
     shd.uniform_blocks[1].glsl_uniforms[2] = {SG_UNIFORMTYPE_FLOAT4, 1, "light_pos"};
     shd.uniform_blocks[1].glsl_uniforms[3] = {SG_UNIFORMTYPE_FLOAT4, 1, "view_pos"};
-    shd.uniform_blocks[1].glsl_uniforms[4] = {SG_UNIFORMTYPE_FLOAT, 1, "light_power"};
-    shd.uniform_blocks[1].glsl_uniforms[5] = {SG_UNIFORMTYPE_MAT4, 1, "light_vp"};
+    shd.uniform_blocks[1].glsl_uniforms[4] = {SG_UNIFORMTYPE_MAT4, 1, "light_vp"};
+    shd.uniform_blocks[1].glsl_uniforms[5] = {SG_UNIFORMTYPE_FLOAT, 1, "light_power"};
 
     shd.views[0].texture.stage = SG_SHADERSTAGE_FRAGMENT;
     shd.views[0].texture.image_type = SG_IMAGETYPE_2D;
+    shd.views[0].texture.spirv_set1_binding_n = 0;
 
     shd.samplers[0].stage = SG_SHADERSTAGE_FRAGMENT;
     shd.samplers[0].sampler_type = SG_SAMPLERTYPE_FILTERING;
+    shd.samplers[0].spirv_set1_binding_n = 0;
 
     shd.texture_sampler_pairs[0].stage = SG_SHADERSTAGE_FRAGMENT;
     shd.texture_sampler_pairs[0].view_slot = 0;
@@ -297,27 +436,38 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     pip.layout.attrs[2].buffer_index = 0;
     pip.layout.attrs[2].offset = 24;
     pip.layout.buffers[0].stride = sizeof(Vertex);
+    pip.sample_count = sapp_sample_count();
     pip.shader = m_shader;
     pip.index_type = SG_INDEXTYPE_UINT32;
     pip.depth.compare = SG_COMPAREFUNC_LESS_EQUAL;
     pip.depth.write_enabled = true;
     pip.cull_mode = SG_CULLMODE_BACK;
     pip.face_winding = SG_FACEWINDING_CCW;
+    fprintf(stderr, "DEBUG: before sg_make_pipeline (main)\n");
     m_pipeline = sg_make_pipeline(&pip);
+    fprintf(stderr, "DEBUG: after sg_make_pipeline (main), id=%u\n", m_pipeline.id);
     if (!m_pipeline.id) {
         LOG_ERROR("Renderer: failed to create main pipeline");
     }
 
     // ── Shadow shader ─────────────────────────────────────────────────────
     sg_shader_desc shd_shadow = {};
+#ifdef SOKOL_VULKAN
+    shd_shadow.vertex_func.bytecode = SG_RANGE(vs_shadow_spv.bytecode);
+    shd_shadow.vertex_func.entry = "main";
+    shd_shadow.fragment_func.bytecode = SG_RANGE(fs_shadow_spv.bytecode);
+    shd_shadow.fragment_func.entry = "main";
+#else
     shd_shadow.vertex_func.source = vs_shadow;
     shd_shadow.vertex_func.entry = "main";
     shd_shadow.fragment_func.source = fs_shadow;
     shd_shadow.fragment_func.entry = "main";
+#endif
 
     shd_shadow.uniform_blocks[0].stage = SG_SHADERSTAGE_VERTEX;
     shd_shadow.uniform_blocks[0].size = sizeof(ShadowVsUniforms);
     shd_shadow.uniform_blocks[0].layout = SG_UNIFORMLAYOUT_NATIVE;
+    shd_shadow.uniform_blocks[0].spirv_set0_binding_n = 0;
     shd_shadow.uniform_blocks[0].glsl_uniforms[0] = {SG_UNIFORMTYPE_MAT4, 1, "light_vp"};
     shd_shadow.uniform_blocks[0].glsl_uniforms[1] = {SG_UNIFORMTYPE_MAT4, 1, "model"};
 
@@ -330,7 +480,7 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     sg_pipeline_desc spip = {};
     spip.color_count = 1;
     spip.colors[0].pixel_format = SG_PIXELFORMAT_RGBA8;
-    spip.depth.pixel_format = SG_PIXELFORMAT_DEPTH_STENCIL;
+    spip.depth.pixel_format = SG_PIXELFORMAT_DEPTH;
     spip.layout.attrs[0].format = SG_VERTEXFORMAT_FLOAT3;
     spip.layout.attrs[0].buffer_index = 0;
     spip.layout.attrs[0].offset = 0;
@@ -339,6 +489,7 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     spip.index_type = SG_INDEXTYPE_UINT32;
     spip.depth.compare = SG_COMPAREFUNC_LESS_EQUAL;
     spip.depth.write_enabled = true;
+    spip.sample_count = 1;
     spip.cull_mode = SG_CULLMODE_NONE;
     m_shadow_pipeline = sg_make_pipeline(&spip);
 
@@ -346,17 +497,17 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     sg_image_desc depth_desc = {};
     depth_desc.width = SHADOW_MAP_SIZE;
     depth_desc.height = SHADOW_MAP_SIZE;
-    depth_desc.pixel_format = SG_PIXELFORMAT_DEPTH_STENCIL;
+    depth_desc.pixel_format = SG_PIXELFORMAT_DEPTH;
+    depth_desc.sample_count = 1;
     depth_desc.usage.depth_stencil_attachment = true;
-    depth_desc.usage.immutable = true;
     m_shadow_depth = sg_make_image(&depth_desc);
 
     sg_image_desc color_desc = {};
     color_desc.width = SHADOW_MAP_SIZE;
     color_desc.height = SHADOW_MAP_SIZE;
     color_desc.pixel_format = SG_PIXELFORMAT_RGBA8;
+    color_desc.sample_count = 1;
     color_desc.usage.color_attachment = true;
-    color_desc.usage.immutable = true;
     m_shadow_color = sg_make_image(&color_desc);
 
     // ── Shadow pass attachment views ──────────────────────────────────────

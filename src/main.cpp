@@ -75,7 +75,7 @@ static void PrintUsage(const char* argv0) {
                  "  --h      <height>            Window height       (default: 720)\n"
                  "  --threads <n>                Jolt worker threads (default: auto)\n"
                  "  --vsync  <0|1>               Enable/disable vsync (default: 1)\n"
-                  "  --backend <gl|vulkan|d3d11|metal>  Graphics backend (default: gl; d3d11 Windows, metal macOS)\n"
+                  "  --backend <gl|vulkan|metal>  Graphics backend (default: gl; metal only on macOS)\n"
                  "  --stream <port>              Streaming port      (default: 5000)\n"
                  "  --stream-fps <fps>           Stream frame rate   (default: 30)\n"
                  "  --raycast <path.json>        Raycast sensor definitions\n";
@@ -479,8 +479,7 @@ sapp_desc sokol_main(int argc, char* argv[]) {
         // _NET_WM_BYPASS_COMPOSITOR in _sapp_x11_create_window().
         setenv("SAPP_X11_NO_VSYNC", "1", 0);
 #else
-        LOG_WARN("main: --vsync 0 is not yet implemented for the Windows/D3D11 "
-                 "backend; swap_interval will still be forced to 1 by sokol_app.");
+        (void)0;
 #endif
     }
 

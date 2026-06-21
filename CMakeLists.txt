@@ -22,6 +22,10 @@ set(FRC_SIM_BACKEND "gl" CACHE STRING
 # ── vcpkg deps ─────────────────────────────────────────────────────────────────
 find_package(nlohmann_json CONFIG REQUIRED)
 
+if(FRC_SIM_BACKEND STREQUAL "vulkan")
+    find_package(unofficial-shaderc CONFIG REQUIRED)
+endif()
+
 # ── FetchContent ───────────────────────────────────────────────────────────────
 include(FetchContent)
 
@@ -89,26 +93,13 @@ target_include_directories(frc_sim PRIVATE src)
 target_include_directories(frc_sim PRIVATE src/external/sokol)
 
 # ── Backend selection ───────────────────────────────────────────────────────────
-# Map FRC_SIM_BACKEND to the matching SOKOL_* define and validate platform.
-#
-# Backend   Platform     Sokol define     Required link libraries
-# -------   --------     --------------   ------------------------
-# gl        all          SOKOL_GLCORE     GL/OpenGL
-# vulkan    all          SOKOL_VULKAN     Vulkan
-# d3d11     Win32 only   SOKOL_D3D11      d3d11, dxgi
-# metal     Apple only   SOKOL_METAL      Metal.framework
+# Map FRC_SIM_BACKEND to the matching SOKOL_* define.
 set(_BACKEND_IS_VALID TRUE)
 
 if(FRC_SIM_BACKEND STREQUAL "gl")
     target_compile_definitions(frc_sim PRIVATE SOKOL_GLCORE)
 elseif(FRC_SIM_BACKEND STREQUAL "vulkan")
     target_compile_definitions(frc_sim PRIVATE SOKOL_VULKAN)
-elseif(FRC_SIM_BACKEND STREQUAL "d3d11")
-    if(NOT WIN32)
-        set(_BACKEND_IS_VALID FALSE)
-        message(FATAL_ERROR "FRC_SIM_BACKEND=d3d11 is only supported on Windows")
-    endif()
-    target_compile_definitions(frc_sim PRIVATE SOKOL_D3D11)
 elseif(FRC_SIM_BACKEND STREQUAL "metal")
     if(NOT APPLE)
         set(_BACKEND_IS_VALID FALSE)
@@ -117,7 +108,7 @@ elseif(FRC_SIM_BACKEND STREQUAL "metal")
     target_compile_definitions(frc_sim PRIVATE SOKOL_METAL)
 else()
     message(FATAL_ERROR
-        "FRC_SIM_BACKEND must be one of: gl, vulkan, d3d11 (Windows), metal (macOS)")
+        "FRC_SIM_BACKEND must be one of: gl, vulkan, metal (macOS)")
 endif()
 
 # vcpkg installs into a per-platform/arch "triplet" directory; this must
@@ -146,6 +137,10 @@ target_link_libraries(frc_sim PRIVATE
     wpiutil
     nlohmann_json::nlohmann_json
 )
+
+if(FRC_SIM_BACKEND STREQUAL "vulkan")
+    target_link_libraries(frc_sim PRIVATE unofficial::shaderc::shaderc)
+endif()
 
 if(UNIX AND NOT APPLE)
     # ── Linux: X11 is always needed; platform libs ─────────────────────────
@@ -179,9 +174,7 @@ endif()
 
 # ── Windows: backend-specific libraries ──────────────────────────────────────
 if(WIN32)
-    if(FRC_SIM_BACKEND STREQUAL "d3d11")
-        target_link_libraries(frc_sim PRIVATE d3d11 dxgi)
-    elseif(FRC_SIM_BACKEND STREQUAL "vulkan")
+    if(FRC_SIM_BACKEND STREQUAL "vulkan")
         target_link_libraries(frc_sim PRIVATE vulkan-1)
     else()
         target_link_libraries(frc_sim PRIVATE opengl32)

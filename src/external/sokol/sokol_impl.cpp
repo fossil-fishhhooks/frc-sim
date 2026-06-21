@@ -24,9 +24,7 @@
 
 // Expose the compiled backend name so the runtime can validate --backend.
 extern const char* frc_sim_compiled_backend;
-#if defined(SOKOL_D3D11)
-    const char* frc_sim_compiled_backend = "d3d11";
-#elif defined(SOKOL_METAL)
+#if defined(SOKOL_METAL)
     const char* frc_sim_compiled_backend = "metal";
 #elif defined(SOKOL_VULKAN)
     const char* frc_sim_compiled_backend = "vulkan";
