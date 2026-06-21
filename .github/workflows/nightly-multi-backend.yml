@@ -87,7 +87,7 @@ jobs:
       # sound", not "this is guaranteed correct on real hardware".
       - name: Install Vulkan SDK + SwiftShader (Windows)
         if: runner.os == 'Windows' && matrix.backend == 'vulkan'
-        uses: NcStudios/VulkanCI@v1.0
+        uses: NcStudios/VulkanCI@v1.2
         with:
           sdkVersion: 1.4.309.0
 
@@ -194,7 +194,7 @@ jobs:
           echo "No unexpected errors detected."
 
       - name: Upload binary
-        if: always()
+        if: steps.bin.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: frc_sim-${{ matrix.name }}
