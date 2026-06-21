@@ -145,7 +145,11 @@ jobs:
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "Windows" ]; then
-            echo "path=build/frc_sim.exe" >> "$GITHUB_OUTPUT"
+            if [ -f build/frc_sim.exe ]; then
+              echo "path=build/frc_sim.exe" >> "$GITHUB_OUTPUT"
+            else
+              echo "path=build/Release/frc_sim.exe" >> "$GITHUB_OUTPUT"
+            fi
           elif [ -f build/frc_sim ]; then
             echo "path=build/frc_sim" >> "$GITHUB_OUTPUT"
           else
