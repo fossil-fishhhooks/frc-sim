@@ -22,12 +22,12 @@
 // actually reports, or sg_apply_pipeline's validation will reject it.
 static sg_pixel_format SwapchainColorFormat() {
     switch (sapp_color_format()) {
-    case SAPP_PIXELFORMAT_RGBA8:   return SG_PIXELFORMAT_RGBA8;
-    case SAPP_PIXELFORMAT_SRGB8A8: return SG_PIXELFORMAT_SRGB8A8;
-    case SAPP_PIXELFORMAT_BGRA8:   return SG_PIXELFORMAT_BGRA8;
-    default:
-        LOG_ERROR("Renderer: unexpected sapp_color_format(), falling back to RGBA8");
-        return SG_PIXELFORMAT_RGBA8;
+        case SAPP_PIXELFORMAT_RGBA8:   return SG_PIXELFORMAT_RGBA8;
+        case SAPP_PIXELFORMAT_SRGB8A8: return SG_PIXELFORMAT_SRGB8A8;
+        case SAPP_PIXELFORMAT_BGRA8:   return SG_PIXELFORMAT_BGRA8;
+        default:
+            LOG_ERROR("Renderer: unexpected sapp_color_format(), falling back to RGBA8");
+            return SG_PIXELFORMAT_RGBA8;
     }
 }
 
@@ -45,11 +45,25 @@ static bool ReadFile(const char* path, std::string& out) {
     return true;
 }
 
+// Each backend's shader source lives in its own assets/shader/<backend>/
+// subfolder, since GL (loose uniforms), Vulkan (GLSL uniform blocks +
+// explicit set/binding), and Metal (MSL) all need genuinely different
+// shader text, not just a recompiled version of the same source.
+static const char* BackendShaderDir() {
+#if defined(SOKOL_VULKAN)
+    return "vulkan";
+#elif defined(SOKOL_METAL)
+    return "metal";
+#else
+    return "gl";
+#endif
+}
+
 // ── Inline matrix/vector math (no raylib) ────────────────────────────────────
 
 static void mat4_identity(float m[16]) {
-    memset(m, 0, 16 * sizeof(float));
-    m[0] = m[5] = m[10] = m[15] = 1.0f;
+    memset(m, 0, 16*sizeof(float));
+    m[0]=m[5]=m[10]=m[15]=1.0f;
 }
 
 static void mat4_mul(const float a[16], const float b[16], float out[16]) {
@@ -58,14 +72,14 @@ static void mat4_mul(const float a[16], const float b[16], float out[16]) {
         for (int j = 0; j < 4; ++j) {
             float sum = 0;
             for (int k = 0; k < 4; ++k)
-                sum += a[k * 4 + i] * b[j * 4 + k];
-            t[j * 4 + i] = sum;
+                sum += a[k*4+i] * b[j*4+k];
+            t[j*4+i] = sum;
         }
     memcpy(out, t, sizeof(t));
 }
 
 static void mat4_perspective(float fov_y, float aspect, float zn, float zf, float out[16]) {
-    memset(out, 0, 16 * sizeof(float));
+    memset(out, 0, 16*sizeof(float));
     float f = 1.0f / tanf(fov_y * 0.5f);
     out[0] = f / aspect;
     out[5] = f;
@@ -75,9 +89,9 @@ static void mat4_perspective(float fov_y, float aspect, float zn, float zf, floa
 }
 
 static void mat4_ortho(float left, float right, float bottom, float top, float zn, float zf, float out[16]) {
-    memset(out, 0, 16 * sizeof(float));
-    out[0] = 2.0f / (right - left);
-    out[5] = 2.0f / (top - bottom);
+    memset(out, 0, 16*sizeof(float));
+    out[0]  = 2.0f / (right - left);
+    out[5]  = 2.0f / (top - bottom);
     out[10] = -2.0f / (zf - zn);
     out[12] = -(right + left) / (right - left);
     out[13] = -(top + bottom) / (top - bottom);
@@ -87,50 +101,50 @@ static void mat4_ortho(float left, float right, float bottom, float top, float z
 
 static void mat4_look_at(const float eye[3], const float center[3], const float up[3], float out[16]) {
     float f[3], s[3], u[3];
-    f[0] = center[0] - eye[0]; f[1] = center[1] - eye[1]; f[2] = center[2] - eye[2];
-    float flen = sqrtf(f[0] * f[0] + f[1] * f[1] + f[2] * f[2]);
-    if (flen > 1e-8f) { f[0] /= flen; f[1] /= flen; f[2] /= flen; }
+    f[0] = center[0]-eye[0]; f[1] = center[1]-eye[1]; f[2] = center[2]-eye[2];
+    float flen = sqrtf(f[0]*f[0]+f[1]*f[1]+f[2]*f[2]);
+    if (flen > 1e-8f) { f[0]/=flen; f[1]/=flen; f[2]/=flen; }
 
-    s[0] = f[1] * up[2] - f[2] * up[1];
-    s[1] = f[2] * up[0] - f[0] * up[2];
-    s[2] = f[0] * up[1] - f[1] * up[0];
-    float slen = sqrtf(s[0] * s[0] + s[1] * s[1] + s[2] * s[2]);
-    if (slen > 1e-8f) { s[0] /= slen; s[1] /= slen; s[2] /= slen; }
+    s[0] = f[1]*up[2] - f[2]*up[1];
+    s[1] = f[2]*up[0] - f[0]*up[2];
+    s[2] = f[0]*up[1] - f[1]*up[0];
+    float slen = sqrtf(s[0]*s[0]+s[1]*s[1]+s[2]*s[2]);
+    if (slen > 1e-8f) { s[0]/=slen; s[1]/=slen; s[2]/=slen; }
 
-    u[0] = s[1] * f[2] - s[2] * f[1];
-    u[1] = s[2] * f[0] - s[0] * f[2];
-    u[2] = s[0] * f[1] - s[1] * f[0];
+    u[0] = s[1]*f[2] - s[2]*f[1];
+    u[1] = s[2]*f[0] - s[0]*f[2];
+    u[2] = s[0]*f[1] - s[1]*f[0];
 
-    out[0] = s[0]; out[1] = u[0]; out[2] = -f[0]; out[3] = 0;
-    out[4] = s[1]; out[5] = u[1]; out[6] = -f[1]; out[7] = 0;
-    out[8] = s[2]; out[9] = u[2]; out[10] = -f[2]; out[11] = 0;
-    out[12] = -(s[0] * eye[0] + s[1] * eye[1] + s[2] * eye[2]);
-    out[13] = -(u[0] * eye[0] + u[1] * eye[1] + u[2] * eye[2]);
-    out[14] = f[0] * eye[0] + f[1] * eye[1] + f[2] * eye[2];
-    out[15] = 1;
+    out[0]=s[0]; out[1]=u[0]; out[2]=-f[0]; out[3]=0;
+    out[4]=s[1]; out[5]=u[1]; out[6]=-f[1]; out[7]=0;
+    out[8]=s[2]; out[9]=u[2]; out[10]=-f[2]; out[11]=0;
+    out[12]=-(s[0]*eye[0]+s[1]*eye[1]+s[2]*eye[2]);
+    out[13]=-(u[0]*eye[0]+u[1]*eye[1]+u[2]*eye[2]);
+    out[14]=f[0]*eye[0]+f[1]*eye[1]+f[2]*eye[2];
+    out[15]=1;
 }
 
 static void vec3_sub(const float a[3], const float b[3], float out[3]) {
-    out[0] = a[0] - b[0]; out[1] = a[1] - b[1]; out[2] = a[2] - b[2];
+    out[0]=a[0]-b[0]; out[1]=a[1]-b[1]; out[2]=a[2]-b[2];
 }
 static void vec3_add(const float a[3], const float b[3], float out[3]) {
-    out[0] = a[0] + b[0]; out[1] = a[1] + b[1]; out[2] = a[2] + b[2];
+    out[0]=a[0]+b[0]; out[1]=a[1]+b[1]; out[2]=a[2]+b[2];
 }
 static void vec3_scale(const float a[3], float s, float out[3]) {
-    out[0] = a[0] * s; out[1] = a[1] * s; out[2] = a[2] * s;
+    out[0]=a[0]*s; out[1]=a[1]*s; out[2]=a[2]*s;
 }
 static float vec3_dot(const float a[3], const float b[3]) {
-    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
 }
 static void vec3_cross(const float a[3], const float b[3], float out[3]) {
-    out[0] = a[1] * b[2] - a[2] * b[1];
-    out[1] = a[2] * b[0] - a[0] * b[2];
-    out[2] = a[0] * b[1] - a[1] * b[0];
+    out[0]=a[1]*b[2]-a[2]*b[1];
+    out[1]=a[2]*b[0]-a[0]*b[2];
+    out[2]=a[0]*b[1]-a[1]*b[0];
 }
 static void vec3_normalize(const float a[3], float out[3]) {
-    float len = sqrtf(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
-    if (len > 1e-8f) { out[0] = a[0] / len; out[1] = a[1] / len; out[2] = a[2] / len; }
-    else memcpy(out, a, 3 * sizeof(float));
+    float len = sqrtf(a[0]*a[0]+a[1]*a[1]+a[2]*a[2]);
+    if (len>1e-8f) { out[0]=a[0]/len; out[1]=a[1]/len; out[2]=a[2]/len; }
+    else memcpy(out, a, 3*sizeof(float));
 }
 
 // ── Vertex & uniform layouts ────────────────────────────────────────────────
@@ -231,81 +245,10 @@ static const char* fs_src_shadow_fallback =
 "    frag_color = vec4(d, d, d, 1.0);\n"
 "}\n";
 
-// ── Vulkan-specific shader sources (scalar block layout, explicit bindings) ──
+// ── Vulkan SPIR-V compilation (source loaded from assets/shader/vulkan/) ────
 #ifdef SOKOL_VULKAN
 #include <shaderc/shaderc.h>
 #include <vector>
-
-static const char* vs_src_main_vk =
-"#version 450\n"
-"layout(std140, binding = 0) uniform vs_params {\n"
-"    mat4 model;\n"
-"    mat4 view;\n"
-"    mat4 projection;\n"
-"};\n"
-"layout(location = 0) in vec3 position;\n"
-"layout(location = 1) in vec3 normal;\n"
-"layout(location = 2) in vec4 color;\n"
-"layout(location = 0) out vec3 v_normal;\n"
-"layout(location = 1) out vec3 v_pos;\n"
-"layout(location = 2) out vec4 v_color;\n"
-"void main() {\n"
-"    vec4 world_pos = model * vec4(position, 1.0);\n"
-"    gl_Position = projection * view * world_pos;\n"
-"    v_normal = mat3(model) * normal;\n"
-"    v_pos = world_pos.xyz;\n"
-"    v_color = color;\n"
-"}\n";
-
-static const char* fs_src_main_vk =
-"#version 450\n"
-"layout(std140, binding = 1) uniform fs_params {\n"
-"    vec4 model_color;\n"
-"    vec4 ambient;\n"
-"    vec4 light_pos;\n"
-"    vec4 view_pos;\n"
-"    mat4 light_vp;\n"
-"    float light_power;\n"
-"};\n"
-"layout(set = 1, binding = 0) uniform sampler2D shadow_map;\n"
-"layout(location = 0) in vec3 v_normal;\n"
-"layout(location = 1) in vec3 v_pos;\n"
-"layout(location = 2) in vec4 v_color;\n"
-"layout(location = 0) out vec4 frag_color;\n"
-"void main() {\n"
-"    vec3 N = normalize(v_normal);\n"
-"    vec3 Lv = light_pos.xyz - v_pos;\n"
-"    float dist = length(Lv);\n"
-"    vec3 L = Lv / dist;\n"
-"    float atten = 1.0 / (1.0 + 0.007 * dist * dist);\n"
-"    float diff = max(dot(N, L), 0.0);\n"
-"    vec3 base = model_color.rgb * v_color.rgb;\n"
-"    vec3 amb = ambient.rgb * base;\n"
-"    vec3 diffuse = diff * atten * base * light_power;\n"
-"    vec3 V = normalize(view_pos.xyz - v_pos);\n"
-"    vec3 H = normalize(L + V);\n"
-"    float spec = pow(max(dot(N, H), 0.0), 32.0) * atten * light_power;\n"
-"    frag_color = vec4(amb + diffuse + vec3(spec * 0.3), 1.0);\n"
-"}\n";
-
-static const char* vs_src_shadow_vk =
-"#version 450\n"
-"layout(std140, binding = 0) uniform shadow_vs_params {\n"
-"    mat4 light_vp;\n"
-"    mat4 model;\n"
-"};\n"
-"layout(location = 0) in vec3 position;\n"
-"void main() {\n"
-"    gl_Position = light_vp * model * vec4(position, 1.0);\n"
-"}\n";
-
-static const char* fs_src_shadow_vk =
-"#version 450\n"
-"layout(location = 0) out vec4 frag_color;\n"
-"void main() {\n"
-"    float d = gl_FragCoord.z;\n"
-"    frag_color = vec4(d, d, d, 1.0);\n"
-"}\n";
 
 struct CompiledSpv {
     std::vector<uint32_t> bytecode;
@@ -352,36 +295,60 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
 
     m_pass_action = {};
     m_pass_action.colors[0].load_action = SG_LOADACTION_CLEAR;
-    m_pass_action.colors[0].clear_value = { 0.11f, 0.11f, 0.125f, 1.0f };
+    m_pass_action.colors[0].clear_value = {0.11f, 0.11f, 0.125f, 1.0f};
     m_pass_action.depth.load_action = SG_LOADACTION_CLEAR;
     m_pass_action.depth.clear_value = 1.0f;
 
-    // ── Load shader sources from files (fallback to inline) ───────────────
+    // ── Load shader sources from files ──────────────────────────────────────
+    // Path layout: assets/shader/<backend>/<file>, since GL, Vulkan, and
+    // Metal each need genuinely different shader text (see BackendShaderDir).
+    const char* dir = BackendShaderDir();
+    std::string main_vs_path, main_fs_path, shadow_vs_path, shadow_fs_path;
+#if defined(SOKOL_VULKAN)
+    main_vs_path   = std::string("assets/shader/") + dir + "/main.vert";
+    main_fs_path   = std::string("assets/shader/") + dir + "/main.frag";
+    shadow_vs_path = std::string("assets/shader/") + dir + "/shadow.vert";
+    shadow_fs_path = std::string("assets/shader/") + dir + "/shadow.frag";
+#elif defined(SOKOL_METAL)
+    // Metal combines vertex+fragment per pass into one .metal file; both
+    // "paths" below point at the same file, the entry-point names (set in
+    // sg_shader_desc.*.entry below) select which function gets used.
+    main_vs_path   = std::string("assets/shader/") + dir + "/main.metal";
+    main_fs_path   = main_vs_path;
+    shadow_vs_path = std::string("assets/shader/") + dir + "/shadow.metal";
+    shadow_fs_path = shadow_vs_path;
+#else
+    main_vs_path   = std::string("assets/shader/") + dir + "/main.vs";
+    main_fs_path   = std::string("assets/shader/") + dir + "/main.fs";
+    shadow_vs_path = std::string("assets/shader/") + dir + "/shadow.vs";
+    shadow_fs_path = std::string("assets/shader/") + dir + "/shadow.fs";
+#endif
+
     std::string vs_main_str, fs_main_str, vs_shadow_str, fs_shadow_str;
 
-    bool loaded = ReadFile("assets/shader/main.vs", vs_main_str);
+    bool loaded = ReadFile(main_vs_path.c_str(), vs_main_str);
     const char* vs_main = loaded ? vs_main_str.c_str() : vs_src_main_fallback;
-    if (loaded) LOG_INFO("Renderer: loaded assets/shader/main.vs");
+    if (loaded) LOG_INFO("Renderer: loaded %s", main_vs_path.c_str());
+    else LOG_ERROR("Renderer: failed to load %s", main_vs_path.c_str());
 
-    loaded = ReadFile("assets/shader/main.fs", fs_main_str);
+    loaded = ReadFile(main_fs_path.c_str(), fs_main_str);
     const char* fs_main = loaded ? fs_main_str.c_str() : fs_src_main_fallback;
-    if (loaded) LOG_INFO("Renderer: loaded assets/shader/main.fs");
+    if (loaded) LOG_INFO("Renderer: loaded %s", main_fs_path.c_str());
+    else LOG_ERROR("Renderer: failed to load %s", main_fs_path.c_str());
 
-    loaded = ReadFile("assets/shader/shadow.vs", vs_shadow_str);
+    loaded = ReadFile(shadow_vs_path.c_str(), vs_shadow_str);
     const char* vs_shadow = loaded ? vs_shadow_str.c_str() : vs_src_shadow_fallback;
-    if (loaded) LOG_INFO("Renderer: loaded assets/shader/shadow.vs");
+    if (loaded) LOG_INFO("Renderer: loaded %s", shadow_vs_path.c_str());
+    else LOG_ERROR("Renderer: failed to load %s", shadow_vs_path.c_str());
 
-    loaded = ReadFile("assets/shader/shadow.fs", fs_shadow_str);
+    loaded = ReadFile(shadow_fs_path.c_str(), fs_shadow_str);
     const char* fs_shadow = loaded ? fs_shadow_str.c_str() : fs_src_shadow_fallback;
-    if (loaded) LOG_INFO("Renderer: loaded assets/shader/shadow.fs");
+    if (loaded) LOG_INFO("Renderer: loaded %s", shadow_fs_path.c_str());
+    else LOG_ERROR("Renderer: failed to load %s", shadow_fs_path.c_str());
 
 #ifdef SOKOL_VULKAN
-    // Override shader sources for Vulkan (use #version 450 with explicit bindings)
-    vs_main = vs_src_main_vk;
-    fs_main = fs_src_main_vk;
-    vs_shadow = vs_src_shadow_vk;
-    fs_shadow = fs_src_shadow_vk;
-
+    // vs_main/fs_main/vs_shadow/fs_shadow above are now the real GLSL text
+    // loaded from assets/shader/vulkan/ -- compile it to SPIR-V.
     CompiledSpv vs_main_spv = CompileGLSLtoSPV(vs_main, shaderc_glsl_vertex_shader, "main.vs");
     CompiledSpv fs_main_spv = CompileGLSLtoSPV(fs_main, shaderc_glsl_fragment_shader, "main.fs");
     CompiledSpv vs_shadow_spv = CompileGLSLtoSPV(vs_shadow, shaderc_glsl_vertex_shader, "shadow.vs");
@@ -400,6 +367,11 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     shd.vertex_func.entry = "main";
     shd.fragment_func.bytecode = sg_range{ fs_main_spv.bytecode.data(), fs_main_spv.bytecode.size() * sizeof(uint32_t) };
     shd.fragment_func.entry = "main";
+#elif defined(SOKOL_METAL)
+    shd.vertex_func.source = vs_main;
+    shd.vertex_func.entry = "main_vs";
+    shd.fragment_func.source = fs_main;
+    shd.fragment_func.entry = "main_fs";
 #else
     shd.vertex_func.source = vs_main;
     shd.vertex_func.entry = "main";
@@ -411,28 +383,32 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     shd.uniform_blocks[0].size = sizeof(VsUniforms);
     shd.uniform_blocks[0].layout = SG_UNIFORMLAYOUT_NATIVE;
     shd.uniform_blocks[0].spirv_set0_binding_n = 0;
-    shd.uniform_blocks[0].glsl_uniforms[0] = { SG_UNIFORMTYPE_MAT4, 1, "model" };
-    shd.uniform_blocks[0].glsl_uniforms[1] = { SG_UNIFORMTYPE_MAT4, 1, "view" };
-    shd.uniform_blocks[0].glsl_uniforms[2] = { SG_UNIFORMTYPE_MAT4, 1, "projection" };
+    shd.uniform_blocks[0].msl_buffer_n = 0;
+    shd.uniform_blocks[0].glsl_uniforms[0] = {SG_UNIFORMTYPE_MAT4, 1, "model"};
+    shd.uniform_blocks[0].glsl_uniforms[1] = {SG_UNIFORMTYPE_MAT4, 1, "view"};
+    shd.uniform_blocks[0].glsl_uniforms[2] = {SG_UNIFORMTYPE_MAT4, 1, "projection"};
 
     shd.uniform_blocks[1].stage = SG_SHADERSTAGE_FRAGMENT;
     shd.uniform_blocks[1].size = sizeof(FsUniforms);
     shd.uniform_blocks[1].layout = SG_UNIFORMLAYOUT_NATIVE;
     shd.uniform_blocks[1].spirv_set0_binding_n = 1;
-    shd.uniform_blocks[1].glsl_uniforms[0] = { SG_UNIFORMTYPE_FLOAT4, 1, "model_color" };
-    shd.uniform_blocks[1].glsl_uniforms[1] = { SG_UNIFORMTYPE_FLOAT4, 1, "ambient" };
-    shd.uniform_blocks[1].glsl_uniforms[2] = { SG_UNIFORMTYPE_FLOAT4, 1, "light_pos" };
-    shd.uniform_blocks[1].glsl_uniforms[3] = { SG_UNIFORMTYPE_FLOAT4, 1, "view_pos" };
-    shd.uniform_blocks[1].glsl_uniforms[4] = { SG_UNIFORMTYPE_MAT4, 1, "light_vp" };
-    shd.uniform_blocks[1].glsl_uniforms[5] = { SG_UNIFORMTYPE_FLOAT, 1, "light_power" };
+    shd.uniform_blocks[1].msl_buffer_n = 1;
+    shd.uniform_blocks[1].glsl_uniforms[0] = {SG_UNIFORMTYPE_FLOAT4, 1, "model_color"};
+    shd.uniform_blocks[1].glsl_uniforms[1] = {SG_UNIFORMTYPE_FLOAT4, 1, "ambient"};
+    shd.uniform_blocks[1].glsl_uniforms[2] = {SG_UNIFORMTYPE_FLOAT4, 1, "light_pos"};
+    shd.uniform_blocks[1].glsl_uniforms[3] = {SG_UNIFORMTYPE_FLOAT4, 1, "view_pos"};
+    shd.uniform_blocks[1].glsl_uniforms[4] = {SG_UNIFORMTYPE_MAT4, 1, "light_vp"};
+    shd.uniform_blocks[1].glsl_uniforms[5] = {SG_UNIFORMTYPE_FLOAT, 1, "light_power"};
 
     shd.views[0].texture.stage = SG_SHADERSTAGE_FRAGMENT;
     shd.views[0].texture.image_type = SG_IMAGETYPE_2D;
     shd.views[0].texture.spirv_set1_binding_n = 0;
+    shd.views[0].texture.msl_texture_n = 0;
 
     shd.samplers[0].stage = SG_SHADERSTAGE_FRAGMENT;
     shd.samplers[0].sampler_type = SG_SAMPLERTYPE_FILTERING;
     shd.samplers[0].spirv_set1_binding_n = 1;
+    shd.samplers[0].msl_sampler_n = 0;
 
     shd.texture_sampler_pairs[0].stage = SG_SHADERSTAGE_FRAGMENT;
     shd.texture_sampler_pairs[0].view_slot = 0;
@@ -480,6 +456,11 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     shd_shadow.vertex_func.entry = "main";
     shd_shadow.fragment_func.bytecode = sg_range{ fs_shadow_spv.bytecode.data(), fs_shadow_spv.bytecode.size() * sizeof(uint32_t) };
     shd_shadow.fragment_func.entry = "main";
+#elif defined(SOKOL_METAL)
+    shd_shadow.vertex_func.source = vs_shadow;
+    shd_shadow.vertex_func.entry = "shadow_vs";
+    shd_shadow.fragment_func.source = fs_shadow;
+    shd_shadow.fragment_func.entry = "shadow_fs";
 #else
     shd_shadow.vertex_func.source = vs_shadow;
     shd_shadow.vertex_func.entry = "main";
@@ -491,8 +472,9 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     shd_shadow.uniform_blocks[0].size = sizeof(ShadowVsUniforms);
     shd_shadow.uniform_blocks[0].layout = SG_UNIFORMLAYOUT_NATIVE;
     shd_shadow.uniform_blocks[0].spirv_set0_binding_n = 0;
-    shd_shadow.uniform_blocks[0].glsl_uniforms[0] = { SG_UNIFORMTYPE_MAT4, 1, "light_vp" };
-    shd_shadow.uniform_blocks[0].glsl_uniforms[1] = { SG_UNIFORMTYPE_MAT4, 1, "model" };
+    shd_shadow.uniform_blocks[0].msl_buffer_n = 0;
+    shd_shadow.uniform_blocks[0].glsl_uniforms[0] = {SG_UNIFORMTYPE_MAT4, 1, "light_vp"};
+    shd_shadow.uniform_blocks[0].glsl_uniforms[1] = {SG_UNIFORMTYPE_MAT4, 1, "model"};
 
     m_shadow_shader = sg_make_shader(&shd_shadow);
     if (!m_shadow_shader.id) {
@@ -614,9 +596,9 @@ void Renderer::BuildViewMatrix(float out[16]) const {
 }
 
 void Renderer::BuildLightVPMatrix(float out[16]) const {
-    float eye[3] = { 0.0f, 10.0f, 0.0f };
-    float center[3] = { 0.0f, 0.0f, 0.0f };
-    float up[3] = { 0.0f, 0.0f, -1.0f };
+    float eye[3] = {0.0f, 10.0f, 0.0f};
+    float center[3] = {0.0f, 0.0f, 0.0f};
+    float up[3] = {0.0f, 0.0f, -1.0f};
     float view[16], proj[16];
     mat4_look_at(eye, center, up, view);
     mat4_ortho(-0.001f, 0.001f, -8.0f, 8.0f, 0.5f, 20.0f, proj); // tiny numbers here. basically the render works in the region OUTSIDE the rectange bounded by those numbers.
@@ -632,7 +614,7 @@ void Renderer::UpdateCamera(float dt) {
     vec3_cross(fwd, m_cam.up, right);
     vec3_normalize(right, right);
 
-    float move[3] = { 0,0,0 };
+    float move[3] = {0,0,0};
     if (m_keys[SAPP_KEYCODE_W]) vec3_add(move, fwd, move);
     if (m_keys[SAPP_KEYCODE_S]) vec3_sub(move, fwd, move);
     if (m_keys[SAPP_KEYCODE_A]) vec3_sub(move, right, move);
@@ -648,45 +630,45 @@ void Renderer::UpdateCamera(float dt) {
 
 void Renderer::HandleEvent(const sapp_event* e) {
     switch (e->type) {
-    case SAPP_EVENTTYPE_KEY_DOWN:
-        if (e->key_code < 256) m_keys[e->key_code] = true;
-        if (e->key_code == SAPP_KEYCODE_TAB) m_cameraLocked = !m_cameraLocked;
-        if (e->key_code == SAPP_KEYCODE_LEFT_ALT || e->key_code == SAPP_KEYCODE_RIGHT_ALT)
-            m_alt_pressed = true;
-        break;
-    case SAPP_EVENTTYPE_KEY_UP:
-        if (e->key_code < 256) m_keys[e->key_code] = false;
-        if (e->key_code == SAPP_KEYCODE_LEFT_ALT || e->key_code == SAPP_KEYCODE_RIGHT_ALT)
-            m_alt_pressed = false;
-        break;
-    case SAPP_EVENTTYPE_MOUSE_DOWN:
-        if (e->mouse_button == SAPP_MOUSEBUTTON_LEFT) {
-            m_mouse_down = true;
-            m_mouse_last_x = e->mouse_x;
-            m_mouse_last_y = e->mouse_y;
-        }
-        break;
-    case SAPP_EVENTTYPE_MOUSE_UP:
-        if (e->mouse_button == SAPP_MOUSEBUTTON_LEFT) m_mouse_down = false;
-        break;
-    case SAPP_EVENTTYPE_MOUSE_MOVE:
-        if (m_mouse_down && !m_cameraLocked) {
-            float dx = e->mouse_x - m_mouse_last_x;
-            float dy = e->mouse_y - m_mouse_last_y;
-            m_mouse_last_x = e->mouse_x;
-            m_mouse_last_y = e->mouse_y;
-            m_cam.yaw += dx * 0.2f;
-            m_cam.pitch -= dy * 0.2f;
-            m_cam.pitch = fmaxf(-89.0f, fminf(89.0f, m_cam.pitch));
-        }
-        break;
-    case SAPP_EVENTTYPE_MOUSE_SCROLL:
-        m_cam.dist *= (e->scroll_y > 0) ? 0.9f : 1.1f;
-        if (m_cam.dist < 0.5f) m_cam.dist = 0.5f;
-        if (m_cam.dist > 50.0f) m_cam.dist = 50.0f;
-        break;
-    default:
-        break;
+        case SAPP_EVENTTYPE_KEY_DOWN:
+            if (e->key_code < 256) m_keys[e->key_code] = true;
+            if (e->key_code == SAPP_KEYCODE_TAB) m_cameraLocked = !m_cameraLocked;
+            if (e->key_code == SAPP_KEYCODE_LEFT_ALT || e->key_code == SAPP_KEYCODE_RIGHT_ALT)
+                m_alt_pressed = true;
+            break;
+        case SAPP_EVENTTYPE_KEY_UP:
+            if (e->key_code < 256) m_keys[e->key_code] = false;
+            if (e->key_code == SAPP_KEYCODE_LEFT_ALT || e->key_code == SAPP_KEYCODE_RIGHT_ALT)
+                m_alt_pressed = false;
+            break;
+        case SAPP_EVENTTYPE_MOUSE_DOWN:
+            if (e->mouse_button == SAPP_MOUSEBUTTON_LEFT) {
+                m_mouse_down = true;
+                m_mouse_last_x = e->mouse_x;
+                m_mouse_last_y = e->mouse_y;
+            }
+            break;
+        case SAPP_EVENTTYPE_MOUSE_UP:
+            if (e->mouse_button == SAPP_MOUSEBUTTON_LEFT) m_mouse_down = false;
+            break;
+        case SAPP_EVENTTYPE_MOUSE_MOVE:
+            if (m_mouse_down && !m_cameraLocked) {
+                float dx = e->mouse_x - m_mouse_last_x;
+                float dy = e->mouse_y - m_mouse_last_y;
+                m_mouse_last_x = e->mouse_x;
+                m_mouse_last_y = e->mouse_y;
+                m_cam.yaw += dx * 0.2f;
+                m_cam.pitch -= dy * 0.2f;
+                m_cam.pitch = fmaxf(-89.0f, fminf(89.0f, m_cam.pitch));
+            }
+            break;
+        case SAPP_EVENTTYPE_MOUSE_SCROLL:
+            m_cam.dist *= (e->scroll_y > 0) ? 0.9f : 1.1f;
+            if (m_cam.dist < 0.5f) m_cam.dist = 0.5f;
+            if (m_cam.dist > 50.0f) m_cam.dist = 50.0f;
+            break;
+        default:
+            break;
     }
 }
 
@@ -714,8 +696,8 @@ void Renderer::DrawRaycasts(const std::vector<Raycaster*>& rcs) {
 // ── Main draw ─────────────────────────────────────────────────────────────────
 
 void Renderer::DrawFrame(const WorldSnapshot& snapshot,
-    bool nt_connected,
-    float sim_hz, float target_hz, float nt_ping_ms) {
+                          bool nt_connected,
+                          float sim_hz, float target_hz, float nt_ping_ms) {
     // ── Frame pacing (--fps) ────────────────────────────────────────────
     // sokol's frame_cb runs as fast as the swap chain allows; when a target
     // FPS is set we sleep off whatever time is left in the frame budget so
@@ -766,14 +748,14 @@ void Renderer::DrawFrame(const WorldSnapshot& snapshot,
     // ── Shadow pass ───────────────────────────────────────────────────────
     {
         sg_pass shadow_pass = {};
-        shadow_pass.action.colors[0].load_action = SG_LOADACTION_CLEAR;
-        shadow_pass.action.colors[0].store_action = SG_STOREACTION_STORE;
-        shadow_pass.action.colors[0].clear_value = { 1.0f, 1.0f, 1.0f, 1.0f };
-        shadow_pass.action.depth.load_action = SG_LOADACTION_CLEAR;
-        shadow_pass.action.depth.store_action = SG_STOREACTION_DONTCARE;
-        shadow_pass.action.depth.clear_value = 1.0f;
-        shadow_pass.attachments.colors[0] = m_shadow_color_att_view;
-        shadow_pass.attachments.depth_stencil = m_shadow_depth_att_view;
+        shadow_pass.action.colors[0].load_action   = SG_LOADACTION_CLEAR;
+        shadow_pass.action.colors[0].store_action  = SG_STOREACTION_STORE;
+        shadow_pass.action.colors[0].clear_value   = {1.0f, 1.0f, 1.0f, 1.0f};
+        shadow_pass.action.depth.load_action       = SG_LOADACTION_CLEAR;
+        shadow_pass.action.depth.store_action      = SG_STOREACTION_DONTCARE;
+        shadow_pass.action.depth.clear_value       = 1.0f;
+        shadow_pass.attachments.colors[0]          = m_shadow_color_att_view;
+        shadow_pass.attachments.depth_stencil      = m_shadow_depth_att_view;
         sg_begin_pass(&shadow_pass);
 
         sg_apply_pipeline(m_shadow_pipeline);
@@ -833,8 +815,7 @@ void Renderer::DrawFrame(const WorldSnapshot& snapshot,
                         sg_apply_bindings(&bind);
                         sg_draw(range.index_offset, range.index_count, 1);
                     }
-                }
-                else {
+                } else {
                     float col[4];
                     BodyColor(body.def, col);
                     if (mesh->has_vertex_colors) {
