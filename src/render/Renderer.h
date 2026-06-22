@@ -17,11 +17,15 @@ public:
     bool ShouldClose() const;
 
     void DrawFrame(const WorldSnapshot& snapshot,
-                   bool nt_connected,
-                   float sim_hz, float target_hz, float nt_staleness_ms);
+        bool nt_connected,
+        float sim_hz, float target_hz, float nt_staleness_ms);
 
     bool m_cameraLocked = false;
     void SetWallTimeOffset(float ms) { m_wall_time_offset_ms = ms; }
+    void SetFieldExtents(float hx, float hz) {
+        m_field_half_extents[0] = hx;
+        m_field_half_extents[1] = hz;
+    }
     void EnableStreaming(int port, int fps);
 
     MeshCache& GetMeshCache() { return m_mesh_cache; }
@@ -30,9 +34,9 @@ public:
 
 private:
     struct Camera {
-        float pos[3] = {5, 4, 5};
-        float target[3] = {0, 0, 0};
-        float up[3] = {0, 1, 0};
+        float pos[3] = { 5, 4, 5 };
+        float target[3] = { 0, 0, 0 };
+        float up[3] = { 0, 1, 0 };
         float fov = 60.0f;
         float yaw = -45.0f;
         float pitch = -30.0f;
@@ -55,12 +59,10 @@ private:
 
     // Shadow mapping
     static constexpr int SHADOW_MAP_SIZE = 1024;
+    float m_field_half_extents[2] = { 8.0f, 8.0f }; // set via SetFieldExtents()
     sg_image m_shadow_depth = {};
-    sg_image m_shadow_color = {};
     sg_view m_shadow_depth_att_view = {};
-    sg_view m_shadow_color_att_view = {};
     sg_view m_shadow_tex_view = {};
-    sg_view m_shadow_color_tex_view = {};
     sg_sampler m_shadow_sampler = {};
     sg_pipeline m_shadow_pipeline = {};
     sg_shader m_shadow_shader = {};

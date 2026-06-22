@@ -379,6 +379,12 @@ static void init_cb() {
     app.wall_time_offset = logger::elapsed();
     app.renderer.SetWallTimeOffset(app.wall_time_offset);
 
+    if (app.scene.has_field_bounds)
+        app.renderer.SetFieldExtents(app.scene.field_half_x, app.scene.field_half_z);
+
+    if (g_args.stream)
+        app.renderer.EnableStreaming(g_args.stream_port, g_args.stream_fps);
+
     if (g_args.stream)
         app.renderer.EnableStreaming(g_args.stream_port, g_args.stream_fps);
 

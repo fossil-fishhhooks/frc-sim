@@ -15,7 +15,5 @@ vertex float4 shadow_vs(VertexIn in [[stage_in]],
     return params.light_vp * params.model * float4(in.position, 1.0);
 }
 
-fragment float4 shadow_fs(float4 frag_coord [[position]]) {
-    float d = frag_coord.z;
-    return float4(d, d, d, 1.0);
-}
+// Depth-only pass — no color output.
+fragment void shadow_fs(float4 frag_coord [[position]]) {}

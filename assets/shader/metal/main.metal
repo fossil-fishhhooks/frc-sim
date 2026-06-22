@@ -8,12 +8,12 @@ struct VsParams {
 };
 
 struct FsParams {
-    float4 model_color;
-    float4 ambient;
-    float4 light_pos;
-    float4 view_pos;
+    float4   model_color;
+    float4   ambient;
+    float4   light_pos;
+    float4   view_pos;
     float4x4 light_vp;
-    float light_power;
+    float    light_power;
 };
 
 struct VertexIn {
@@ -35,30 +35,41 @@ vertex VertexOut main_vs(VertexIn in [[stage_in]],
     float4 world_pos = params.model * float4(in.position, 1.0);
     out.position = params.projection * params.view * world_pos;
     out.v_normal = (params.model * float4(in.normal, 0.0)).xyz;
-    out.v_pos = world_pos.xyz;
-    out.v_color = in.color;
+    out.v_pos    = world_pos.xyz;
+    out.v_color  = in.color;
     return out;
+}
+
+static float ShadowPCF(depth2d<float> shadow_map, sampler shadow_sampler,
+                        float3 v_pos, float4x4 light_vp) {
+    float4 lp   = light_vp * float4(v_pos, 1.0);
+    float3 proj = lp.xyz / lp.w * 0.5 + 0.5;
+    if (proj.z >= 1.0) return 1.0;
+    float2 texel = 1.0 / float2(1024.0);
+    float shadow = 0.0;
+    for (int x = -1; x <= 1; ++x)
+        for (int y = -1; y <= 1; ++y)
+            shadow += shadow_map.sample_compare(shadow_sampler,
+                          proj.xy + float2(x, y) * texel, proj.z - 0.005);
+    return shadow / 9.0;
 }
 
 fragment float4 main_fs(VertexOut in [[stage_in]],
                          constant FsParams& params [[buffer(1)]],
-                         texture2d<float> shadow_map [[texture(0)]],
-                         sampler shadow_sampler [[sampler(0)]]) {
-    float3 N = normalize(in.v_normal);
-    float3 Lv = params.light_pos.xyz - in.v_pos;
-    float dist = length(Lv);
-    float3 L = Lv / dist;
-    float atten = 1.0 / (1.0 + 0.007 * dist * dist);
-    float diff = max(dot(N, L), 0.0);
-    float3 base = params.model_color.rgb * in.v_color.rgb;
-    float3 amb = params.ambient.rgb * base;
-    float3 diffuse = diff * atten * base * params.light_power;
-    float3 V = normalize(params.view_pos.xyz - in.v_pos);
-    float3 H = normalize(L + V);
-    float spec = pow(max(dot(N, H), 0.0), 32.0) * atten * params.light_power;
-    // NOTE: shadow_map/shadow_sampler are bound but not yet sampled here --
-    // this mirrors the GL/Vulkan main fragment shaders as they currently
-    // stand (the shadow texture is bound for future use; actual shadow
-    // attenuation isn't applied in the lighting math in any backend yet).
+                         depth2d<float> shadow_map     [[texture(0)]],
+                         sampler        shadow_sampler  [[sampler(0)]]) {
+    float3 N     = normalize(in.v_normal);
+    float3 Lv    = params.light_pos.xyz - in.v_pos;
+    float  dist  = length(Lv);
+    float3 L     = Lv / dist;
+    float atten  = 1.0 / (1.0 + 0.007 * dist * dist);
+    float diff   = max(dot(N, L), 0.0);
+    float3 base  = params.model_color.rgb * in.v_color.rgb;
+    float3 amb   = params.ambient.rgb * base;
+    float shadow = ShadowPCF(shadow_map, shadow_sampler, in.v_pos, params.light_vp);
+    float3 diffuse = diff * atten * base * params.light_power * shadow;
+    float3 V     = normalize(params.view_pos.xyz - in.v_pos);
+    float3 H     = normalize(L + V);
+    float spec   = pow(max(dot(N, H), 0.0), 32.0) * atten * params.light_power * shadow;
     return float4(amb + diffuse + float3(spec * 0.3), 1.0);
 }
