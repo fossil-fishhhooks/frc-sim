@@ -413,6 +413,11 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
 
     shd.views[0].texture.stage = SG_SHADERSTAGE_FRAGMENT;
     shd.views[0].texture.image_type = SG_IMAGETYPE_2D;
+#if defined(SOKOL_VULKAN)
+    shd.views[0].texture.sample_type = SG_IMAGESAMPLETYPE_FLOAT;
+#else
+    shd.views[0].texture.sample_type = SG_IMAGESAMPLETYPE_DEPTH;
+#endif
     shd.views[0].texture.spirv_set1_binding_n = 0;
     shd.views[0].texture.msl_texture_n = 0;
 
@@ -619,8 +624,8 @@ void Renderer::BuildLightVPMatrix(float out[16]) const {
     float up[3] = { 0.0f,  0.0f, -1.0f };
     float view[16], proj[16];
     mat4_look_at(eye, center, up, view);
-    float hx = m_field_half_extents[0];
-    float hz = m_field_half_extents[1];
+    float hx = m_field_half_extents[0] + 3;
+    float hz = m_field_half_extents[1] + 3;
     mat4_ortho(-hx, hx, -hz, hz, 0.5f, 20.0f, proj);
 
     float vp[16];
