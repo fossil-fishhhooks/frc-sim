@@ -159,6 +159,9 @@ JPH::BodyID SimWorld::SpawnBody(const BodyDef &def,
     settings.mRestitution   = def.surface.restitution;
 
     if (!is_static) {
+        // Numerical stabilizer — not physically modeled aerodynamic drag.
+        // Real FRC robots coast much longer than these values suggest.
+        // Adjust if comparing sim deceleration to actual coast-down data.
         settings.mLinearDamping  = 0.15f;
         settings.mAngularDamping = 0.20f;
     }

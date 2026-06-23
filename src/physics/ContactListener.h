@@ -41,10 +41,19 @@ public:
     float GetNormalForce(JPH::BodyID id) const;
 
 
-    void SetDt(float dt) {m_dt = dt;};
+    // outer_dt  — the SimLoop tick interval (e.g. 1/500 s)
+    // substeps  — Jolt collision_steps passed to PhysicsSystem::Update()
+    // Jolt fires OnContactPersisted once per collision step, so the impulse
+    // returned by EstimateCollisionResponse is for one substep of length
+    // outer_dt / substeps.  Dividing by the wrong (outer) dt underestimates
+    // the normal force by a factor of substeps.
+    void SetDt(float outer_dt, int substeps = 1)
+    {
+        m_dt = outer_dt / std::max(1, substeps);
+    }
 
 private:
-    float m_dt = 1.0f/500.0f;
+    float m_dt = 1.0f / 500.0f;   // substep dt, set via SetDt()
     // Recompute m_body_forces by summing over all live m_contacts entries.
     // Must be called with m_mutex held. Replaces all delta-accumulation logic.
     void RecomputeBodyForce(JPH::BodyID id);

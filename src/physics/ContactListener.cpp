@@ -12,7 +12,7 @@
 // Normal force model
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// GetNormalForce(id) returns the BODY-LEVEL normal force: mass * g * cos(θ).
+// GetNormalForce(id) returns the BODY-LEVEL normal force for the body.
 // This is the total weight supported by the contact surface — the same value
 // regardless of how many sub-shape triangle pairs are touching.
 //
@@ -29,7 +29,8 @@
 // surfaces (e.g. floor + wall) take the max of those normals, which still
 // gives a sensible bound.
 //
-// ForceApplicator divides this by grounded_wheel_count to get per-wheel N.
+// ForceApplicator distributes this total across wheels using a moment-balance
+// model that accounts for longitudinal/lateral weight transfer from acceleration.
 // ─────────────────────────────────────────────────────────────────────────────
 
 static constexpr float GRAVITY = 9.81f;
@@ -110,7 +111,9 @@ void ContactListener::OnContactAdded(const JPH::Body &body1,
     cd.id_a = body1.GetID();
     cd.id_b = body2.GetID();
     cd.sub_shape_count++;
-    cd.normal_force = force; // overwrite, not accumulate
+    // Use max: a new sub-shape contact for an existing body pair should never
+    // reduce the tracked force below what was already measured for this pair.
+    cd.normal_force = std::max(cd.normal_force, force);
 
     RecomputeBodyForce(body1.GetID());
     RecomputeBodyForce(body2.GetID());

@@ -36,8 +36,19 @@ public:
     ~SimWorld();
 
     void Init(int num_threads = 0);
-    void SetPhysicsDt(float dt) { m_contact_listener.SetDt(dt); }
-    void SetCollisionSteps(int steps) { m_collision_steps = std::max(1, steps); }
+
+    // Call both setters before the first Step() to ensure the contact listener
+    // uses the correct substep dt = outer_dt / collision_steps.
+    void SetPhysicsDt(float dt)
+    {
+        m_outer_dt = dt;
+        m_contact_listener.SetDt(m_outer_dt, m_collision_steps);
+    }
+    void SetCollisionSteps(int steps)
+    {
+        m_collision_steps = std::max(1, steps);
+        m_contact_listener.SetDt(m_outer_dt, m_collision_steps);
+    }
 
     JPH::BodyID SpawnBody(const BodyDef &def,
                           const float pos[3],
@@ -119,6 +130,7 @@ private:
     std::deque<BodyRecord> m_bodies;
     std::vector<int>       m_robot_indices;   // all robot body indices
 
+    float  m_outer_dt       = 1.0f / 500.0f; // outer tick interval; substep dt = this / m_collision_steps
     int    m_collision_steps = 2;
     double m_sim_time = 0.0;
 
