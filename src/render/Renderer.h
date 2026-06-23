@@ -1,7 +1,6 @@
 #pragma once
 #include "core/Snapshot.h"
 #include "render/MeshCache.h"
-#include "render/StreamEncoder.h"
 #include "io/Raycaster.h"
 
 #include <sokol_gfx.h>
@@ -26,7 +25,7 @@ public:
         m_field_half_extents[0] = hx;
         m_field_half_extents[1] = hz;
     }
-    void EnableStreaming(int port, int fps);
+    
 
     MeshCache& GetMeshCache() { return m_mesh_cache; }
     void SetRaycasters(std::vector<Raycaster*> rc) { m_raycasters = std::move(rc); }
@@ -69,11 +68,12 @@ private:
 
     MeshCache m_mesh_cache;
 
-    std::unique_ptr<StreamEncoder> m_stream;
-    int m_stream_fps = 30;
-    float m_stream_accum = 0;
+   
 
     std::vector<Raycaster*> m_raycasters;
+
+    sg_image m_shadow_color = {};
+    sg_view  m_shadow_color_att_view = {};
 
     void SetupCamera();
     void BuildProjMatrix(float out[16], float fov, float near, float far) const;

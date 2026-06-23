@@ -13,6 +13,7 @@
 #include <chrono>
 #include <thread>
 
+
 // ── Swapchain format helper ─────────────────────────────────────────────────
 // The window's actual swapchain color format is negotiated at startup and
 // varies by backend/platform/driver (e.g. RGBA8 vs BGRA8) -- it is NOT
@@ -268,33 +269,31 @@ struct CompiledSpv {
 
 static CompiledSpv CompileGLSLtoSPV(const char* source, shaderc_shader_kind kind, const char* name) {
     CompiledSpv result;
-    fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) start\n", name);
+    LOG_INFO("Renderer: CompileGLSLtoSPV(%s) start", name);
     shaderc_compiler_t compiler = shaderc_compiler_initialize();
     if (!compiler) {
         LOG_ERROR("Renderer: shaderc_compiler_initialize failed");
-        fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) compiler init FAILED\n", name);
         return result;
     }
-    fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) compiler ok\n", name);
     shaderc_compile_options_t opts = shaderc_compile_options_initialize();
     shaderc_compilation_result_t cr = shaderc_compile_into_spv(compiler, source, strlen(source), kind, name, "main", opts);
-    fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) compile done\n", name);
+   // LOG_INFO("DEBUG: CompileGLSLtoSPV(%s) compile done\n", name);
     if (shaderc_result_get_compilation_status(cr) != shaderc_compilation_status_success) {
         LOG_ERROR("Renderer: shaderc compilation of %s failed: %s", name, shaderc_result_get_error_message(cr));
         shaderc_result_release(cr);
         shaderc_compile_options_release(opts);
         shaderc_compiler_release(compiler);
-        fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) COMPILATION FAILED\n", name);
+       // fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) COMPILATION FAILED\n", name);
         return result;
     }
-    fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) compile SUCCESS\n", name);
+    //fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) compile SUCCESS\n", name);
     size_t n = shaderc_result_get_length(cr);
     result.bytecode.resize(n / sizeof(uint32_t));
     memcpy(result.bytecode.data(), shaderc_result_get_bytes(cr), n);
     shaderc_result_release(cr);
     shaderc_compile_options_release(opts);
     shaderc_compiler_release(compiler);
-    fprintf(stderr, "DEBUG: CompileGLSLtoSPV(%s) done, %zu bytes SPIR-V\n", name, n);
+    LOG_INFO("Renderer: CompileGLSLtoSPV(%s) done, %zu bytes SPIR-V", name, n);
     return result;
 }
 #endif
@@ -307,7 +306,7 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
 
     m_pass_action = {};
     m_pass_action.colors[0].load_action = SG_LOADACTION_CLEAR;
-    m_pass_action.colors[0].clear_value = { 0.11f, 0.11f, 0.125f, 1.0f };
+    m_pass_action.colors[0].clear_value = { 0.11f, 0.11f, 0.11f, 1.0f };
     m_pass_action.depth.load_action = SG_LOADACTION_CLEAR;
     m_pass_action.depth.clear_value = 1.0f;
 
@@ -454,9 +453,9 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     pip.depth.write_enabled = true;
     pip.cull_mode = SG_CULLMODE_BACK;
     pip.face_winding = SG_FACEWINDING_CCW;
-    fprintf(stderr, "DEBUG: before sg_make_pipeline (main)\n");
+    //fprintf(stderr, "DEBUG: before sg_make_pipeline (main)\n");
     m_pipeline = sg_make_pipeline(&pip);
-    fprintf(stderr, "DEBUG: after sg_make_pipeline (main), id=%u\n", m_pipeline.id);
+    //fprintf(stderr, "DEBUG: after sg_make_pipeline (main), id=%u\n", m_pipeline.id);
     if (!m_pipeline.id) {
         LOG_ERROR("Renderer: failed to create main pipeline");
     }
@@ -492,10 +491,13 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     if (!m_shadow_shader.id) {
         LOG_ERROR("Renderer: failed to create shadow shader");
     }
+   // fprintf(stderr, "DEBUG: shadow shader id=%u\n", m_shadow_shader.id);
 
     // ── Shadow pipeline ───────────────────────────────────────────────────
     sg_pipeline_desc spip = {};
-    spip.color_count = 0;  // depth-only — no color attachment needed
+    spip.color_count = 1;
+    spip.colors[0].pixel_format = SG_PIXELFORMAT_R32F;
+    spip.colors[0].write_mask = SG_COLORMASK_NONE;
     spip.depth.pixel_format = SG_PIXELFORMAT_DEPTH;
     spip.layout.attrs[0].format = SG_VERTEXFORMAT_FLOAT3;
     spip.layout.attrs[0].buffer_index = 0;
@@ -508,6 +510,7 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     spip.sample_count = 1;
     spip.cull_mode = SG_CULLMODE_NONE;
     m_shadow_pipeline = sg_make_pipeline(&spip);
+  //  fprintf(stderr, "DEBUG: shadow pipeline id=%u\n", m_shadow_pipeline.id);
 
     // ── Shadow map depth image ─────────────────────────────────────────────
     sg_image_desc depth_desc = {};
@@ -517,6 +520,20 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     depth_desc.sample_count = 1;
     depth_desc.usage.depth_stencil_attachment = true;
     m_shadow_depth = sg_make_image(&depth_desc);
+  //  fprintf(stderr, "DEBUG: shadow depth image id=%u\n", m_shadow_depth.id);
+
+    sg_image_desc col_desc = {};
+    col_desc.width = SHADOW_MAP_SIZE;
+    col_desc.height = SHADOW_MAP_SIZE;
+    col_desc.pixel_format = SG_PIXELFORMAT_R32F;
+    col_desc.sample_count = 1;
+    col_desc.usage.color_attachment = true;
+    m_shadow_color = sg_make_image(&col_desc);
+    fprintf(stderr, "DEBUG: shadow color image id=%u\n", m_shadow_color.id);
+
+    sg_view_desc cav = {};
+    cav.color_attachment.image = m_shadow_color;
+    m_shadow_color_att_view = sg_make_view(&cav);
 
     // ── Shadow pass depth attachment view ─────────────────────────────────
     sg_view_desc dav = {};
@@ -546,7 +563,6 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
 }
 
 void Renderer::Shutdown() {
-    if (m_stream) m_stream->Shutdown();
     if (m_shadow_sampler.id) sg_destroy_sampler(m_shadow_sampler);
     if (m_shadow_tex_view.id) sg_destroy_view(m_shadow_tex_view);
     if (m_shadow_depth_att_view.id) sg_destroy_view(m_shadow_depth_att_view);
@@ -555,6 +571,8 @@ void Renderer::Shutdown() {
     if (m_shadow_shader.id) sg_destroy_shader(m_shadow_shader);
     if (m_pipeline.id) sg_destroy_pipeline(m_pipeline);
     if (m_shader.id) sg_destroy_shader(m_shader);
+    if (m_shadow_color_att_view.id) sg_destroy_view(m_shadow_color_att_view);
+    if (m_shadow_color.id)          sg_destroy_image(m_shadow_color);
     m_mesh_cache.UnloadAll();
     LOG_INFO("Renderer: shutdown");
 }
@@ -563,11 +581,6 @@ bool Renderer::ShouldClose() const {
     return false;
 }
 
-void Renderer::EnableStreaming(int port, int fps) {
-    m_stream_fps = fps;
-    m_stream = std::make_unique<StreamEncoder>();
-    m_stream->Init(port, sapp_width(), sapp_height(), fps);
-}
 
 // ── Camera ────────────────────────────────────────────────────────────────────
 
@@ -579,9 +592,9 @@ void Renderer::SetupCamera() {
     m_cam.pos[2] = m_cam.target[2] + c * cosf(m_cam.yaw * 3.14159265f / 180.0f);
 }
 
-void Renderer::BuildProjMatrix(float out[16], float fov, float near, float far) const {
+void Renderer::BuildProjMatrix(float out[16], float fov, float znear, float zfar) const {
     float aspect = (float)sapp_width() / fmaxf(1.0f, (float)sapp_height());
-    mat4_perspective(fov * 3.14159265f / 180.0f, aspect, near, far, out);
+    mat4_perspective(fov * 3.14159265f / 180.0f, aspect, znear, zfar, out);
 }
 
 void Renderer::BuildViewMatrix(float out[16]) const {
@@ -590,14 +603,27 @@ void Renderer::BuildViewMatrix(float out[16]) const {
 
 void Renderer::BuildLightVPMatrix(float out[16]) const {
     float eye[3] = { 0.0f, 10.0f, 0.0f };
-    float center[3] = { 0.0f, 0.0f, 0.0f };
-    float up[3] = { 0.0f, 0.0f, -1.0f };
+    float center[3] = { 0.0f,  0.0f, 0.0f };
+    float up[3] = { 0.0f,  0.0f, -1.0f };
     float view[16], proj[16];
     mat4_look_at(eye, center, up, view);
     float hx = m_field_half_extents[0];
     float hz = m_field_half_extents[1];
     mat4_ortho(-hx, hx, -hz, hz, 0.5f, 20.0f, proj);
-    mat4_mul(proj, view, out);  // P * V  (was V * P — wrong)
+
+    float vp[16];
+    mat4_mul(proj, view, vp);
+
+#ifdef SOKOL_VULKAN
+    // Vulkan clip Z is [0,1]; our mat4_ortho produces [-1,1] (GL convention)
+    float z_remap[16];
+    mat4_identity(z_remap);
+    z_remap[10] = 0.5f;
+    z_remap[14] = 0.5f;
+    mat4_mul(z_remap, vp, out);
+#else
+    memcpy(out, vp, 64);
+#endif
 }
 
 void Renderer::UpdateCamera(float dt) {
@@ -729,9 +755,9 @@ void Renderer::DrawFrame(const WorldSnapshot& snapshot,
     fs_ub.light_pos[1] = 10.0f;
     fs_ub.light_pos[2] = 0.0f;
     fs_ub.light_pos[3] = 1.0f;
-    fs_ub.ambient[0] = 0.50f;
-    fs_ub.ambient[1] = 0.50f;
-    fs_ub.ambient[2] = 0.50f;
+    fs_ub.ambient[0] = 0.25f;
+    fs_ub.ambient[1] = 0.25f;
+    fs_ub.ambient[2] = 0.25f;
     fs_ub.ambient[3] = 1.0f;
     fs_ub.view_pos[0] = m_cam.pos[0];
     fs_ub.view_pos[1] = m_cam.pos[1];
@@ -747,6 +773,8 @@ void Renderer::DrawFrame(const WorldSnapshot& snapshot,
         shadow_pass.action.depth.store_action = SG_STOREACTION_STORE;
         shadow_pass.action.depth.clear_value = 1.0f;
         shadow_pass.attachments.depth_stencil = m_shadow_depth_att_view;
+        shadow_pass.action.colors[0].load_action = SG_LOADACTION_DONTCARE;
+        shadow_pass.action.colors[0].store_action = SG_STOREACTION_DONTCARE;
         sg_begin_pass(&shadow_pass);
 
         sg_apply_pipeline(m_shadow_pipeline);
@@ -771,6 +799,7 @@ void Renderer::DrawFrame(const WorldSnapshot& snapshot,
         }
 
         sg_end_pass();
+       
     }
 
     // ── Main render pass ──────────────────────────────────────────────────
@@ -828,12 +857,5 @@ void Renderer::DrawFrame(const WorldSnapshot& snapshot,
     }
     sg_commit();
 
-    // ── Stream (dummy) ───────────────────────────────────────────────────
-    if (m_stream) {
-        m_stream_accum += dt;
-        if (m_stream_accum >= 1.0f / m_stream_fps) {
-            m_stream_accum -= 1.0f / m_stream_fps;
-            m_stream->PushFrame(nullptr, sapp_width(), sapp_height());
-        }
-    }
+    
 }

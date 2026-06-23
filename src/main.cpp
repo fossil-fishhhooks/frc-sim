@@ -50,10 +50,6 @@ struct Args {
     int width = 1280;
     int height = 720;
     bool vsync = true;
-    bool stream = false;
-    std::string stream_host = "127.0.0.1";
-    int stream_port = 5000;
-    int stream_fps = 30;
     std::string raycast_path;
     std::string backend = "gl";
 };
@@ -76,8 +72,6 @@ static void PrintUsage(const char* argv0) {
         "  --threads <n>                Jolt worker threads (default: auto)\n"
         "  --vsync  <0|1>               Enable/disable vsync (default: 1)\n"
         "  --backend <gl|vulkan|metal>  Graphics backend (default: gl; metal only on macOS)\n"
-        "  --stream <port>              Streaming port      (default: 5000)\n"
-        "  --stream-fps <fps>           Stream frame rate   (default: 30)\n"
         "  --raycast <path.json>        Raycast sensor definitions\n";
 }
 
@@ -113,11 +107,6 @@ static Args ParseArgs(int argc, char* argv[]) {
         else if (!strcmp(argv[i], "--vsync") && i + 1 < argc) a.vsync = std::stoi(argv[++i]) != 0;
         else if (!strcmp(argv[i], "--backend") && i + 1 < argc) a.backend = argv[++i];
         else if (!strcmp(argv[i], "--raycast") && i + 1 < argc) a.raycast_path = argv[++i];
-        else if (!strcmp(argv[i], "--stream")) {
-            a.stream = true;
-            if (i + 1 < argc) a.stream_port = std::stoi(argv[++i]);
-        }
-        else if (!strcmp(argv[i], "--stream-fps") && i + 1 < argc) a.stream_fps = std::stoi(argv[++i]);
         else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
             PrintUsage(argv[0]); std::exit(0);
         }
@@ -382,11 +371,7 @@ static void init_cb() {
     if (app.scene.has_field_bounds)
         app.renderer.SetFieldExtents(app.scene.field_half_x, app.scene.field_half_z);
 
-    if (g_args.stream)
-        app.renderer.EnableStreaming(g_args.stream_port, g_args.stream_fps);
-
-    if (g_args.stream)
-        app.renderer.EnableStreaming(g_args.stream_port, g_args.stream_fps);
+   
 
     sapp_show_keyboard(false);
 }
