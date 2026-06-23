@@ -1,5 +1,5 @@
 #version 450
-layout(location = 0) out float out_depth;
+layout(location = 0) out vec4 frag_color;
 void main() {
-    out_depth = gl_FragCoord.z;
+    frag_color.r = gl_FragCoord.z;
 }

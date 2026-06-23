@@ -417,7 +417,11 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     shd.views[0].texture.msl_texture_n = 0;
 
     shd.samplers[0].stage = SG_SHADERSTAGE_FRAGMENT;
+#if defined(SOKOL_VULKAN)
+    shd.samplers[0].sampler_type = SG_SAMPLERTYPE_FILTERING;
+#else
     shd.samplers[0].sampler_type = SG_SAMPLERTYPE_COMPARISON;
+#endif
     shd.samplers[0].spirv_set1_binding_n = 1;
     shd.samplers[0].msl_sampler_n = 0;
 
@@ -496,8 +500,8 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     // ── Shadow pipeline ───────────────────────────────────────────────────
     sg_pipeline_desc spip = {};
     spip.color_count = 1;
-    spip.colors[0].pixel_format = SG_PIXELFORMAT_R32F;
-    spip.colors[0].write_mask = SG_COLORMASK_NONE;
+    spip.colors[0].pixel_format = SG_PIXELFORMAT_RGBA8;
+    spip.colors[0].write_mask = SG_COLORMASK_R;
     spip.depth.pixel_format = SG_PIXELFORMAT_DEPTH;
     spip.layout.attrs[0].format = SG_VERTEXFORMAT_FLOAT3;
     spip.layout.attrs[0].buffer_index = 0;
@@ -525,7 +529,7 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     sg_image_desc col_desc = {};
     col_desc.width = SHADOW_MAP_SIZE;
     col_desc.height = SHADOW_MAP_SIZE;
-    col_desc.pixel_format = SG_PIXELFORMAT_R32F;
+    col_desc.pixel_format = SG_PIXELFORMAT_RGBA8;
     col_desc.sample_count = 1;
     col_desc.usage.color_attachment = true;
     m_shadow_color = sg_make_image(&col_desc);
@@ -542,7 +546,13 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
 
     // ── Shadow map texture view (sampled in main pass) ────────────────────
     sg_view_desc tv = {};
+#if defined(SOKOL_VULKAN)
+    // Vulkan: sample color attachment (avoids Intel depth→texture GPU hang)
+    tv.texture.image = m_shadow_color;
+#else
+    // GL/Metal: sample depth texture directly via comparison sampler
     tv.texture.image = m_shadow_depth;
+#endif
     m_shadow_tex_view = sg_make_view(&tv);
 
     // ── Shadow sampler ────────────────────────────────────────────────────
@@ -551,7 +561,9 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     smp_desc.mag_filter = SG_FILTER_LINEAR;
     smp_desc.wrap_u = SG_WRAP_CLAMP_TO_EDGE;
     smp_desc.wrap_v = SG_WRAP_CLAMP_TO_EDGE;
+#if !defined(SOKOL_VULKAN)
     smp_desc.compare = SG_COMPAREFUNC_LESS_EQUAL;
+#endif
     m_shadow_sampler = sg_make_sampler(&smp_desc);
 
     // ── Camera ───────────────────────────────────────────────────────────
@@ -772,9 +784,10 @@ void Renderer::DrawFrame(const WorldSnapshot& snapshot,
         shadow_pass.action.depth.load_action = SG_LOADACTION_CLEAR;
         shadow_pass.action.depth.store_action = SG_STOREACTION_STORE;
         shadow_pass.action.depth.clear_value = 1.0f;
+        shadow_pass.attachments.colors[0] = m_shadow_color_att_view;
         shadow_pass.attachments.depth_stencil = m_shadow_depth_att_view;
         shadow_pass.action.colors[0].load_action = SG_LOADACTION_DONTCARE;
-        shadow_pass.action.colors[0].store_action = SG_STOREACTION_DONTCARE;
+        shadow_pass.action.colors[0].store_action = SG_STOREACTION_STORE;
         sg_begin_pass(&shadow_pass);
 
         sg_apply_pipeline(m_shadow_pipeline);

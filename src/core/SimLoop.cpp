@@ -18,8 +18,10 @@ SimLoop::SimLoop(SimWorld &world, ForceApplicator *forces,
 
 SimLoop::~SimLoop() { Stop(); }
 
-void SimLoop::Start()
-{
+void SimLoop::Start() {
+    // Pre-fill both buffers so GetSnapshot() is never empty on first frame
+    m_world.CaptureSnapshot(m_buf[0]);
+    m_world.CaptureSnapshot(m_buf[1]);
     m_running = true;
     m_thread = std::thread(&SimLoop::Run, this);
     LOG_INFO("SimLoop: started (dt=%.4f s, speed=%.2fx)", m_fixed_dt, m_speed);
