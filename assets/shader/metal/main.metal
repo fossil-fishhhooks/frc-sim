@@ -45,13 +45,13 @@ static float ShadowPCF(depth2d<float> shadow_map, sampler shadow_sampler,
     float4 lp   = light_vp * float4(v_pos, 1.0);
     float3 proj = lp.xyz / lp.w * 0.5 + 0.5;
     if (proj.z >= 1.0) return 1.0;
-    float2 texel = 1.0 / float2(1024.0);
+    float2 texel = 1.0 / float2(2048.0);
     float shadow = 0.0;
-    for (int x = -1; x <= 1; ++x)
-        for (int y = -1; y <= 1; ++y)
+    for (int x = -2; x <= 2; ++x)
+        for (int y = -2; y <= 2; ++y)
             shadow += shadow_map.sample_compare(shadow_sampler,
                           proj.xy + float2(x, y) * texel, proj.z - 0.005);
-    return shadow / 9.0;
+    return shadow / 25.0;
 }
 
 fragment float4 main_fs(VertexOut in [[stage_in]],
