@@ -275,6 +275,7 @@ static void init_cb() {
     app.forces = std::make_unique<ForceApplicator>(app.world, app.motors, app.world.GetContactListener());
     app.sim = std::make_unique<SimLoop>(app.world, app.forces.get(), std::move(mech_ptrs),
         &app.score_tracker, g_args.dt, g_args.speed);
+
     app.sim->Start();
 
     auto do_reset = [&app]() {

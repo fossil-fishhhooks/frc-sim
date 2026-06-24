@@ -538,7 +538,7 @@ void Renderer::Init(int width, int height, const char* title, int target_fps) {
     col_desc.sample_count = 1;
     col_desc.usage.color_attachment = true;
     m_shadow_color = sg_make_image(&col_desc);
-    fprintf(stderr, "DEBUG: shadow color image id=%u\n", m_shadow_color.id);
+    //fprintf(stderr, "DEBUG: shadow color image id=%u\n", m_shadow_color.id);
 
     sg_view_desc cav = {};
     cav.color_attachment.image = m_shadow_color;

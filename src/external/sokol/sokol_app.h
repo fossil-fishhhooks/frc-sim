@@ -5986,6 +5986,25 @@ _SOKOL_PRIVATE void _sapp_macos_frame(void) {
 #if defined(_SAPP_ANY_GL)
     [[_sapp.macos.view openGLContext]flushBuffer];
 #endif
+    {
+        static bool shown = false;
+        if (!shown && _sapp.init_called) {
+            shown = true;
+            [NSApp activateIgnoringOtherApps : YES];
+            [_sapp.macos.window makeKeyAndOrderFront : nil];
+            _sapp_macos_update_dimensions();
+            NSEvent* focusevent = [NSEvent otherEventWithType : NSEventTypeAppKitDefined
+                location : NSZeroPoint
+                modifierFlags : 0x40
+                timestamp : 0
+                windowNumber : 0
+                context : nil
+                subtype : NSEventSubtypeApplicationActivated
+                data1 : 0
+                data2 : 0];
+            [NSApp postEvent : focusevent atStart : YES];
+        }
+    }
     if (_sapp.quit_requested || _sapp.quit_ordered) {
         [_sapp.macos.window performClose : nil] ;
     }
@@ -6033,23 +6052,6 @@ _SOKOL_PRIVATE void _sapp_macos_frame(void) {
         /* ^^^ on GL, this already toggles a rendered frame, so set the valid flag before */
         [_sapp.macos.window toggleFullScreen : self] ;
     }
-    [NSApp activateIgnoringOtherApps : YES] ;
-    [_sapp.macos.window makeKeyAndOrderFront : nil] ;
-    _sapp_macos_update_dimensions();
-
-    // workaround for window not being focused during a long init callback
-    // for details see: https://github.com/floooh/sokol/pull/982
-    // also see: https://gitlab.gnome.org/GNOME/gtk/-/issues/2342
-    NSEvent* focusevent = [NSEvent otherEventWithType : NSEventTypeAppKitDefined
-        location : NSZeroPoint
-        modifierFlags : 0x40
-        timestamp : 0
-        windowNumber : 0
-        context : nil
-        subtype : NSEventSubtypeApplicationActivated
-        data1 : 0
-        data2 : 0];
-    [NSApp postEvent : focusevent atStart : YES] ;
 }
 
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication*)sender {
@@ -9691,6 +9693,15 @@ _SOKOL_PRIVATE void _sapp_win32_frame(bool from_winproc) {
 #if defined(SOKOL_GLCORE)
     _sapp_wgl_swap_buffers();
 #endif
+    {
+        static bool shown = false;
+        if (!shown && _sapp.init_called) {
+            shown = true;
+            ShowWindow(_sapp.win32.hwnd, SW_SHOW);
+            SetForegroundWindow(_sapp.win32.hwnd);
+            DragAcceptFiles(_sapp.win32.hwnd, 1);
+        }
+    }
     if (!from_winproc) {
         if (IsIconic(_sapp.win32.hwnd)) {
             Sleep((DWORD)(16 * _sapp.swap_interval));
@@ -9981,8 +9992,6 @@ _SOKOL_PRIVATE void _sapp_win32_create_window(void) {
         _sapp_win32_set_fullscreen(_sapp.fullscreen, SWP_HIDEWINDOW);
         _sapp_win32_update_dimensions();
     }
-    ShowWindow(_sapp.win32.hwnd, SW_SHOW);
-    DragAcceptFiles(_sapp.win32.hwnd, 1);
 }
 
 _SOKOL_PRIVATE void _sapp_win32_destroy_window(void) {
@@ -13187,6 +13196,11 @@ _SOKOL_PRIVATE void _sapp_x11_show_window(void) {
         XEvent dummy;
         _sapp_x11_wait_for_event(VisibilityNotify, 0.1, &dummy);
         XRaiseWindow(_sapp.x11.display, _sapp.x11.window);
+        // Request window manager to focus/activate the window
+        Atom net_active = XInternAtom(_sapp.x11.display, "_NET_ACTIVE_WINDOW", False);
+        if (net_active != None) {
+            _sapp_x11_send_event(net_active, 2, 0, 0, 0, 0);
+        }
         XFlush(_sapp.x11.display);
     }
 }
@@ -14009,6 +14023,12 @@ _SOKOL_PRIVATE void _sapp_linux_frame(void) {
     eglSwapBuffers(_sapp.egl.display, _sapp.egl.surface);
 #endif
 #endif
+    static bool shown = false;
+    if (!shown && _sapp.init_called) {
+        shown = true;
+        _sapp_x11_show_window();
+        if (_sapp.fullscreen) _sapp_x11_set_fullscreen(true);
+    }
 }
 
 _SOKOL_PRIVATE void _sapp_linux_run(const sapp_desc* desc) {
@@ -14057,10 +14077,6 @@ _SOKOL_PRIVATE void _sapp_linux_run(const sapp_desc* desc) {
 #endif
     sapp_set_icon(&desc->icon);
     _sapp.valid = true;
-    _sapp_x11_show_window();
-    if (_sapp.fullscreen) {
-        _sapp_x11_set_fullscreen(true);
-    }
 
     XFlush(_sapp.x11.display);
     while (!_sapp.quit_ordered) {
