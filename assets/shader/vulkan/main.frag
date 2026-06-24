@@ -23,8 +23,8 @@ float ShadowPCF(vec3 world_pos) {
     vec4 lp   = light_vp * vec4(world_pos, 1.0);
     vec3 proj = lp.xyz / lp.w;
     // light_vp already remaps z to [0,1] (CPU-side Vulkan fix).
-    // Only remap xy for the texture lookup.
-    proj.xy   = proj.xy * 0.5 + 0.5;
+    // Remap xy for the texture lookup and flip Y for Vulkan's Y-down origin.
+    proj.xy   = proj.xy * vec2(0.5, -0.5) + 0.5;
     if (proj.z >= 1.0) return 1.0;
     vec2 texel = 1.0 / vec2(2048.0);
     float bias = 0.005;
