@@ -42,7 +42,7 @@ struct Args {
         int nt_port = 5810;
     };
     std::vector<RobotArg> robots;
-    float dt = 1.0f / 500.0f;
+    float dt = 1.0f / 150.0f;
     float speed = 1.0f;
     int substeps = 2;
     int threads = 0;
@@ -61,7 +61,7 @@ static void PrintUsage(const char* argv0) {
         "\n"
         "  --scene  <path>              Scene JSON (required)\n"
         "  --robot  <def@host:port>     Add a robot (repeatable, up to 6)\n"
-        "  --dt     <seconds>           Physics timestep    (default: 0.002)\n"
+        "  --dt     <seconds>           Physics timestep    (default: 0.00667)\n"
         "  --substeps <n>               Jolt collision steps per tick (default: 2)\n"
         "  --speed  <factor>            Sim speed multiplier(default: 1.0)\n"
         "  --fps    <target>            Target render FPS, 0=uncapped (default: 60)\n"
