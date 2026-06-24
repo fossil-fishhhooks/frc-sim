@@ -57,7 +57,7 @@ private:
     sg_pass_action m_pass_action = {};
 
     // Shadow mapping
-    static constexpr int SHADOW_MAP_SIZE = 2048;
+    static constexpr int SHADOW_MAP_SIZE = 4096;
     float m_field_half_extents[2] = { 8.0f, 8.0f }; // set via SetFieldExtents()
     sg_image m_shadow_depth = {};
     sg_view m_shadow_depth_att_view = {};

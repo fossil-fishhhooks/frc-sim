@@ -26,7 +26,7 @@ float ShadowPCF(vec3 world_pos) {
     // Remap xy for the texture lookup and flip Y for Vulkan's Y-down origin.
     proj.xy   = proj.xy * vec2(0.5, -0.5) + 0.5;
     if (proj.z >= 1.0) return 1.0;
-    vec2 texel = 1.0 / vec2(2048.0);
+    vec2 texel = 1.0 / vec2(4096.0);
     float bias = 0.005;
     float shadow = 0.0;
     for (int x = -2; x <= 2; ++x)

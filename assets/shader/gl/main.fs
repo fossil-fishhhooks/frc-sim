@@ -15,7 +15,7 @@ float ShadowPCF(vec3 world_pos) {
     vec4 lp   = light_vp * vec4(world_pos, 1.0);
     vec3 proj = lp.xyz / lp.w * 0.5 + 0.5;
     if (proj.z >= 1.0) return 1.0;
-    vec2 texel = 1.0 / vec2(2048.0);
+    vec2 texel = 1.0 / vec2(4096.0);
     float shadow = 0.0;
     for (int x = -2; x <= 2; ++x)
         for (int y = -2; y <= 2; ++y)

@@ -220,7 +220,7 @@ static const char* fs_src_main_fallback =
 "    vec3 proj = lp.xyz / lp.w;\n"
 "    proj = proj * 0.5 + 0.5;\n"
 "    if (proj.z >= 1.0) return 1.0;\n"
-"    vec2 texel = 1.0 / vec2(2048.0);\n"
+"    vec2 texel = 1.0 / vec2(4096.0);\n"
 "    float bias = 0.005;\n"
 "    float shadow = 0.0;\n"
 "    for (int x = -2; x <= 2; ++x)\n"
