@@ -110,20 +110,24 @@ void DrawDebugOverlay(const WorldSnapshot& snapshot,
 
         if (robot.motors.empty()) { y += 0.5f; continue; }
 
+        sdtx_pos(PAD, y);
+        sdtx_color3b(80, 80, 80);
+        sdtx_puts("--- Motors ---");
+        y += LINE;
+
         for (int i = 0; i < (int)robot.motors.size(); ++i) {
             const MotorSnapshot& m = robot.motors[i];
 
-            sdtx_pos(PAD, y);
             if (m.slipping)
                 sdtx_color3b(255, 0, 0);
             else
                 sdtx_color3b(192, 192, 192);
             constexpr float FREE_SPEED = 608.0f;
             float frac = std::clamp(m.omega / FREE_SPEED, -1.0f, 1.0f);
-            snprintf(buf, sizeof(buf), "M[%d] %+.0f rad/s (%+d%%)", i, m.omega,
-                     (int)(frac * 100.0f));
+            snprintf(buf, sizeof(buf), "(%d) %+5.0f rad/s %+4d%%%s", i, m.omega,
+                     (int)(frac * 100.0f), m.slipping ? " SLIP" : "");
+            sdtx_pos(PAD, y);
             sdtx_puts(buf);
-            if (m.slipping) sdtx_puts(" SLIP");
             y += LINE;
         }
         y += 0.5f;
@@ -160,7 +164,6 @@ void DrawDebugOverlay(const WorldSnapshot& snapshot,
         sdtx_puts(buf);
 
         // Timer row
-        sdtx_pos(bx + 1.0f, by + 3.0f);
         if (ss.phase == MatchPhase::COUNTDOWN) {
             snprintf(buf, sizeof(buf), "%.0f", ceilf(ss.countdown));
             sdtx_color3b(255, 255, 0);
@@ -170,6 +173,8 @@ void DrawDebugOverlay(const WorldSnapshot& snapshot,
             snprintf(buf, sizeof(buf), "%d:%05.2f", mins, secs);
             sdtx_color3b(255, 255, 255);
         }
+        float tx = bx + SW * 0.5f - strlen(buf) * 0.5f;
+        sdtx_pos(tx, by + 3.0f);
         sdtx_puts(buf);
     }
 
