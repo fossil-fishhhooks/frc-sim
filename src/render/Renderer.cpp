@@ -695,7 +695,7 @@ void Renderer::HandleEvent(const sapp_event* e) {
             float dy = e->mouse_y - m_mouse_last_y;
             m_mouse_last_x = e->mouse_x;
             m_mouse_last_y = e->mouse_y;
-            m_cam.yaw += dx * 0.2f;
+            m_cam.yaw -= dx * 0.2f;
             m_cam.pitch -= dy * 0.2f;
             m_cam.pitch = fmaxf(-89.0f, fminf(89.0f, m_cam.pitch));
         }
